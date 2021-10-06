@@ -1,0 +1,22 @@
+node_modules
+.vscode
+__scratchpads
+.python-version
+dist
+coverage
+
+*.js
+!.eslintrc.js
+junit.xml
+*.tgz
+
+# Submodules generated when building dist
+asn1
+assert
+cognito-verifier
+https
+jwk
+jwt-model
+jwt-rsa
+jwt
+safe-json-parse

@@ -1,0 +1,101 @@
+{
+  "name": "aws-jwt-verify",
+  "version": "1.0.0",
+  "description": "Verify RS256 signed JSON Web Tokens (JWT)",
+  "main": "dist/cjs/index.js",
+  "type": "commonjs",
+  "types": "dist/cjs/index.d.ts",
+  "module": "dist/esm/index.js",
+  "files": [
+    "dist",
+    "asn1/package.json",
+    "assert/package.json",
+    "cognito-verifier/package.json",
+    "https/package.json",
+    "jwk/package.json",
+    "jwt/package.json",
+    "jwt-model/package.json",
+    "jwt-rsa/package.json",
+    "safe-json-parse/package.json"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./asn1": {
+      "import": "./dist/esm/asn1.js",
+      "require": "./dist/cjs/asn1.js"
+    },
+    "./assert": {
+      "import": "./dist/esm/assert.js",
+      "require": "./dist/cjs/assert.js"
+    },
+    "./cognito-verifier": {
+      "import": "./dist/esm/cognito-verifier.js",
+      "require": "./dist/cjs/cognito-verifier.js"
+    },
+    "./https": {
+      "import": "./dist/esm/https.js",
+      "require": "./dist/cjs/https.js"
+    },
+    "./jwk": {
+      "import": "./dist/esm/jwk.js",
+      "require": "./dist/cjs/jwk.js"
+    },
+    "./jwt": {
+      "import": "./dist/esm/jwt.js",
+      "require": "./dist/cjs/jwt.js"
+    },
+    "./jwt-model": {
+      "import": "./dist/esm/jwt-model.js",
+      "require": "./dist/cjs/jwt-model.js"
+    },
+    "./jwt-rsa": {
+      "import": "./dist/esm/jwt-rsa.js",
+      "require": "./dist/cjs/jwt-rsa.js"
+    },
+    "./safe-json-parse": {
+      "import": "./dist/esm/safe-json-parse.js",
+      "require": "./dist/cjs/safe-json-parse.js"
+    }
+  },
+  "devDependencies": {
+    "@tsconfig/node14": "^1.0.1",
+    "@types/jest": "^27.0.2",
+    "@typescript-eslint/eslint-plugin": "^4.32.0",
+    "@typescript-eslint/parser": "^4.32.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-security": "^1.4.0",
+    "jest": "^27.2.4",
+    "jest-junit": "^12.3.0",
+    "nock": "^13.1.3",
+    "prettier": "^2.4.1",
+    "ts-jest": "^27.0.5",
+    "ts-node": "^10.2.1",
+    "ts-standard": "^10.0.0",
+    "typescript": "^4.4.3"
+  },
+  "scripts": {
+    "dist:cjs": "tsc -p tsconfig-dist-cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "dist:esm": "tsc -p tsconfig-dist-esm.json && echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npx ts-node ./typescript-compat.ts",
+    "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
+    "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",
+    "prettier:check": "prettier --check .",
+    "prettier": "prettier -w .",
+    "test:all": "npm run prettier:check && npm run test:unit && npm run test:install && npm run test:import && npm run test:speed && npm run test:cognito",
+    "test:cognito": "cd tests/cognito && npm run test",
+    "test:import": "cd tests/import-tests && npm i --prune --force && node esm.mjs && node commonjs.cjs && tsc typescript.ts && node typescript.js",
+    "test:install": "./tests/installation-and-basic-usage/run-tests.sh",
+    "test:speed": "jest -t \"speed\"",
+    "test:unit": "jest --collect-coverage -t \"unit\" --reporters=\"jest-junit\" --reporters=\"default\"",
+    "test": "npm run test:unit",
+    "tsc": "tsc"
+  },
+  "prettier": {
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": true
+  }
+}

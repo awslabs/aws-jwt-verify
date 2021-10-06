@@ -1,0 +1,12 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "include": ["src/**/*", "tests/unit/**/*"],
+  "compilerOptions": {
+    "pretty": true,
+    "declaration": true,
+    "strictNullChecks": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

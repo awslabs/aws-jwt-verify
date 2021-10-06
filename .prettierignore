@@ -1,0 +1,22 @@
+__*
+.vscode
+coverage
+dist
+
+# Submodules generated when building dist
+asn1
+assert
+https
+jwk
+jwt
+test-util
+cognito-verifier
+jwt-model
+jwt-rsa
+safe-json-parse
+
+# compiled js
+src/*.js
+tests/unit/*.js
+tests/installation-and-basic-usage/*.js
+tests/cognito/cdk.out/*
