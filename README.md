@@ -604,8 +604,14 @@ const jwtVerifier = CognitoJwtVerifier.create({
 exports.handler = async (event) => {
   const accessToken = event.authorizationToken;
 
-  // If the token is not valid, an error is thrown:
-  const payload = await jwtVerifier.verify(accessToken);
+  let payload;
+  try {
+    // If the token is not valid, an error is thrown:
+    payload = await jwtVerifier.verify(jwt);
+  } catch {
+    // API Gateway wants this *exact* error message, otherwise it returns 500 instead of 401:
+    throw new Error("Unauthorized");
+  }
 
   // Proceed with additional authorization logic
   // ...
@@ -630,8 +636,14 @@ const jwtVerifier = CognitoJwtVerifier.create({
 exports.handler = async (event) => {
   const accessToken = event.headers["authorization"];
 
-  // If the token is not valid, an error is thrown:
-  const payload = await jwtVerifier.verify(accessToken);
+  let payload;
+  try {
+    // If the token is not valid, an error is thrown:
+    payload = await jwtVerifier.verify(jwt);
+  } catch {
+    // API Gateway wants this *exact* error message, otherwise it returns 500 instead of 401:
+    throw new Error("Unauthorized");
+  }
 
   // Proceed with additional authorization logic
   // ...
