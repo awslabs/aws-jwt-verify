@@ -31,11 +31,14 @@ This library was specifically designed to be easy to use in:
 - [Verifying JWTs from any OIDC-compatible IDP](#Verifying-JWTs-from-any-OIDC-compatible-IDP)
 - [The JWKS cache](#The-JWKS-cache)
 - [Usage examples](#Usage-examples)
-  - [CloudFront Lambda@Edge](#CloudFront-Lambda@Edge)
-  - [API Gateway Custom Authorizer](#API-Gateway-Custom-Authorizer)
-  - [AppSync Custom Authorizer](#AppSync-Custom-Authorizer)
-  - [Fastify](#Fastify)
-  - [Express](#Express)
+  - [CloudFront Lambda@Edge](#cloudfront-lambdaedge)
+  - [API Gateway Lambda Authorizer - REST](#api-gateway-lambda-authorizer---rest)
+  - [HTTP API Authorizer](#http-api-lambda-authorizer)
+  - [AppSync Lambda Authorizer](#appsync-lambda-authorizer)
+  - [Fastify](#fastify)
+  - [Express](#express)
+- [Security](#security)
+- [License](#license)
 
 ## Verifying JWTs from Amazon Cognito
 
