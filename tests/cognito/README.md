@@ -5,8 +5,6 @@ This CDK project's automated tests check that the User Pool's JWTs can indeed be
 
 ## How to run the tests
 
-Download and create dist locally:
-
 - Clone the repo: `git clone https://github.com/awslabs/aws-jwt-verify`
 - Install dev dependencies and create installable dist: `cd aws-jwt-verify && npm install && npm run dist`
 - Install CDK dependencies: `cd tests/cognito && npm install`
