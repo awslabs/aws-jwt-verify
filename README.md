@@ -1,6 +1,10 @@
 # AWS JWT Verify
 
-**Verify** JWTs signed by **Amazon Cognito**, or any **OIDC-compatible IDP** that uses **RS256** to sign JWTs.
+**NodeJS** library for **verifying** JWTs signed by **Amazon Cognito**, or any **OIDC-compatible IDP** that signs JWTs with **RS256**.
+
+## Installation
+
+`npm install aws-jwt-verify`
 
 ## Philosophy of this library
 
