@@ -603,15 +603,12 @@ const jwtVerifier = CognitoJwtVerifier.create({
 
 exports.handler = async (event) => {
   const accessToken = event.authorizationToken;
-  try {
-    await jwtVerifier.verify(accessToken);
-  } catch {
-    return {
-      status: "403",
-      body: "Unauthorized",
-    };
-  }
-  //Proceed with additional authorization logic
+
+  // If the token is not valid, an error is thrown:
+  const payload = await jwtVerifier.verify(accessToken);
+
+  // Proceed with additional authorization logic
+  // ...
 };
 ```
 
@@ -632,15 +629,12 @@ const jwtVerifier = CognitoJwtVerifier.create({
 
 exports.handler = async (event) => {
   const accessToken = event.headers["authorization"];
-  try {
-    await jwtVerifier.verify(accessToken);
-  } catch {
-    return {
-      status: "403",
-      body: "Unauthorized",
-    };
-  }
-  //Proceed with additional authorization logic
+
+  // If the token is not valid, an error is thrown:
+  const payload = await jwtVerifier.verify(accessToken);
+
+  // Proceed with additional authorization logic
+  // ...
 };
 ```
 
