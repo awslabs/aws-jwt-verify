@@ -1,11 +1,11 @@
-import * as path from "path";
-import * as cognito from "@aws-cdk/aws-cognito";
-import * as cdk from "@aws-cdk/core";
-import * as cr from "@aws-cdk/custom-resources";
-import * as lambda from "@aws-cdk/aws-lambda";
 import * as apigw from "@aws-cdk/aws-apigatewayv2";
 import * as apigwauth from "@aws-cdk/aws-apigatewayv2-authorizers";
 import * as apigwint from "@aws-cdk/aws-apigatewayv2-integrations";
+import * as cognito from "@aws-cdk/aws-cognito";
+import * as lambda from "@aws-cdk/aws-lambda";
+import * as cdk from "@aws-cdk/core";
+import * as cr from "@aws-cdk/custom-resources";
+import * as path from "path";
 
 export class CognitoStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -189,6 +189,7 @@ export class CognitoStack extends cdk.Stack {
       }),
       authorizer: apiAuthorizer,
     });
+
     new cdk.CfnOutput(this, "HttpApiEndpoint", {
       value: `${httpApi.url}mock`,
     });

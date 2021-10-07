@@ -455,16 +455,85 @@ Resources:
             Principal:
               Service: cloudformation.amazonaws.com
         Version: "2012-10-17"
-      ManagedPolicyArns:
-        Fn::If:
-          - HasCloudFormationExecutionPolicies
-          - Ref: CloudFormationExecutionPolicies
-          - Fn::If:
-              - HasTrustedAccounts
-              - Ref: AWS::NoValue
-              - - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
       RoleName:
         Fn::Sub: cdk-${Qualifier}-cfn-exec-role-${AWS::AccountId}-${AWS::Region}
+  CognitoTestStackPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - cognito-idp:CreateUserPool
+              - ec2:DescribeNetworkInterfaces
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - cognito-idp:AdminCreateUser
+              - cognito-idp:AdminDeleteUser
+              - cognito-idp:CreateResourceServer
+              - cognito-idp:CreateUserPoolClient
+              - cognito-idp:CreateUserPoolDomain
+              - cognito-idp:DeleteResourceServer
+              - cognito-idp:DeleteUserPool
+              - cognito-idp:DeleteUserPoolClient
+              - cognito-idp:DeleteUserPoolDomain
+            Effect: Allow
+            Resource:
+              Fn::Sub: arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:DeleteRolePolicy
+              - iam:DetachRolePolicy
+              - iam:GetRole
+              - iam:GetRolePolicy
+              - iam:PutRolePolicy
+              - iam:PassRole
+            Effect: Allow
+            Resource:
+              Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/*
+          - Action:
+              - kms:CreateGrant
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+            Effect: Allow
+            Resource:
+              Fn::Sub: arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*
+          - Action:
+              - lambda:AddPermission
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:GetFunction
+              - lambda:InvokeFunction
+              - lambda:GetFunctionCodeSigningConfig
+              - lambda:RemovePermission
+              - lambda:UpdateFunctionCode
+            Effect: Allow
+            Resource:
+              Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+          - Action:
+              - ssm:GetParameters
+            Effect: Allow
+            Resource:
+              Fn::Sub: arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*
+          - Action:
+              - apigateway:GET
+              - apigateway:POST
+              - apigateway:DELETE
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - s3:Get*
+              - s3:List*
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      Roles:
+        - Ref: CloudFormationExecutionRole
+      PolicyName:
+        Fn::Sub: cdk-${Qualifier}-cognito-test-stack-policy-${AWS::AccountId}-${AWS::Region}
   CdkBootstrapVersion:
     Type: AWS::SSM::Parameter
     Properties:
