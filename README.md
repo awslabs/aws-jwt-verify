@@ -607,7 +607,7 @@ exports.handler = async (event) => {
   let payload;
   try {
     // If the token is not valid, an error is thrown:
-    payload = await jwtVerifier.verify(jwt);
+    payload = await jwtVerifier.verify(accessToken);
   } catch {
     // API Gateway wants this *exact* error message, otherwise it returns 500 instead of 401:
     throw new Error("Unauthorized");
@@ -639,7 +639,7 @@ exports.handler = async (event) => {
   let payload;
   try {
     // If the token is not valid, an error is thrown:
-    payload = await jwtVerifier.verify(jwt);
+    payload = await jwtVerifier.verify(accessToken);
   } catch {
     // API Gateway wants this *exact* error message, otherwise it returns 500 instead of 401:
     throw new Error("Unauthorized");
