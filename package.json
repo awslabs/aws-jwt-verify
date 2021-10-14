@@ -97,5 +97,9 @@
     "trailingComma": "es5",
     "tabWidth": 2,
     "semi": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/awslabs/aws-jwt-verify.git"
   }
 }
