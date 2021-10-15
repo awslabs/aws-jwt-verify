@@ -1,6 +1,6 @@
 # AWS JWT Verify
 
-**NodeJS** library for **verifying** JWTs signed by **Amazon Cognito**, or any **OIDC-compatible IDP** that signs JWTs with **RS256**.
+**NodeJS** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256**.
 
 ## Installation
 
@@ -22,6 +22,7 @@ Currently, only signature algorithm **RS256** is supported.
 This library was specifically designed to be easy to use in:
 
 - [API Gateway Lambda authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html)
+- [AppSync Lambda authorizers](https://docs.aws.amazon.com/appsync/latest/devguide/security-authz.html#aws-lambda-authorization)
 - [CloudFront Lambda@Edge](https://docs.aws.amazon.com/lambda/latest/dg/lambda-edge.html)
 - NodeJS APIs, e.g. running in AWS Fargate, that need to verify incoming JWTs
 
