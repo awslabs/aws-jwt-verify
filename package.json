@@ -2,6 +2,11 @@
   "name": "aws-jwt-verify",
   "version": "1.0.1",
   "description": "Verify RS256 signed JSON Web Tokens (JWT)",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Amazon Web Services",
+    "url": "https://aws.amazon.com"
+  },
   "main": "dist/cjs/index.js",
   "type": "commonjs",
   "types": "dist/cjs/index.d.ts",
@@ -82,6 +87,7 @@
     "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npx ts-node ./typescript-compat.ts",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
     "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",
+    "prepare": "npm run dist",
     "prettier:check": "prettier --check .",
     "prettier": "prettier -w .",
     "test:all": "npm run prettier:check && npm run test:unit && npm run test:install && npm run test:import && npm run test:speed && npm run test:cognito",
