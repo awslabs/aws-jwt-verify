@@ -18,7 +18,16 @@ interface DecomposedJwt {
   payload: JwtPayload;
 }
 
-const allJwkFields = ["alg", "e", "kid", "kty", "n", "use"] as const;
+const optionalJwkFields = [
+  "alg", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.4
+] as const;
+const mandatoryJwkFields = [
+  "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
+  "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5 NOTE: considered mandatory by this library
+  "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
+  "n", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
+  "use", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.2 NOTE: considered mandatory by this library
+] as const;
 
 interface JwkFields {
   alg: "RS256" | string;
@@ -96,8 +105,18 @@ export function assertIsJwk(jwk: Json): asserts jwk is Jwk {
   if (!isJsonObject(jwk)) {
     throw new JwkValidationError("JWK should be an object");
   }
-  for (const field of allJwkFields) {
-    if (!(field in jwk)) {
+
+  for (const field of mandatoryJwkFields) {
+    // disable eslint rule because `field` is trusted
+    // eslint-disable-next-line security/detect-object-injection
+    if (typeof jwk[field] !== "string") {
+      throw new JwkValidationError(`JWK ${field} should be a string`);
+    }
+  }
+  for (const field of optionalJwkFields) {
+    // disable eslint rule because `field` is trusted
+    // eslint-disable-next-line security/detect-object-injection
+    if (field in jwk && typeof jwk[field] !== "string") {
       throw new JwkValidationError(`JWK ${field} should be a string`);
     }
   }
