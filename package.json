@@ -16,6 +16,7 @@
     "asn1/package.json",
     "assert/package.json",
     "cognito-verifier/package.json",
+    "error/package.json",
     "https/package.json",
     "jwk/package.json",
     "jwt/package.json",
@@ -39,6 +40,10 @@
     "./cognito-verifier": {
       "import": "./dist/esm/cognito-verifier.js",
       "require": "./dist/cjs/cognito-verifier.js"
+    },
+    "./error": {
+      "import": "./dist/esm/error.js",
+      "require": "./dist/cjs/error.js"
     },
     "./https": {
       "import": "./dist/esm/https.js",
