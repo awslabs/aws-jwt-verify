@@ -9,7 +9,7 @@
  * @param Base The base object
  * @param Provided The object whose fields should be omitted from the field list of base
  */
-export type StillToProvideVerifyKeys<Base, Provided> = keyof Omit<
+type StillToProvideVerifyKeys<Base, Provided> = keyof Omit<
   Base,
   keyof Provided
 >;
@@ -20,8 +20,11 @@ export type StillToProvideVerifyKeys<Base, Provided> = keyof Omit<
  * @param Base The base object
  * @param Provided The object whose fields should be omitted from base
  */
-export type StillToProvideVerifyProps<Base, Provided> = {
-  [key in StillToProvideVerifyKeys<Base, Provided>]: Base[key];
+type StillToProvideProperties<Base, Provided> = {
+  [key in StillToProvideVerifyKeys<
+    WithoutOptionalFields<Base>,
+    WithoutOptionalFields<Provided>
+  >]: Base[key];
 };
 
 /**
@@ -29,7 +32,7 @@ export type StillToProvideVerifyProps<Base, Provided> = {
  *
  * @param T The type to extract optional fields from
  */
-export type ExtractOptionalFields<T> = {
+type ExtractOptionalFields<T> = {
   [P in keyof T]-?: undefined extends T[P] ? P : never;
 }[keyof T];
 
@@ -38,4 +41,15 @@ export type ExtractOptionalFields<T> = {
  *
  * @param T The type to return without optional fields
  */
-export type WithoutOptionalFields<T> = Omit<T, ExtractOptionalFields<T>>;
+type WithoutOptionalFields<T> = Omit<T, ExtractOptionalFields<T>>;
+
+/**
+ * Type that returns merged properties as follows:
+ * - Properties in Base that are not in Provided, are mandatory
+ * - Properties in Base that are in Provided, are optional
+ */
+export type Properties<Base, Provided> = StillToProvideProperties<
+  Base,
+  Provided
+> &
+  Partial<Base>;

@@ -19,10 +19,7 @@ import {
   assertStringEquals,
 } from "./assert.js";
 import { JwtHeader, JwtPayload } from "./jwt-model.js";
-import {
-  StillToProvideVerifyProps,
-  WithoutOptionalFields,
-} from "./typing-util.js";
+import { Properties } from "./typing-util.js";
 import { decomposeJwt, validateJwtFields } from "./jwt.js";
 import {
   JwtInvalidSignatureError,
@@ -68,8 +65,8 @@ interface VerifyProperties {
   }) => Promise<void> | void;
 }
 
-/** Interface for JWT RSA verifier properties, for a single issuer */
-export interface JwtRsaVerifierProperties extends Partial<VerifyProperties> {
+/** Type for JWT RSA verifier properties, for a single issuer */
+export type JwtRsaVerifierProperties<VerifyProps> = {
   /**
    * URI where the JWKS (JSON Web Key Set) can be downloaded from.
    * The JWKS contains one or more JWKs, which represent the public keys with which
@@ -81,13 +78,13 @@ export interface JwtRsaVerifierProperties extends Partial<VerifyProperties> {
    * Set this to the expected value of the `iss` claim in the JWT.
    */
   issuer: string;
-}
+} & Partial<VerifyProps>;
 
 /**
- * Interface for JWT RSA verifier properties, when multiple issuers are used in the verifier.
+ * Type for JWT RSA verifier properties, when multiple issuers are used in the verifier.
  * In this case, you should be explicit in mapping audience to issuer.
  */
-interface JwtRsaVerifierMultiProperties extends VerifyProperties {
+type JwtRsaVerifierMultiProperties<T> = {
   /**
    * URI where the JWKS (JSON Web Key Set) can be downloaded from.
    * The JWKS contains one or more JWKs, which represent the public keys with which
@@ -99,7 +96,29 @@ interface JwtRsaVerifierMultiProperties extends VerifyProperties {
    * Set this to the expected value of the `iss` claim in the JWT.
    */
   issuer: string;
-}
+} & T;
+
+/**
+ * JWT Verifier (RSA) for a single issuer
+ */
+type JwtRsaVerifierSingleIssuer<
+  T extends JwtRsaVerifierProperties<VerifyProperties>
+> = JwtRsaVerifier<
+  Properties<VerifyProperties, T>,
+  T & JwtRsaVerifierProperties<VerifyProperties>,
+  false
+>;
+
+/**
+ * JWT Verifier (RSA) for multiple issuers
+ */
+type JwtRsaVerifierMultiIssuer<
+  T extends JwtRsaVerifierMultiProperties<VerifyProperties>
+> = JwtRsaVerifier<
+  Properties<VerifyProperties, T>,
+  T & JwtRsaVerifierProperties<VerifyProperties>,
+  true
+>;
 
 /**
  * Verify a JWTs signature agains a JWK. This function throws an error if the JWT is not valid
@@ -360,12 +379,8 @@ type Kid = string;
  * @param MultiIssuer Verify multiple issuers (true) or just a single one (false)
  */
 export abstract class JwtRsaVerifierBase<
-  StillToProvide extends Partial<SpecificVerifyProperties>,
   SpecificVerifyProperties,
-  IssuerConfig extends {
-    issuer: string;
-    jwksUri?: string;
-  } & Partial<SpecificVerifyProperties>,
+  IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties>,
   MultiIssuer extends boolean
 > {
   private issuersConfig: Map<Issuer, IssuerConfig & { jwksUri: string }> =
@@ -460,9 +475,9 @@ export abstract class JwtRsaVerifierBase<
    * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
    */
   public verifySync(
-    ...args: { [key: string]: never } extends StillToProvide
+    ...args: { [key: string]: never } extends SpecificVerifyProperties
       ? [jwt: string, props?: Partial<SpecificVerifyProperties>]
-      : [jwt: string, props: StillToProvide]
+      : [jwt: string, props: SpecificVerifyProperties]
   ): JwtPayload {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(args[0], args[1]);
@@ -484,9 +499,9 @@ export abstract class JwtRsaVerifierBase<
    * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
    */
   public async verify(
-    ...args: { [key: string]: never } extends StillToProvide
+    ...args: { [key: string]: never } extends SpecificVerifyProperties
       ? [jwt: string, props?: Partial<SpecificVerifyProperties>]
-      : [jwt: string, props: StillToProvide]
+      : [jwt: string, props: SpecificVerifyProperties]
   ): Promise<JwtPayload> {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(args[0], args[1]);
@@ -562,12 +577,11 @@ export abstract class JwtRsaVerifierBase<
  * Class representing a verifier for JWTs signed with RSA (e.g. RS256)
  */
 export class JwtRsaVerifier<
-  StillToProvide extends Partial<VerifyProperties>,
-  IssuerConfig extends JwtRsaVerifierProperties,
+  SpecificVerifyProperties extends Partial<VerifyProperties>,
+  IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties>,
   MultiIssuer extends boolean
 > extends JwtRsaVerifierBase<
-  StillToProvide,
-  VerifyProperties,
+  SpecificVerifyProperties,
   IssuerConfig,
   MultiIssuer
 > {
@@ -579,19 +593,11 @@ export class JwtRsaVerifier<
    * @param additionalProperties.jwksCache Overriding JWKS cache that you want to use
    * @returns An RSA JWT Verifier instance, that you can use to verify JWTs with
    */
-  static create<T extends JwtRsaVerifierProperties>(
-    verifyProperties: T,
+  static create<T extends JwtRsaVerifierProperties<VerifyProperties>>(
+    verifyProperties: T & Partial<JwtRsaVerifierProperties<VerifyProperties>>,
     additionalProperties?: { jwksCache: JwksCache }
-  ): JwtRsaVerifierBase<
-    StillToProvideVerifyProps<
-      WithoutOptionalFields<VerifyProperties>,
-      typeof verifyProperties
-    > &
-      Partial<VerifyProperties>,
-    VerifyProperties,
-    JwtRsaVerifierProperties,
-    false
-  >;
+  ): JwtRsaVerifierSingleIssuer<T>;
+
   /**
    * Create an RSA JWT verifier for multiple issuer
    *
@@ -600,20 +606,17 @@ export class JwtRsaVerifier<
    * @param additionalProperties.jwksCache Overriding JWKS cache that you want to use
    * @returns An RSA JWT Verifier instance, that you can use to verify JWTs with
    */
-  static create<T extends JwtRsaVerifierMultiProperties>(
-    verifyProperties: T[],
+  static create<T extends JwtRsaVerifierMultiProperties<VerifyProperties>>(
+    verifyProperties: (T &
+      Partial<JwtRsaVerifierProperties<VerifyProperties>>)[],
     additionalProperties?: { jwksCache: JwksCache }
-  ): JwtRsaVerifierBase<
-    Partial<VerifyProperties>,
-    VerifyProperties,
-    JwtRsaVerifierMultiProperties,
-    true
-  >;
+  ): JwtRsaVerifierMultiIssuer<T>;
+
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   static create(
     verifyProperties:
-      | JwtRsaVerifierProperties
-      | JwtRsaVerifierMultiProperties[],
+      | JwtRsaVerifierProperties<VerifyProperties>
+      | JwtRsaVerifierMultiProperties<VerifyProperties>[],
     additionalProperties?: { jwksCache: JwksCache }
   ) {
     return new this(verifyProperties, additionalProperties?.jwksCache);
