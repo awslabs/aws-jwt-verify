@@ -54,8 +54,15 @@ function assertJwtPayload(
   if (payload.iss !== undefined && typeof payload.iss !== "string") {
     throw new JwtParseError("JWT payload iss claim is not a string");
   }
-  if (payload.aud !== undefined && typeof payload.aud !== "string") {
-    throw new JwtParseError("JWT payload aud claim is not a string");
+  if (
+    payload.aud !== undefined &&
+    typeof payload.aud !== "string" &&
+    (!Array.isArray(payload.aud) ||
+      payload.aud.some((aud) => typeof aud !== "string"))
+  ) {
+    throw new JwtParseError(
+      "JWT payload aud claim is not a string or array of strings"
+    );
   }
   if (payload.nbf !== undefined && !Number.isFinite(payload.nbf)) {
     throw new JwtParseError("JWT payload nbf claim is not a number");
