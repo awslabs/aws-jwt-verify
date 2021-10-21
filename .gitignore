@@ -15,6 +15,7 @@ junit.xml
 asn1
 assert
 cognito-verifier
+error
 https
 jwk
 jwt-model

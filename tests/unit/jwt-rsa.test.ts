@@ -65,6 +65,33 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwks, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
+      test("happy flow JWT with multiple audience values", () => {
+        const issuer = "https://example.com";
+        const audience = ["1234", "5678"];
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            issuer,
+            audience: ["4321", "5678"],
+          })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow JWT with multiple audience values verified by string", () => {
+        const issuer = "https://example.com";
+        const audience = ["1234", "5678"];
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience: "1234" })
+        ).toMatchObject({ hello: "world" });
+      });
       test("error flow with wrong algorithm", () => {
         const issuer = "https://example.com";
         const audience = "1234";
@@ -291,9 +318,21 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow("JWT payload iss claim is not a string");
         expect(statement).toThrow(JwtParseError);
       });
-      test("JWT with iss that is not a string", () => {
+      test("JWT with aud that is not a string", () => {
         const header = base64url('{"alg":"RS256"}');
         const payload = base64url('{"aud":12345}');
+        const signedJwt = `${header}.${payload}.signature`;
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("JWT payload aud claim is not a string");
+        expect(statement).toThrow(JwtParseError);
+      });
+      test("JWT with aud that is not a string array", () => {
+        const header = base64url('{"alg":"RS256"}');
+        const payload = base64url('{"aud":["1234", 5678]}');
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
