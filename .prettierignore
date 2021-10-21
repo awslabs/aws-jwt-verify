@@ -6,6 +6,7 @@ dist
 # Submodules generated when building dist
 asn1
 assert
+error
 https
 jwk
 jwt
@@ -20,3 +21,4 @@ src/*.js
 tests/unit/*.js
 tests/installation-and-basic-usage/*.js
 tests/cognito/cdk.out/*
+tests/import-tests/typescript.js
