@@ -16,7 +16,7 @@ export function allowAllRealNetworkTraffic() {
 
 export function generateKeyPair(options?: { kid?: string }) {
   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
-    modulusLength: 4096,
+    modulusLength: 2048,
     publicExponent: 0x10001,
   });
   const jwk = publicKeyToJwk(publicKey, { kid: options?.kid });

@@ -135,8 +135,11 @@ function verifySignatureAgainstJwk(
 
   // Check JWT signature length matches JWT header alg
   const signature = Buffer.from(signatureB64, "base64");
-
-  assertStringEquals("blah blah", header.alg, `RS${signature.length}`);
+  assertStringEquals(
+    "JWT signature length",
+    header.alg,
+    `RS${signature.length}`
+  );
 
   // Check JWT signature algorithm is RS256
   assertStringEquals("JWT signature algorithm", header.alg, "RS256");
