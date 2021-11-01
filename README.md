@@ -29,8 +29,22 @@ This library was specifically designed to be easy to use in:
 ## Table of Contents
 
 - [Verifying JWTs from Amazon Cognito](#Verifying-JWTs-from-Amazon-Cognito)
-- [Verifying JWTs from any OIDC-compatible IDP](#Verifying-JWTs-from-any-OIDC-compatible-IDP)
-- [The JWKS cache](#The-JWKS-cache)
+  - [Verify parameters](#cognitojwtverifier-verify-parameters)
+  - [Checking scope](#checking-scope)
+  - [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)
+  - [Trusting multiple User Pools](#trusting-multiple-user-pools)
+  - [Using the generic JWT RSA verifier for Cognito JWTs](#using-the-generic-jwt-rsa-verifier-for-cognito-jwts)
+- [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
+  - [Verify parameters](#jwtrsaverifier-verify-parameters)
+- [The JWKS cache](#the-jwks-cache)
+  - [Loading the JWKS from file](#loading-the-jwks-from-file)
+  - [Rate limiting](#rate-limiting)
+  - [Explicitly hydrating the JWKS cache](#explicitly-hydrating-the-jwks-cache)
+  - [Clearing the JWKS cache](#clearing-the-jwks-cache)
+  - [Customizing the JWKS cache](#customizing-the-jwks-cache)
+  - [Sharing the JWKS cache amongst different verifiers](#sharing-the-jwks-cache-amongst-different-verifiers)
+  - [Using a different `JsonFetcher` with `SimpleJwksCache`](#using-a-different-jsonfetcher-with-simplejwkscache)
+  - [Using a different `penaltyBox` with `SimpleJwksCache`](#using-a-different-penaltybox-with-simplejwkscache)
 - [Usage examples](#Usage-examples)
   - [CloudFront Lambda@Edge](#cloudfront-lambdaedge)
   - [API Gateway Lambda Authorizer - REST](#api-gateway-lambda-authorizer---rest)
@@ -67,7 +81,7 @@ try {
 
 You can also use `verifySync`, if you've made sure the JWK has already been cached, see further below.
 
-## Verification parameters
+### `CognitoJwtVerifier` `verify` parameters
 
 Except the User Pool ID, parameters provided when creating the `CognitoJwtVerifier` act as defaults, that can be overridden upon calling `verify` or `verifySync`.
 
@@ -186,7 +200,7 @@ await idTokenVerifier.verify("eyJraWQeyJhdF9oYXNoIjoidk...");
 
 Note that `customJwtCheck` may be an async function, but only if you use `verify` (not supported for `verifySync`).
 
-## Trusting multiple User Pools
+### Trusting multiple User Pools
 
 If you want to allow JWTs from multiple User Pools, provide an array with these User Pools upon creating the verifier:
 
@@ -217,9 +231,9 @@ try {
 }
 ```
 
-## Using the generic JWT RSA verifier for Cognito JWTs
+### Using the generic JWT RSA verifier for Cognito JWTs
 
-The generic `JwtRsaVerifier` (see [below](#Verifying-JWTs-from-any-OIDC-compatible-IDP)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP:
+The generic `JwtRsaVerifier` (see [below](#verifying-jwts-from-any-oidc-compatible-idp)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP:
 
 ```typescript
 import { JwtRsaVerifier } from "aws-jwt-verify";
@@ -278,7 +292,7 @@ try {
 }
 ```
 
-## Supported `verify` parameters
+### `JwtRsaVerifier` `verify` parameters
 
 Except `issuer`, parameters provided when creating the `JwtRsaVerifier` act as defaults, that can be overridden upon calling `verify` or `verifySync`.
 
@@ -286,9 +300,9 @@ Supported parameters are:
 
 - `jwksUri` (optional, can only be provided at verifier level): the URI where the JWKS can be downloaded from. To find this URI for your IDP, consult your IDP's OpenId configuration (e.g. by opening the OpenId configuration in your browser). Usually, it is `${issuer}/.well-known/jwks.json`, which is the default value that will be used if you don't explicitly provide `jwksUri`.
 - `audience` (mandatory): verify that the JWT's `aud` claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these audiences must match the JWT). Set to `null` to skip checking audience (not recommended unless you know what you are doing). Note that a JWT's `aud` claim might be an array of audiences. The `JwtRsaVerifier` will in that case make sure that at least one of these audiences matches with at least one of the audiences that were provided to the verifier.
-- `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#Checking-scope).
+- `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
-- `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#Custom-JWT-and-JWK-checks)).
+- `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
 
 ## The JWKS cache
 
