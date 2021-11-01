@@ -6,6 +6,48 @@
 
 `npm install aws-jwt-verify`
 
+## Basic usage
+
+### Amazon Cognito
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+
+// Verifier that expects valid access tokens:
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: "<user_pool_id>",
+  tokenUse: "access",
+  clientId: "<client_id>",
+});
+
+try {
+  const payload = await verifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // the JWT as string
+  );
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
+### Other IDPs
+
+```typescript
+import { JwtRsaVerifier } from "aws-jwt-verify";
+
+const verifier = JwtRsaVerifier.create({
+  issuer: "https://example.com/", // set this to the expected "iss" claim on your JWTs
+  audience: "<audience>", // set this to the expected "aud" claim on your JWTs
+});
+
+try {
+  const payload = await verifier.verify("eyJraWQeyJhdF9oYXNoIjoidk...");
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
@@ -62,18 +104,18 @@ Create a `CognitoJwtVerifier` instance and use it to verify JWTs:
 ```typescript
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
-// Verifier that expects valid id tokens:
-const idTokenVerifier = CognitoJwtVerifier.create({
+// Verifier that expects valid access tokens:
+const verifier = CognitoJwtVerifier.create({
   userPoolId: "<user_pool_id>",
-  tokenUse: "id",
+  tokenUse: "access",
   clientId: "<client_id>",
 });
 
 try {
-  const idTokenPayload = await idTokenVerifier.verify(
+  const payload = await verifier.verify(
     "eyJraWQeyJhdF9oYXNoIjoidk..." // the JWT as string
   );
-  console.log("Token is valid. Payload:", idTokenPayload);
+  console.log("Token is valid. Payload:", payload);
 } catch {
   console.log("Token not valid!");
 }
