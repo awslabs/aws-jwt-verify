@@ -30,7 +30,7 @@ const mandatoryJwkFields = [
 ] as const;
 
 interface JwkFields {
-  alg: "RS256" | string;
+  alg?: "RS256" | string;
   kid: string;
   kty: string;
   use: string;
