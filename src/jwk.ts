@@ -18,10 +18,10 @@ interface DecomposedJwt {
   payload: JwtPayload;
 }
 
-const optionalJwkFields = [
+const optionalJwkFieldslist = [
   "alg", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.4
 ] as const;
-const mandatoryJwkFields = [
+const mandatoryJwkFieldslist = [
   "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
   "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5 NOTE: considered mandatory by this library
   "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
@@ -29,24 +29,23 @@ const mandatoryJwkFields = [
   "use", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.2 NOTE: considered mandatory by this library
 ] as const;
 
-interface JwkFields {
-  alg?: "RS256" | string;
-  kid: string;
-  kty: string;
-  use: string;
-  n: string;
-  e: string;
-  [key: string]: unknown;
-}
+type optionalJwkFieldsArray = typeof optionalJwkFieldslist[number];
+type mandatoryJwkFieldsArray = typeof mandatoryJwkFieldslist[number];
 
-export type Jwk = JwkFields & JsonObject;
+type optionalJwkFields = {
+  [key in optionalJwkFieldsArray]?: string;
+};
 
+type mandatoryJwkFields = {
+  [key in mandatoryJwkFieldsArray]: string;
+};
+
+export type Jwk = optionalJwkFields & mandatoryJwkFields;
 interface JwksFields {
   keys: readonly Jwk[];
 }
 
 export type Jwks = JwksFields & JsonObject;
-
 export interface JwksCache {
   getJwk(jwksUri: string, decomposedJwt: DecomposedJwt): Promise<Jwk>;
   getCachedJwk(jwksUri: string, decomposedJwt: DecomposedJwt): Jwk;
@@ -106,14 +105,14 @@ export function assertIsJwk(jwk: Json): asserts jwk is Jwk {
     throw new JwkValidationError("JWK should be an object");
   }
 
-  for (const field of mandatoryJwkFields) {
+  for (const field of mandatoryJwkFieldslist) {
     // disable eslint rule because `field` is trusted
     // eslint-disable-next-line security/detect-object-injection
     if (typeof jwk[field] !== "string") {
       throw new JwkValidationError(`JWK ${field} should be a string`);
     }
   }
-  for (const field of optionalJwkFields) {
+  for (const field of optionalJwkFieldslist) {
     // disable eslint rule because `field` is trusted
     // eslint-disable-next-line security/detect-object-injection
     if (field in jwk && typeof jwk[field] !== "string") {
