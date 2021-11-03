@@ -30,6 +30,8 @@ try {
 }
 ```
 
+See all verify parameters for Amazon Cognito JWTs [here](#cognitojwtverifier-verify-parameters).
+
 ### Other IDPs
 
 ```typescript
@@ -47,6 +49,8 @@ try {
   console.log("Token not valid!");
 }
 ```
+
+See all verify parameters for JWTs from any IDP [here](#jwtrsaverifier-verify-parameters).
 
 ## Philosophy of this library
 
