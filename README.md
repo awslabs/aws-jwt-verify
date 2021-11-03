@@ -40,6 +40,7 @@ import { JwtRsaVerifier } from "aws-jwt-verify";
 const verifier = JwtRsaVerifier.create({
   issuer: "https://example.com/", // set this to the expected "iss" claim on your JWTs
   audience: "<audience>", // set this to the expected "aud" claim on your JWTs
+  jwksUri: "https://example.com/.well-known/jwks.json", // set this to the JWKS uri from your OpenID configuration
 });
 
 try {
@@ -306,6 +307,7 @@ import { JwtRsaVerifier } from "aws-jwt-verify";
 const verifier = JwtRsaVerifier.create({
   issuer: "https://example.com/", // set this to the expected "iss" claim on your JWTs
   audience: "<audience>", // set this to the expected "aud" claim on your JWTs
+  jwksUri: "https://example.com/.well-known/jwks.json", // set this to the JWKS uri from your OpenID configuration
 });
 
 try {
