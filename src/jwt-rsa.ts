@@ -125,8 +125,13 @@ function verifySignatureAgainstJwk(
   // Check JWK use
   assertStringEquals("JWK use", jwk.use, "sig");
 
+  // Check JWK kty
+  assertStringEquals("JWK kty", jwk.kty, "RSA");
+
   // Check that JWT signature algorithm matches JWK
-  assertStringEquals("JWT signature algorithm", header.alg, jwk.alg);
+  if (jwk.alg) {
+    assertStringEquals("JWT signature algorithm", header.alg, jwk.alg);
+  }
 
   // Check JWT signature algorithm is RS256
   assertStringEquals("JWT signature algorithm", header.alg, "RS256");

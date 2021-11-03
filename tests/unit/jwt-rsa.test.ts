@@ -53,6 +53,20 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
+      test("happy flow with jwk without alg", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const copiedjwk = { ...keypair.jwk };
+        delete copiedjwk.alg;
+        const signedJwt = signJwt(
+          { kid: copiedjwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, copiedjwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
       test("happy flow with jwks", () => {
         const issuer = "https://example.com";
         const audience = "1234";
