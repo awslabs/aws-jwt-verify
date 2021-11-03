@@ -212,7 +212,7 @@ describe("unit tests jwk", () => {
         expect(statement).toThrow("JWK should be an object");
         expect(statement).toThrow(JwkValidationError);
       });
-      test("JWK mandatory field alg is not a string", () => {
+      test("JWK optional field alg is not a string", () => {
         const jwk = {
           kty: "RSA",
           use: "sig",
