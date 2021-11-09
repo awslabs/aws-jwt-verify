@@ -14,10 +14,7 @@ import {
   assertStringEquals,
   assertStringArraysOverlap,
 } from "./assert.js";
-import {
-  StillToProvideVerifyProps,
-  WithoutOptionalFields,
-} from "./typing-util.js";
+import { Properties } from "./typing-util.js";
 
 interface CognitoVerifyProperties {
   /**
@@ -67,21 +64,62 @@ interface CognitoVerifyProperties {
   }) => Promise<void> | void;
 }
 
-/** Interface for Cognito JWT verifier properties, for a single User Pool */
-interface CognitoJwtVerifierProperties
-  extends Partial<CognitoVerifyProperties> {
+/** Type for Cognito JWT verifier properties, for a single User Pool */
+type CognitoJwtVerifierProperties = {
   /** The User Pool whose JWTs you want to verify */
   userPoolId: string;
-}
+} & Partial<CognitoVerifyProperties>;
 
 /**
- * Interface for Cognito JWT verifier properties, when multiple User Pools are used in the verifier.
+ * Type for Cognito JWT verifier properties, when multiple User Pools are used in the verifier.
  * In this case, you should be explicit in mapping `clientId` to User Pool.
  */
-interface CognitoJwtVerifierMultiProperties extends CognitoVerifyProperties {
+type CognitoJwtVerifierMultiProperties = {
   /** The User Pool whose JWTs you want to verify */
   userPoolId: string;
-}
+} & CognitoVerifyProperties;
+
+/**
+ * Cognito JWT Verifier for a single user pool
+ */
+type CognitoJwtVerifierSingleUserPool<T extends CognitoJwtVerifierProperties> =
+  CognitoJwtVerifier<
+    Properties<CognitoVerifyProperties, T>,
+    T &
+      JwtRsaVerifierProperties<CognitoVerifyProperties> & {
+        userPoolId: string;
+        audience: null;
+      },
+    false
+  >;
+
+/**
+ * Cognito JWT Verifier for multiple user pools
+ */
+type CognitoJwtVerifierMultiUserPool<
+  T extends CognitoJwtVerifierMultiProperties
+> = CognitoJwtVerifier<
+  Properties<CognitoVerifyProperties, T>,
+  T &
+    JwtRsaVerifierProperties<CognitoVerifyProperties> & {
+      userPoolId: string;
+      audience: null;
+    },
+  true
+>;
+
+/**
+ * Parameters used for verification of a JWT.
+ * The first parameter is the JWT, which is (of course) mandatory.
+ * The second parameter is an object with specific properties to use during verification.
+ * The second parameter is only mandatory if its mandatory members (e.g. client_id) were not
+ *  yet provided at verifier level. In that case, they must now be provided.
+ */
+type CognitoVerifyParameters<SpecificVerifyProperties> = {
+  [key: string]: never;
+} extends SpecificVerifyProperties
+  ? [jwt: string, props?: SpecificVerifyProperties]
+  : [jwt: string, props: SpecificVerifyProperties];
 
 /**
  * Validate claims of a decoded Cognito JWT.
@@ -152,12 +190,14 @@ function validateCognitoJwtFields(
  * Class representing a verifier for JWTs signed by Amazon Cognito
  */
 export class CognitoJwtVerifier<
-  StillToProvide extends Partial<CognitoVerifyProperties>,
-  IssuerConfig extends JwtRsaVerifierProperties & CognitoJwtVerifierProperties,
+  SpecificVerifyProperties extends Partial<CognitoVerifyProperties>,
+  IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties> & {
+    userPoolId: string;
+    audience: null;
+  },
   MultiIssuer extends boolean
 > extends JwtRsaVerifierBase<
-  StillToProvide,
-  CognitoVerifyProperties,
+  SpecificVerifyProperties,
   IssuerConfig,
   MultiIssuer
 > {
@@ -214,17 +254,9 @@ export class CognitoJwtVerifier<
    * @returns An Cognito JWT Verifier instance, that you can use to verify Cognito signed JWTs with
    */
   static create<T extends CognitoJwtVerifierProperties>(
-    props: T,
+    verifyProperties: T & Partial<CognitoJwtVerifierProperties>,
     additionalProperties?: { jwksCache: JwksCache }
-  ): CognitoJwtVerifier<
-    StillToProvideVerifyProps<
-      WithoutOptionalFields<CognitoVerifyProperties>,
-      typeof props
-    > &
-      Partial<CognitoVerifyProperties>,
-    T & JwtRsaVerifierProperties,
-    false
-  >;
+  ): CognitoJwtVerifierSingleUserPool<T>;
 
   /**
    * Create a Cognito JWT verifier for multiple User Pools
@@ -235,20 +267,18 @@ export class CognitoJwtVerifier<
    * @returns An Cognito JWT Verifier instance, that you can use to verify Cognito signed JWTs with
    */
   static create<T extends CognitoJwtVerifierMultiProperties>(
-    props: T[],
+    props: (T & Partial<CognitoJwtVerifierMultiProperties>)[],
     additionalProperties?: { jwksCache: JwksCache }
-  ): CognitoJwtVerifier<
-    Partial<CognitoVerifyProperties>,
-    T & JwtRsaVerifierProperties,
-    true
-  >;
+  ): CognitoJwtVerifierMultiUserPool<T>;
 
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   static create(
-    props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
+    verifyProperties:
+      | CognitoJwtVerifierProperties
+      | CognitoJwtVerifierMultiProperties[],
     additionalProperties?: { jwksCache: JwksCache }
   ) {
-    return new this(props, additionalProperties?.jwksCache);
+    return new this(verifyProperties, additionalProperties?.jwksCache);
   }
 
   /**
@@ -258,19 +288,9 @@ export class CognitoJwtVerifier<
    * @param props Verification properties
    * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
    */
-  public verifySync<
-    OptionalProps extends Partial<CognitoVerifyProperties>,
-    MandatoryProps extends StillToProvide
-  >(
-    ...args: { [key: string]: never } extends StillToProvide
-      ? [jwt: string, props?: OptionalProps]
-      : [jwt: string, props: MandatoryProps]
-  ): CognitoIdOrAccessTokenPayload<
-    IssuerConfig,
-    { [key: string]: never } extends StillToProvide
-      ? OptionalProps
-      : MandatoryProps
-  > {
+  public verifySync<T extends SpecificVerifyProperties>(
+    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
+  ): CognitoIdOrAccessTokenPayload<IssuerConfig, T> {
     const payload = super.verifySync(...args);
     const issuerConfig = this.getIssuerConfig(payload.iss);
     const verifyProperties = {
@@ -278,12 +298,7 @@ export class CognitoJwtVerifier<
       ...args[1],
     };
     validateCognitoJwtFields(payload, verifyProperties);
-    return payload as CognitoIdOrAccessTokenPayload<
-      IssuerConfig,
-      { [key: string]: never } extends StillToProvide
-        ? OptionalProps
-        : MandatoryProps
-    >;
+    return payload as CognitoIdOrAccessTokenPayload<IssuerConfig, T>;
   }
 
   /**
@@ -295,21 +310,9 @@ export class CognitoJwtVerifier<
    * @param props Verification properties
    * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
    */
-  public async verify<
-    OptionalProps extends Partial<CognitoVerifyProperties>,
-    MandatoryProps extends StillToProvide
-  >(
-    ...args: { [key: string]: never } extends StillToProvide
-      ? [jwt: string, props?: OptionalProps]
-      : [jwt: string, props: MandatoryProps]
-  ): Promise<
-    CognitoIdOrAccessTokenPayload<
-      IssuerConfig,
-      { [key: string]: never } extends StillToProvide
-        ? OptionalProps
-        : MandatoryProps
-    >
-  > {
+  public async verify<T extends SpecificVerifyProperties>(
+    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
+  ): Promise<CognitoIdOrAccessTokenPayload<IssuerConfig, T>> {
     const payload = await super.verify(...args);
     const issuerConfig = this.getIssuerConfig(payload.iss);
     const verifyProperties = {
@@ -317,12 +320,7 @@ export class CognitoJwtVerifier<
       ...args[1],
     };
     validateCognitoJwtFields(payload, verifyProperties);
-    return payload as CognitoIdOrAccessTokenPayload<
-      IssuerConfig,
-      { [key: string]: never } extends StillToProvide
-        ? OptionalProps
-        : MandatoryProps
-    >;
+    return payload as CognitoIdOrAccessTokenPayload<IssuerConfig, T>;
   }
 
   /**
