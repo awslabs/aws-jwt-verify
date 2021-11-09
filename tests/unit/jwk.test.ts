@@ -212,6 +212,19 @@ describe("unit tests jwk", () => {
         expect(statement).toThrow("JWK should be an object");
         expect(statement).toThrow(JwkValidationError);
       });
+      test("JWK optional field alg is not a string", () => {
+        const jwk = {
+          kty: "RSA",
+          use: "sig",
+          kid: "nOo3ZDrODXEK1jKWhXslHR_KXEq",
+          n: "1",
+          e: "2",
+          alg: 123,
+        };
+        const statement = () => assertIsJwk(jwk);
+        expect(statement).toThrow("JWK alg should be a string");
+        expect(statement).toThrow(JwkValidationError);
+      });
     });
     describe("JWKS", () => {
       test("no keys", () => {
