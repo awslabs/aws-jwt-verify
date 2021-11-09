@@ -110,6 +110,19 @@ type JwtRsaVerifierSingleIssuer<
 >;
 
 /**
+ * Parameters used for verification of a JWT.
+ * The first parameter is the JWT, which is (of course) mandatory.
+ * The second parameter is an object with specific properties to use during verification.
+ * The second parameter is only mandatory if its mandatory members (e.g. audience) were not
+ *  yet provided at verifier level. In that case, they must now be provided.
+ */
+type VerifyParameters<SpecificVerifyProperties> = {
+  [key: string]: never;
+} extends SpecificVerifyProperties
+  ? [jwt: string, props?: SpecificVerifyProperties]
+  : [jwt: string, props: SpecificVerifyProperties];
+
+/**
  * JWT Verifier (RSA) for multiple issuers
  */
 type JwtRsaVerifierMultiIssuer<
@@ -480,9 +493,7 @@ export abstract class JwtRsaVerifierBase<
    * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
    */
   public verifySync(
-    ...args: { [key: string]: never } extends SpecificVerifyProperties
-      ? [jwt: string, props?: Partial<SpecificVerifyProperties>]
-      : [jwt: string, props: SpecificVerifyProperties]
+    ...args: VerifyParameters<SpecificVerifyProperties>
   ): JwtPayload {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(args[0], args[1]);
@@ -504,9 +515,7 @@ export abstract class JwtRsaVerifierBase<
    * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
    */
   public async verify(
-    ...args: { [key: string]: never } extends SpecificVerifyProperties
-      ? [jwt: string, props?: Partial<SpecificVerifyProperties>]
-      : [jwt: string, props: SpecificVerifyProperties]
+    ...args: VerifyParameters<SpecificVerifyProperties>
   ): Promise<JwtPayload> {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(args[0], args[1]);

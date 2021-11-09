@@ -109,6 +109,19 @@ type CognitoJwtVerifierMultiUserPool<
 >;
 
 /**
+ * Parameters used for verification of a JWT.
+ * The first parameter is the JWT, which is (of course) mandatory.
+ * The second parameter is an object with specific properties to use during verification.
+ * The second parameter is only mandatory if its mandatory members (e.g. client_id) were not
+ *  yet provided at verifier level. In that case, they must now be provided.
+ */
+type CognitoVerifyParameters<SpecificVerifyProperties> = {
+  [key: string]: never;
+} extends SpecificVerifyProperties
+  ? [jwt: string, props?: SpecificVerifyProperties]
+  : [jwt: string, props: SpecificVerifyProperties];
+
+/**
  * Validate claims of a decoded Cognito JWT.
  * This function throws an error in case there's any validation issue.
  *
@@ -276,9 +289,7 @@ export class CognitoJwtVerifier<
    * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
    */
   public verifySync<T extends SpecificVerifyProperties>(
-    ...args: { [key: string]: never } extends SpecificVerifyProperties
-      ? [jwt: string, props?: T & SpecificVerifyProperties]
-      : [jwt: string, props: T & SpecificVerifyProperties]
+    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
   ): CognitoIdOrAccessTokenPayload<IssuerConfig, T> {
     const payload = super.verifySync(...args);
     const issuerConfig = this.getIssuerConfig(payload.iss);
@@ -300,9 +311,7 @@ export class CognitoJwtVerifier<
    * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
    */
   public async verify<T extends SpecificVerifyProperties>(
-    ...args: { [key: string]: never } extends SpecificVerifyProperties
-      ? [jwt: string, props?: T & SpecificVerifyProperties]
-      : [jwt: string, props: T & SpecificVerifyProperties]
+    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
   ): Promise<CognitoIdOrAccessTokenPayload<IssuerConfig, T>> {
     const payload = await super.verify(...args);
     const issuerConfig = this.getIssuerConfig(payload.iss);
