@@ -10,12 +10,15 @@ import {
 import { decomposeJwt } from "../../src/jwt";
 import {
   JwtInvalidSignatureError,
-  JwtInvalidClaimError,
+  JwtInvalidJwkError,
+  JwtInvalidSignatureAlgorithmError,
   ParameterValidationError,
   JwtParseError,
+  JwtInvalidScopeError,
+  JwtInvalidAudienceError,
   JwtExpiredError,
   JwtNotBeforeError,
-  AssertionError,
+  JwtInvalidIssuerError,
   KidNotFoundInJwksError,
   JwtWithoutValidKidError,
 } from "../../src/error";
@@ -116,7 +119,7 @@ describe("unit tests jwt verifier", () => {
         );
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience });
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
         expect(statement).toThrow(
           "JWT signature algorithm not allowed: RS512. Expected: RS256"
         );
@@ -199,7 +202,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Audience not allowed: actualAudience. Expected: expectedAudience"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidAudienceError);
       });
       test("missing issuer", () => {
         const signedJwt = signJwt({}, {}, keypair.privateKey);
@@ -209,7 +212,7 @@ describe("unit tests jwt verifier", () => {
             issuer: "expectedIssuer",
           });
         expect(statement).toThrow("Missing Issuer. Expected: expectedIssuer");
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidIssuerError);
       });
     });
 
@@ -572,7 +575,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Scope not allowed: blah, blah2. Expected: blah3"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidScopeError);
       });
       test("error flow allowing mulitple scopes", () => {
         const statement = () =>
@@ -584,7 +587,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Scope not allowed: blah, blah2. Expected one of: blah3, blah4"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidScopeError);
       });
       test("error flow jwt without scope", () => {
         const jwtWithoutScope = signJwt(
@@ -599,7 +602,7 @@ describe("unit tests jwt verifier", () => {
             scope: "blah3",
           });
         expect(statement).toThrow("Missing Scope. Expected: blah3");
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidScopeError);
       });
     });
 
@@ -673,7 +676,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           `JWT signature algorithm not allowed: ${keypair.jwk.alg}. Expected: ${wrongJwk.alg}`
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("missing signature algorithm", () => {
         const issuer = "https://example.com";
@@ -688,7 +691,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Missing JWT signature algorithm. Expected: RS256"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("wrong JWK use", () => {
         const wrongJwk = publicKeyToJwk(keypair.publicKey, { use: "notsig" });
@@ -704,7 +707,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           `JWK use not allowed: ${wrongJwk.use}. Expected: sig`
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidJwkError);
       });
     });
   });
@@ -782,7 +785,7 @@ describe("unit tests jwt verifier", () => {
         expect.assertions(2);
         const statement = () => verifier.verify(signedJwt);
         expect(statement).rejects.toThrow("iss");
-        expect(statement).rejects.toThrow(JwtInvalidClaimError);
+        expect(statement).rejects.toThrow(JwtInvalidIssuerError);
       });
       test("custom JWKS cache", () => {
         class CustomJwksCache implements JwksCache {
@@ -1010,7 +1013,7 @@ describe("unit tests jwt verifier", () => {
         verifier.cacheJwks(keypair.jwks);
         const statement = () => verifier.verifySync(signedJwt);
         expect(statement).toThrow("iss");
-        expect(statement).toThrow(JwtInvalidClaimError);
+        expect(statement).toThrow(JwtInvalidIssuerError);
       });
       test("jwt without kid claim", () => {
         const signedJwt = signJwt(

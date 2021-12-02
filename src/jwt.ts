@@ -10,6 +10,9 @@ import { safeJsonParse, isJsonObject } from "./safe-json-parse.js";
 import {
   JwtExpiredError,
   JwtNotBeforeError,
+  JwtInvalidIssuerError,
+  JwtInvalidAudienceError,
+  JwtInvalidScopeError,
   JwtParseError,
   ParameterValidationError,
 } from "./error.js";
@@ -146,6 +149,8 @@ export function decomposeJwt(jwt: unknown): {
   };
 }
 
+export type DecomposedJwt = ReturnType<typeof decomposeJwt>;
+
 /**
  * Validate JWT payload fields. Throws an error in case there's any validation issue.
  *
@@ -189,7 +194,12 @@ export function validateJwtFields(
         "issuer must be provided or set to null explicitly"
       );
     }
-    assertStringArrayContainsString("Issuer", payload.iss, options.issuer);
+    assertStringArrayContainsString(
+      JwtInvalidIssuerError,
+      "Issuer",
+      payload.iss,
+      options.issuer
+    );
   }
 
   // Check audience
@@ -199,12 +209,18 @@ export function validateJwtFields(
         "audience must be provided or set to null explicitly"
       );
     }
-    assertStringArraysOverlap("Audience", payload.aud, options.audience);
+    assertStringArraysOverlap(
+      JwtInvalidAudienceError,
+      "Audience",
+      payload.aud,
+      options.audience
+    );
   }
 
   // Check scope
   if (options.scope != null) {
     assertStringArraysOverlap(
+      JwtInvalidScopeError,
       "Scope",
       payload.scope?.split(" "),
       options.scope

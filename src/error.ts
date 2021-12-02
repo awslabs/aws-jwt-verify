@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { DecomposedJwt } from "./jwt";
+
 export abstract class JwtBaseError extends Error {}
 
 /**
@@ -22,7 +24,47 @@ export class JwtNotBeforeError extends JwtBaseError {}
 
 export class ParameterValidationError extends JwtBaseError {}
 
-export class JwtInvalidClaimError extends JwtBaseError {}
+export abstract class JwtInvalidClaimError extends JwtBaseError {
+  public failedAssertion: {
+    name: string;
+    actual: unknown;
+    expected: string | string[];
+  };
+  public rawJwt?: DecomposedJwt;
+  constructor(
+    msg: string,
+    name: string,
+    actual: unknown,
+    expected: string | string[]
+  ) {
+    super(msg);
+    this.failedAssertion = { name, actual, expected };
+  }
+  public withRawJwt(rawJwt: DecomposedJwt): JwtInvalidClaimError {
+    this.rawJwt = rawJwt;
+    return this;
+  }
+}
+
+export class JwtInvalidIssuerError extends JwtInvalidClaimError {}
+
+export class JwtInvalidAudienceError extends JwtInvalidClaimError {}
+
+export class JwtInvalidScopeError extends JwtInvalidClaimError {}
+
+export class JwtInvalidSignatureAlgorithmError extends JwtInvalidClaimError {}
+
+export class JwtInvalidJwkError extends JwtInvalidClaimError {}
+
+/**
+ * Amazon Cognito specific erros
+ */
+
+export class CognitoJwtInvalidGroupError extends JwtInvalidClaimError {}
+
+export class CognitoJwtInvalidTokenUseError extends JwtInvalidClaimError {}
+
+export class CognitoJwtInvalidClientIdError extends JwtInvalidClaimError {}
 
 /**
  * ASN.1 errors
@@ -57,9 +99,3 @@ export class FetchError extends JwtBaseError {
 }
 
 export class NonRetryableFetchError extends FetchError {}
-
-/**
- * Assertion errors
- */
-
-export class AssertionError extends JwtBaseError {}

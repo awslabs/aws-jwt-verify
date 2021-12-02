@@ -7,7 +7,11 @@ import {
 import { decomposeJwt } from "../../src/jwt";
 import { JwksCache, Jwks } from "../../src/jwk";
 import { CognitoJwtVerifier } from "../../src/cognito-verifier";
-import { AssertionError, ParameterValidationError } from "../../src/error";
+import {
+  ParameterValidationError,
+  CognitoJwtInvalidTokenUseError,
+  CognitoJwtInvalidGroupError,
+} from "../../src/error";
 
 describe("unit tests cognito verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
@@ -103,7 +107,7 @@ describe("unit tests cognito verifier", () => {
         });
         expect(() =>
           verifier.verifySync(signedIdJwt, { tokenUse: "access" })
-        ).toThrow(AssertionError);
+        ).toThrow(CognitoJwtInvalidTokenUseError);
       });
       test("access token check", () => {
         const verifier = CognitoJwtVerifier.create({
@@ -128,7 +132,7 @@ describe("unit tests cognito verifier", () => {
         });
         expect(() =>
           verifier.verifySync(signedAccessJwt, { tokenUse: "id" })
-        ).toThrow(AssertionError);
+        ).toThrow(CognitoJwtInvalidTokenUseError);
       });
       test("missing token use", () => {
         const verifier = CognitoJwtVerifier.create({
@@ -150,7 +154,7 @@ describe("unit tests cognito verifier", () => {
           "Missing Token use. Expected one of: id, access"
         );
         expect(() => verifier.verifySync(signedAccessJwt)).toThrow(
-          AssertionError
+          CognitoJwtInvalidTokenUseError
         );
       });
       test("Cognito group check works", () => {
@@ -197,14 +201,18 @@ describe("unit tests cognito verifier", () => {
           token_use: "access",
           hello: "world",
         });
-        expect(() => verifier.verifySync(userJwt)).toThrow(AssertionError);
+        expect(() => verifier.verifySync(userJwt)).toThrow(
+          CognitoJwtInvalidGroupError
+        );
         expect(
           verifier.verifySync(userJwt, { groups: ["users"] })
         ).toMatchObject({
           token_use: "access",
           hello: "world",
         });
-        expect(() => verifier.verifySync(noGroupJwt)).toThrow(AssertionError);
+        expect(() => verifier.verifySync(noGroupJwt)).toThrow(
+          CognitoJwtInvalidGroupError
+        );
       });
       test("clientId undefined", () => {
         const verifier = CognitoJwtVerifier.create({

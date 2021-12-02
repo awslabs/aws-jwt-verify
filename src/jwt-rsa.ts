@@ -20,12 +20,15 @@ import {
 } from "./assert.js";
 import { JwtHeader, JwtPayload } from "./jwt-model.js";
 import { Properties } from "./typing-util.js";
-import { decomposeJwt, validateJwtFields } from "./jwt.js";
+import { decomposeJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
 import {
-  JwtInvalidSignatureError,
   JwtInvalidClaimError,
-  ParameterValidationError,
+  JwtInvalidIssuerError,
+  JwtInvalidJwkError,
+  JwtInvalidSignatureAlgorithmError,
+  JwtInvalidSignatureError,
   KidNotFoundInJwksError,
+  ParameterValidationError,
 } from "./error.js";
 import { JsonObject } from "./safe-json-parse.js";
 
@@ -63,6 +66,13 @@ interface VerifyProperties {
     payload: JwtPayload;
     jwk: Jwk;
   }) => Promise<void> | void;
+  /**
+   * If you want to access the JWT when verification fails, set this to true.
+   * Then, if an error is thrown during verification, the Error object will include a property `rawJwt`
+   * with the (decoded) contents of the JWT. (Only if the JWT was syntactically valid and could be decoded)
+   * !!! Do NOT trust the content of a JWT that failed verification !!!
+   */
+  includeRawJwtInErrors?: boolean;
 }
 
 /** Type for JWT RSA verifier properties, for a single issuer */
@@ -155,18 +165,28 @@ function verifySignatureAgainstJwk(
   jwkToKeyObjectTransformer: JwkToKeyObjectTransformer = transformJwkToKeyObject
 ) {
   // Check JWK use
-  assertStringEquals("JWK use", jwk.use, "sig");
+  assertStringEquals(JwtInvalidJwkError, "JWK use", jwk.use, "sig");
 
   // Check JWK kty
-  assertStringEquals("JWK kty", jwk.kty, "RSA");
+  assertStringEquals(JwtInvalidJwkError, "JWK kty", jwk.kty, "RSA");
 
   // Check that JWT signature algorithm matches JWK
   if (jwk.alg) {
-    assertStringEquals("JWT signature algorithm", header.alg, jwk.alg);
+    assertStringEquals(
+      JwtInvalidSignatureAlgorithmError,
+      "JWT signature algorithm",
+      header.alg,
+      jwk.alg
+    );
   }
 
   // Check JWT signature algorithm is RS256
-  assertStringEquals("JWT signature algorithm", header.alg, "RS256");
+  assertStringEquals(
+    JwtInvalidSignatureAlgorithmError,
+    "JWT signature algorithm",
+    header.alg,
+    "RS256"
+  );
 
   // Convert JWK modulus and exponent into DER public key
   const publicKey = jwkToKeyObjectTransformer(jwk, payload.iss, header.kid);
@@ -204,11 +224,9 @@ export async function verifyJwt(
       payload: JwtPayload;
       jwk: Jwk;
     }) => Promise<void> | void;
+    includeRawJwtInErrors?: boolean;
   },
-  jwkFetcher?: (
-    jwksUri: string,
-    decomposedJwt: ReturnType<typeof decomposeJwt>
-  ) => Promise<Jwk>,
+  jwkFetcher?: (jwksUri: string, decomposedJwt: DecomposedJwt) => Promise<Jwk>,
   jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
 ): Promise<JwtPayload> {
   return verifyDecomposedJwt(
@@ -231,7 +249,7 @@ export async function verifyJwt(
  * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
  */
 async function verifyDecomposedJwt(
-  decomposedJwt: ReturnType<typeof decomposeJwt>,
+  decomposedJwt: DecomposedJwt,
   jwksUri: string,
   options: {
     issuer?: string | string[] | null;
@@ -243,17 +261,16 @@ async function verifyDecomposedJwt(
       payload: JwtPayload;
       jwk: Jwk;
     }) => Promise<void> | void;
+    includeRawJwtInErrors?: boolean;
   },
   jwkFetcher: (
     jwksUri: string,
-    decomposedJwt: ReturnType<typeof decomposeJwt>
+    decomposedJwt: DecomposedJwt
   ) => Promise<Jwk> = fetchJwk,
   jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
     decomposedJwt;
-
-  validateJwtFields(payload, options);
 
   const jwk = await jwkFetcher(jwksUri, decomposedJwt);
 
@@ -266,6 +283,15 @@ async function verifyDecomposedJwt(
     jwk,
     jwkToKeyObjectTransformer
   );
+
+  try {
+    validateJwtFields(payload, options);
+  } catch (err) {
+    if (options.includeRawJwtInErrors && err instanceof JwtInvalidClaimError) {
+      throw err.withRawJwt(decomposedJwt);
+    }
+    throw err;
+  }
 
   if (options.customJwtCheck) {
     await options.customJwtCheck({ header, payload, jwk });
@@ -296,6 +322,7 @@ export function verifyJwtSync(
       payload: JwtPayload;
       jwk: Jwk;
     }) => void;
+    includeRawJwtInErrors?: boolean;
   },
   jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
 ): JwtPayload {
@@ -317,7 +344,7 @@ export function verifyJwtSync(
  * @returns The (JSON parsed) payload of the JWT––if the JWT is valid, otherwise an error is thrown
  */
 function verifyDecomposedJwtSync(
-  decomposedJwt: ReturnType<typeof decomposeJwt>,
+  decomposedJwt: DecomposedJwt,
   jwkOrJwks: JsonObject,
   options: {
     issuer?: string | string[] | null;
@@ -329,13 +356,21 @@ function verifyDecomposedJwtSync(
       payload: JwtPayload;
       jwk: Jwk;
     }) => void;
+    includeRawJwtInErrors?: boolean;
   },
   jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
     decomposedJwt;
 
-  validateJwtFields(payload, options);
+  try {
+    validateJwtFields(payload, options);
+  } catch (err) {
+    if (options.includeRawJwtInErrors && err instanceof JwtInvalidClaimError) {
+      throw err.withRawJwt(decomposedJwt);
+    }
+    throw err;
+  }
 
   let jwk: Jwk;
   if (isJwk(jwkOrJwks)) {
@@ -497,6 +532,26 @@ export abstract class JwtRsaVerifierBase<
   ): JwtPayload {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(args[0], args[1]);
+    return this.verifyDecomposedJwtSync(
+      decomposedJwt,
+      jwksUri,
+      verifyProperties
+    );
+  }
+
+  /**
+   * Verify (synchronously) an already decomposed JWT, that is signed using RS256.
+   *
+   * @param decomposedJwt The decomposed Jwt
+   * @param jwk The JWK to verify the JWTs signature with
+   * @param verifyProperties The properties to use for verification
+   * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
+   */
+  protected verifyDecomposedJwtSync(
+    decomposedJwt: DecomposedJwt,
+    jwksUri: string,
+    verifyProperties: SpecificVerifyProperties
+  ): JwtPayload {
     const jwk = this.jwksCache.getCachedJwk(jwksUri, decomposedJwt);
     return verifyDecomposedJwtSync(
       decomposedJwt,
@@ -505,6 +560,7 @@ export abstract class JwtRsaVerifierBase<
       this.publicKeyCache.transformJwkToKeyObject.bind(this.publicKeyCache)
     );
   }
+
   /**
    * Verify (asynchronously) a JWT that is signed using RS256.
    * This call is asynchronous, and the JWKS will be fetched from the JWKS uri,
@@ -519,6 +575,22 @@ export abstract class JwtRsaVerifierBase<
   ): Promise<JwtPayload> {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(args[0], args[1]);
+    return this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
+  }
+
+  /**
+   * Verify (asynchronously) an already decomposed JWT, that is signed using RS256.
+   *
+   * @param decomposedJwt The decomposed Jwt
+   * @param jwk The JWK to verify the JWTs signature with
+   * @param verifyProperties The properties to use for verification
+   * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
+   */
+  protected verifyDecomposedJwt(
+    decomposedJwt: DecomposedJwt,
+    jwksUri: string,
+    verifyProperties: SpecificVerifyProperties
+  ): Promise<JwtPayload> {
     return verifyDecomposedJwt(
       decomposedJwt,
       jwksUri,
@@ -536,19 +608,17 @@ export abstract class JwtRsaVerifierBase<
    * @param verifyProperties: the overriding properties, that override the issuer configuration
    * @returns The merged verification parameters
    */
-  private getVerifyParameters(
+  protected getVerifyParameters(
     jwt: string,
     verifyProperties?: Partial<SpecificVerifyProperties>
   ): {
-    decomposedJwt: ReturnType<typeof decomposeJwt>;
+    decomposedJwt: DecomposedJwt;
     jwksUri: string;
     verifyProperties: SpecificVerifyProperties;
   } {
     const decomposedJwt = decomposeJwt(jwt);
-    if (!decomposedJwt.payload.iss) {
-      throw new JwtInvalidClaimError("JWT payload does not have iss claim");
-    }
     assertStringArrayContainsString(
+      JwtInvalidIssuerError,
       "Issuer",
       decomposedJwt.payload.iss,
       this.expectedIssuers

@@ -1,7 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ParameterValidationError } from "./error.js";
+import {
+  CognitoJwtInvalidClientIdError,
+  CognitoJwtInvalidGroupError,
+  CognitoJwtInvalidTokenUseError,
+  JwtInvalidClaimError,
+  ParameterValidationError,
+} from "./error.js";
 import { JwtRsaVerifierBase, JwtRsaVerifierProperties } from "./jwt-rsa.js";
 import { JwksCache, Jwks, Jwk } from "./jwk.js";
 import {
@@ -62,6 +68,13 @@ interface CognitoVerifyProperties {
     payload: JwtPayload;
     jwk: Jwk;
   }) => Promise<void> | void;
+  /**
+   * If you want to access the JWT when verification fails, set this to true.
+   * Then, if an error is thrown during verification, the Error object will include a property `rawJwt`
+   * with the (decoded) contents of the JWT. (Only if the JWT was syntactically valid and could be decoded)
+   * !!! Do NOT trust the content of a JWT that failed verification !!!
+   */
+  includeRawJwtInErrors?: boolean;
 }
 
 /** Type for Cognito JWT verifier properties, for a single User Pool */
@@ -143,6 +156,7 @@ function validateCognitoJwtFields(
   // Check groups
   if (options.groups != null) {
     assertStringArraysOverlap(
+      CognitoJwtInvalidGroupError,
       "Cognito group",
       payload["cognito:groups"],
       options.groups
@@ -150,17 +164,24 @@ function validateCognitoJwtFields(
   }
 
   // Check token use
-  assertStringArrayContainsString("Token use", payload.token_use, [
-    "id",
-    "access",
-  ]);
+  assertStringArrayContainsString(
+    CognitoJwtInvalidTokenUseError,
+    "Token use",
+    payload.token_use,
+    ["id", "access"]
+  );
   if (options.tokenUse !== null) {
     if (options.tokenUse === undefined) {
       throw new ParameterValidationError(
         "tokenUse must be provided or set to null explicitly"
       );
     }
-    assertStringEquals("Token use", payload.token_use, options.tokenUse);
+    assertStringEquals(
+      CognitoJwtInvalidTokenUseError,
+      "Token use",
+      payload.token_use,
+      options.tokenUse
+    );
   }
 
   // Check clientId aka audience
@@ -172,12 +193,14 @@ function validateCognitoJwtFields(
     }
     if (payload.token_use === "id") {
       assertStringArrayContainsString(
+        CognitoJwtInvalidClientIdError,
         'Client ID ("audience")',
         payload.aud,
         options.clientId
       );
     } else {
       assertStringArrayContainsString(
+        CognitoJwtInvalidClientIdError,
         "Client ID",
         payload.client_id,
         options.clientId
@@ -291,14 +314,24 @@ export class CognitoJwtVerifier<
   public verifySync<T extends SpecificVerifyProperties>(
     ...args: CognitoVerifyParameters<SpecificVerifyProperties>
   ): CognitoIdOrAccessTokenPayload<IssuerConfig, T> {
-    const payload = super.verifySync(...args);
-    const issuerConfig = this.getIssuerConfig(payload.iss);
-    const verifyProperties = {
-      ...issuerConfig,
-      ...args[1],
-    };
-    validateCognitoJwtFields(payload, verifyProperties);
-    return payload as CognitoIdOrAccessTokenPayload<IssuerConfig, T>;
+    const { decomposedJwt, jwksUri, verifyProperties } =
+      this.getVerifyParameters(args[0], args[1]);
+    this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
+    try {
+      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
+    } catch (err) {
+      if (
+        verifyProperties.includeRawJwtInErrors &&
+        err instanceof JwtInvalidClaimError
+      ) {
+        throw err.withRawJwt(decomposedJwt);
+      }
+      throw err;
+    }
+    return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
+      IssuerConfig,
+      T
+    >;
   }
 
   /**
@@ -313,14 +346,24 @@ export class CognitoJwtVerifier<
   public async verify<T extends SpecificVerifyProperties>(
     ...args: CognitoVerifyParameters<SpecificVerifyProperties>
   ): Promise<CognitoIdOrAccessTokenPayload<IssuerConfig, T>> {
-    const payload = await super.verify(...args);
-    const issuerConfig = this.getIssuerConfig(payload.iss);
-    const verifyProperties = {
-      ...issuerConfig,
-      ...args[1],
-    };
-    validateCognitoJwtFields(payload, verifyProperties);
-    return payload as CognitoIdOrAccessTokenPayload<IssuerConfig, T>;
+    const { decomposedJwt, jwksUri, verifyProperties } =
+      this.getVerifyParameters(args[0], args[1]);
+    await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
+    try {
+      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
+    } catch (err) {
+      if (
+        verifyProperties.includeRawJwtInErrors &&
+        err instanceof JwtInvalidClaimError
+      ) {
+        throw err.withRawJwt(decomposedJwt);
+      }
+      throw err;
+    }
+    return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
+      IssuerConfig,
+      T
+    >;
   }
 
   /**
