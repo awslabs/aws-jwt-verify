@@ -171,7 +171,9 @@ export function validateJwtFields(
   if (payload.exp !== undefined) {
     if (payload.exp + (options.graceSeconds ?? 0) < Date.now() / 1000) {
       throw new JwtExpiredError(
-        `Token expired at ${new Date(payload.exp * 1000).toISOString()}`
+        `Token expired at ${new Date(payload.exp * 1000).toISOString()}`,
+        "payload.exp",
+        payload.exp
       );
     }
   }
@@ -182,7 +184,9 @@ export function validateJwtFields(
       throw new JwtNotBeforeError(
         `Token can't be used before ${new Date(
           payload.nbf * 1000
-        ).toISOString()}`
+        ).toISOString()}`,
+        "payload.nbf",
+        payload.nbf
       );
     }
   }
@@ -197,6 +201,7 @@ export function validateJwtFields(
     assertStringArrayContainsString(
       JwtInvalidIssuerError,
       "Issuer",
+      "payload.iss",
       payload.iss,
       options.issuer
     );
@@ -212,6 +217,7 @@ export function validateJwtFields(
     assertStringArraysOverlap(
       JwtInvalidAudienceError,
       "Audience",
+      "payload.aud",
       payload.aud,
       options.audience
     );
@@ -222,6 +228,7 @@ export function validateJwtFields(
     assertStringArraysOverlap(
       JwtInvalidScopeError,
       "Scope",
+      "payload.scope",
       payload.scope?.split(" "),
       options.scope
     );

@@ -1,7 +1,42 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DecomposedJwt } from "./jwt";
+import { DecomposedJwt } from "./jwt.js";
+
+export type AssertedClaim =
+  | "payload.exp"
+  | "payload.nbf"
+  | "payload.iss"
+  | "payload.aud"
+  | "payload.scope"
+  | "jwk.use"
+  | "jwk.kty"
+  | "header.alg"
+  | "payload.client_id"
+  | "payload.token_use"
+  | "payload.cognito:groups";
+
+interface AssertionError extends Error {
+  failedAssertion: {
+    claim: AssertedClaim;
+    actual: unknown;
+    expected?: string | string[];
+  };
+}
+
+export interface AssertionErrorConstructor {
+  new (
+    msg: string,
+    claim: AssertedClaim,
+    actual: unknown,
+    expected?: string | string[]
+  ): AssertionError;
+}
+
+interface ExposeRawJwt<E extends JwtBaseError> {
+  rawJwt?: DecomposedJwt;
+  withRawJwt<T extends E>(this: T, rawJwt: DecomposedJwt): T;
+}
 
 export abstract class JwtBaseError extends Error {}
 
@@ -16,31 +51,41 @@ export class JwtParseError extends JwtBaseError {
   }
 }
 
-export class JwtInvalidSignatureError extends JwtBaseError {}
-
-export class JwtExpiredError extends JwtBaseError {}
-
-export class JwtNotBeforeError extends JwtBaseError {}
-
 export class ParameterValidationError extends JwtBaseError {}
 
-export abstract class JwtInvalidClaimError extends JwtBaseError {
-  public failedAssertion: {
-    name: string;
+export class JwtInvalidSignatureError extends JwtBaseError {}
+
+export abstract class FailedAssertionError
+  extends JwtBaseError
+  implements AssertionError
+{
+  failedAssertion: {
+    claim: AssertedClaim;
     actual: unknown;
-    expected: string | string[];
+    expected?: string | string[];
   };
-  public rawJwt?: DecomposedJwt;
   constructor(
     msg: string,
-    name: string,
+    claim: AssertedClaim,
     actual: unknown,
-    expected: string | string[]
+    expected?: string | string[]
   ) {
     super(msg);
-    this.failedAssertion = { name, actual, expected };
+    this.failedAssertion = { claim, actual, expected };
   }
-  public withRawJwt(rawJwt: DecomposedJwt): JwtInvalidClaimError {
+}
+
+export class JwtInvalidSignatureAlgorithmError extends FailedAssertionError {}
+
+export abstract class JwtInvalidClaimError
+  extends FailedAssertionError
+  implements ExposeRawJwt<JwtInvalidClaimError>
+{
+  public rawJwt?: DecomposedJwt;
+  public withRawJwt<T extends JwtInvalidClaimError>(
+    this: T,
+    rawJwt: DecomposedJwt
+  ): T {
     this.rawJwt = rawJwt;
     return this;
   }
@@ -52,9 +97,9 @@ export class JwtInvalidAudienceError extends JwtInvalidClaimError {}
 
 export class JwtInvalidScopeError extends JwtInvalidClaimError {}
 
-export class JwtInvalidSignatureAlgorithmError extends JwtInvalidClaimError {}
+export class JwtExpiredError extends JwtInvalidClaimError {}
 
-export class JwtInvalidJwkError extends JwtInvalidClaimError {}
+export class JwtNotBeforeError extends JwtInvalidClaimError {}
 
 /**
  * Amazon Cognito specific erros
@@ -76,17 +121,43 @@ export class Asn1DecodingError extends JwtBaseError {}
  * JWK errors
  */
 
-export class JwksValidationError extends JwtBaseError {}
+export abstract class JwkError extends JwtBaseError {}
 
-export class JwkValidationError extends JwtBaseError {}
+export class JwksValidationError extends JwkError {}
 
-export class JwtWithoutValidKidError extends JwtBaseError {}
+export class JwkValidationError extends JwkError {}
 
-export class KidNotFoundInJwksError extends JwtBaseError {}
+export class JwtWithoutValidKidError extends JwkError {}
 
-export class WaitPeriodNotYetEndedJwkError extends JwtBaseError {}
+export class KidNotFoundInJwksError extends JwkError {}
 
-export class JwksNotAvailableInCacheError extends JwtBaseError {}
+export class WaitPeriodNotYetEndedJwkError extends JwkError {}
+
+export class JwksNotAvailableInCacheError extends JwkError {}
+
+export abstract class JwkAssertionError
+  extends JwkError
+  implements AssertionError
+{
+  failedAssertion: {
+    claim: AssertedClaim;
+    actual: unknown;
+    expected?: string | string[];
+  };
+  constructor(
+    msg: string,
+    claim: AssertedClaim,
+    actual: unknown,
+    expected?: string | string[]
+  ) {
+    super(msg);
+    this.failedAssertion = { claim, actual, expected };
+  }
+}
+
+export class JwkInvalidUseError extends JwkAssertionError {}
+
+export class JwkInvalidKtyError extends JwkAssertionError {}
 
 /**
  * HTTPS fetch errors

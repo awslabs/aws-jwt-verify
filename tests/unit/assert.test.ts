@@ -1,45 +1,69 @@
+import { FailedAssertionError, AssertedClaim } from "../../src/error";
 import {
   assertStringEquals,
   assertStringArrayContainsString,
   assertStringArraysOverlap,
 } from "../../src/assert";
 
-class AssertionError extends Error {}
+class AssertionError extends FailedAssertionError {}
+const assertedClaim = "test" as AssertedClaim;
 
 describe("unit tests assert", () => {
   test("assert equals requires non-empty value", () => {
     const statement = () =>
-      assertStringEquals(AssertionError, "test", "", "two");
+      assertStringEquals(AssertionError, "test", assertedClaim, "", "two");
     expect(statement).toThrow(AssertionError);
     expect(statement).toThrow("Missing test. Expected: two");
   });
 
   test("assert equals requires strings", () => {
     const statement = () =>
-      assertStringEquals(AssertionError, "test", 123 as any, "two");
+      assertStringEquals(
+        AssertionError,
+        "test",
+        assertedClaim,
+        123 as any,
+        "two"
+      );
     expect(statement).toThrow(AssertionError);
     expect(statement).toThrow("test is not of type string");
   });
 
   test("assert contains requires strings", () => {
     const statement = () =>
-      assertStringArrayContainsString(AssertionError, "test", 123 as any, [
-        "two",
-      ]);
+      assertStringArrayContainsString(
+        AssertionError,
+        "test",
+        assertedClaim,
+        123 as any,
+        ["two"]
+      );
     expect(statement).toThrow(AssertionError);
     expect(statement).toThrow("test is not of type string");
   });
 
   test("assert overlaps requires array", () => {
     const statement = () =>
-      assertStringArraysOverlap(AssertionError, "test", 123 as any, ["two"]);
+      assertStringArraysOverlap(
+        AssertionError,
+        "test",
+        assertedClaim,
+        123 as any,
+        ["two"]
+      );
     expect(statement).toThrow(AssertionError);
     expect(statement).toThrow("test is not an array");
   });
 
   test("assert overlaps requires array of strings", () => {
     const statement = () =>
-      assertStringArraysOverlap(AssertionError, "test", [123 as any], ["two"]);
+      assertStringArraysOverlap(
+        AssertionError,
+        "test",
+        assertedClaim,
+        [123 as any],
+        ["two"]
+      );
     expect(statement).toThrow(AssertionError);
     expect(statement).toThrow(
       "test includes elements that are not of type string"

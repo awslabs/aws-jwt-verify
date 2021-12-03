@@ -3,50 +3,45 @@
 //
 // Utilities to assert that supplied values match with expected values
 
-interface AssertionErrorConstructor<ErrorType extends Error> {
-  new (
-    msg: string,
-    name: string,
-    actual: unknown,
-    expected: string | string[]
-  ): ErrorType;
-}
+import { AssertionErrorConstructor, AssertedClaim } from "./error.js";
 
 /**
  * Assert value is a non-empty string and equal to the expected value,
  * or throw an error otherwise
  *
  * @param errorConstructor - Constructor for the concrete error to be thrown
- * @param name - Name for the value being checked
+ * @param displayName - Name for the value being checked
+ * @param assertedClaim - The claim that is being checked
  * @param actual - The value to check
  * @param expected - The expected value
  */
-export function assertStringEquals<ErrorType extends Error>(
-  errorConstructor: AssertionErrorConstructor<ErrorType>,
-  name: string,
+export function assertStringEquals(
+  errorConstructor: AssertionErrorConstructor,
+  displayName: string,
+  assertedClaim: AssertedClaim,
   actual: unknown,
   expected: string
 ): void {
   if (!actual) {
     throw new errorConstructor(
-      `Missing ${name}. Expected: ${expected}`,
-      name,
+      `Missing ${displayName}. Expected: ${expected}`,
+      assertedClaim,
       actual,
       expected
     );
   }
   if (typeof actual !== "string") {
     throw new errorConstructor(
-      `${name} is not of type string`,
-      name,
+      `${displayName} is not of type string`,
+      assertedClaim,
       actual,
       expected
     );
   }
   if (expected !== actual) {
     throw new errorConstructor(
-      `${name} not allowed: ${actual}. Expected: ${expected}`,
-      name,
+      `${displayName} not allowed: ${actual}. Expected: ${expected}`,
+      assertedClaim,
       actual,
       expected
     );
@@ -58,34 +53,42 @@ export function assertStringEquals<ErrorType extends Error>(
  * or throw an error otherwise
  *
  * @param errorConstructor - Constructor for the concrete error to be thrown
- * @param name - Name for the value being checked
+ * @param displayName - Name for the value being checked
+ * @param assertedClaim - The claim that is being checked
  * @param actual - The value to check
  * @param expected - The array of expected values. For your convenience you can provide
  * a string here as well, which will mean an array with just that string
  */
-export function assertStringArrayContainsString<ErrorType extends Error>(
-  errorConstructor: AssertionErrorConstructor<ErrorType>,
-  name: string,
+export function assertStringArrayContainsString(
+  errorConstructor: AssertionErrorConstructor,
+  displayName: string,
+  assertedClaim: AssertedClaim,
   actual: unknown,
   expected: string | string[]
 ): void {
   if (!actual) {
     throw new errorConstructor(
-      `Missing ${name}. ${expectationMessage(expected)}`,
-      name,
+      `Missing ${displayName}. ${expectationMessage(expected)}`,
+      assertedClaim,
       actual,
       expected
     );
   }
   if (typeof actual !== "string") {
     throw new errorConstructor(
-      `${name} is not of type string`,
-      name,
+      `${displayName} is not of type string`,
+      assertedClaim,
       actual,
       expected
     );
   }
-  return assertStringArraysOverlap(errorConstructor, name, actual, expected);
+  return assertStringArraysOverlap(
+    errorConstructor,
+    displayName,
+    assertedClaim,
+    actual,
+    expected
+  );
 }
 
 /**
@@ -93,22 +96,24 @@ export function assertStringArrayContainsString<ErrorType extends Error>(
  * or throw an error otherwise
  *
  * @param errorConstructor - Constructor for the concrete error to be thrown
- * @param name - Name for the value being checked
+ * @param displayName - Name for the value being checked
+ * @param assertedClaim - The claim that is being checked
  * @param actual - The value to check, must be an array of strings, or a single string (which will be treated
  * as an array with just that string)
  * @param expected - The array of expected values. For your convenience you can provide
  * a string here as well, which will mean an array with just that string
  */
-export function assertStringArraysOverlap<ErrorType extends Error>(
-  errorConstructor: AssertionErrorConstructor<ErrorType>,
-  name: string,
+export function assertStringArraysOverlap(
+  errorConstructor: AssertionErrorConstructor,
+  displayName: string,
+  assertedClaim: AssertedClaim,
   actual: unknown,
   expected: string | string[]
 ): void {
   if (!actual) {
     throw new errorConstructor(
-      `Missing ${name}. ${expectationMessage(expected)}`,
-      name,
+      `Missing ${displayName}. ${expectationMessage(expected)}`,
+      assertedClaim,
       actual,
       expected
     );
@@ -121,8 +126,8 @@ export function assertStringArraysOverlap<ErrorType extends Error>(
   }
   if (!Array.isArray(actual)) {
     throw new errorConstructor(
-      `${name} is not an array`,
-      name,
+      `${displayName} is not an array`,
+      assertedClaim,
       actual,
       expected
     );
@@ -130,8 +135,8 @@ export function assertStringArraysOverlap<ErrorType extends Error>(
   const overlaps = actual.some((actualItem) => {
     if (typeof actualItem !== "string") {
       throw new errorConstructor(
-        `${name} includes elements that are not of type string`,
-        name,
+        `${displayName} includes elements that are not of type string`,
+        assertedClaim,
         actual,
         expected
       );
@@ -140,10 +145,10 @@ export function assertStringArraysOverlap<ErrorType extends Error>(
   });
   if (!overlaps) {
     throw new errorConstructor(
-      `${name} not allowed: ${actual.join(", ")}. ${expectationMessage(
+      `${displayName} not allowed: ${actual.join(", ")}. ${expectationMessage(
         expected
       )}`,
-      name,
+      assertedClaim,
       actual,
       expected
     );

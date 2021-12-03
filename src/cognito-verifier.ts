@@ -69,10 +69,10 @@ interface CognitoVerifyProperties {
     jwk: Jwk;
   }) => Promise<void> | void;
   /**
-   * If you want to access the JWT when verification fails, set this to true.
-   * Then, if an error is thrown during verification, the Error object will include a property `rawJwt`
-   * with the (decoded) contents of the JWT. (Only if the JWT was syntactically valid and could be decoded)
-   * !!! Do NOT trust the content of a JWT that failed verification !!!
+   * If you want to peek inside the invalid JWT when verification fails, set `includeRawJwtInErrors` to true.
+   * Then, if an error is thrown during verification of the invalid JWT (e.g. the JWT is invalid because it is expired),
+   * the Error object will include a property `rawJwt`, with the raw decoded contents of the **invalid** JWT.
+   * The `rawJwt` will only be included in the Error object, if the JWT's signature can at least be verified.
    */
   includeRawJwtInErrors?: boolean;
 }
@@ -158,6 +158,7 @@ function validateCognitoJwtFields(
     assertStringArraysOverlap(
       CognitoJwtInvalidGroupError,
       "Cognito group",
+      "payload.cognito:groups",
       payload["cognito:groups"],
       options.groups
     );
@@ -167,6 +168,7 @@ function validateCognitoJwtFields(
   assertStringArrayContainsString(
     CognitoJwtInvalidTokenUseError,
     "Token use",
+    "payload.token_use",
     payload.token_use,
     ["id", "access"]
   );
@@ -179,6 +181,7 @@ function validateCognitoJwtFields(
     assertStringEquals(
       CognitoJwtInvalidTokenUseError,
       "Token use",
+      "payload.token_use",
       payload.token_use,
       options.tokenUse
     );
@@ -195,6 +198,7 @@ function validateCognitoJwtFields(
       assertStringArrayContainsString(
         CognitoJwtInvalidClientIdError,
         'Client ID ("audience")',
+        "payload.aud",
         payload.aud,
         options.clientId
       );
@@ -202,6 +206,7 @@ function validateCognitoJwtFields(
       assertStringArrayContainsString(
         CognitoJwtInvalidClientIdError,
         "Client ID",
+        "payload.client_id",
         payload.client_id,
         options.clientId
       );

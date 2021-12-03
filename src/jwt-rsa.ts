@@ -22,15 +22,16 @@ import { JwtHeader, JwtPayload } from "./jwt-model.js";
 import { Properties } from "./typing-util.js";
 import { decomposeJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
 import {
+  JwkInvalidKtyError,
+  JwkInvalidUseError,
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
-  JwtInvalidJwkError,
-  JwtInvalidSignatureAlgorithmError,
   JwtInvalidSignatureError,
   KidNotFoundInJwksError,
   ParameterValidationError,
 } from "./error.js";
 import { JsonObject } from "./safe-json-parse.js";
+import { JwtInvalidSignatureAlgorithmError } from "./error.js";
 
 /** Interface for JWT verification properties */
 interface VerifyProperties {
@@ -67,10 +68,10 @@ interface VerifyProperties {
     jwk: Jwk;
   }) => Promise<void> | void;
   /**
-   * If you want to access the JWT when verification fails, set this to true.
-   * Then, if an error is thrown during verification, the Error object will include a property `rawJwt`
-   * with the (decoded) contents of the JWT. (Only if the JWT was syntactically valid and could be decoded)
-   * !!! Do NOT trust the content of a JWT that failed verification !!!
+   * If you want to peek inside the invalid JWT when verification fails, set `includeRawJwtInErrors` to true.
+   * Then, if an error is thrown during verification of the invalid JWT (e.g. the JWT is invalid because it is expired),
+   * the Error object will include a property `rawJwt`, with the raw decoded contents of the **invalid** JWT.
+   * The `rawJwt` will only be included in the Error object, if the JWT's signature can at least be verified.
    */
   includeRawJwtInErrors?: boolean;
 }
@@ -165,16 +166,17 @@ function verifySignatureAgainstJwk(
   jwkToKeyObjectTransformer: JwkToKeyObjectTransformer = transformJwkToKeyObject
 ) {
   // Check JWK use
-  assertStringEquals(JwtInvalidJwkError, "JWK use", jwk.use, "sig");
+  assertStringEquals(JwkInvalidUseError, "JWK use", "jwk.use", jwk.use, "sig");
 
   // Check JWK kty
-  assertStringEquals(JwtInvalidJwkError, "JWK kty", jwk.kty, "RSA");
+  assertStringEquals(JwkInvalidKtyError, "JWK kty", "jwk.kty", jwk.kty, "RSA");
 
   // Check that JWT signature algorithm matches JWK
   if (jwk.alg) {
     assertStringEquals(
       JwtInvalidSignatureAlgorithmError,
       "JWT signature algorithm",
+      "header.alg",
       header.alg,
       jwk.alg
     );
@@ -184,6 +186,7 @@ function verifySignatureAgainstJwk(
   assertStringEquals(
     JwtInvalidSignatureAlgorithmError,
     "JWT signature algorithm",
+    "header.alg",
     header.alg,
     "RS256"
   );
@@ -363,15 +366,6 @@ function verifyDecomposedJwtSync(
   const { header, headerB64, payload, payloadB64, signatureB64 } =
     decomposedJwt;
 
-  try {
-    validateJwtFields(payload, options);
-  } catch (err) {
-    if (options.includeRawJwtInErrors && err instanceof JwtInvalidClaimError) {
-      throw err.withRawJwt(decomposedJwt);
-    }
-    throw err;
-  }
-
   let jwk: Jwk;
   if (isJwk(jwkOrJwks)) {
     jwk = jwkOrJwks;
@@ -401,6 +395,15 @@ function verifyDecomposedJwtSync(
     jwk,
     jwkToKeyObjectTransformer
   );
+
+  try {
+    validateJwtFields(payload, options);
+  } catch (err) {
+    if (options.includeRawJwtInErrors && err instanceof JwtInvalidClaimError) {
+      throw err.withRawJwt(decomposedJwt);
+    }
+    throw err;
+  }
 
   if (options.customJwtCheck) {
     const res = options.customJwtCheck({ header, payload, jwk });
@@ -620,6 +623,7 @@ export abstract class JwtRsaVerifierBase<
     assertStringArrayContainsString(
       JwtInvalidIssuerError,
       "Issuer",
+      "payload.iss",
       decomposedJwt.payload.iss,
       this.expectedIssuers
     );
