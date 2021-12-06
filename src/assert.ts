@@ -3,7 +3,7 @@
 //
 // Utilities to assert that supplied values match with expected values
 
-import { AssertionErrorConstructor, FailedAssertionError } from "./error";
+import { AssertionErrorConstructor, FailedAssertionError } from "./error.js";
 
 /**
  * Assert value is a non-empty string and equal to the expected value,
@@ -75,12 +75,7 @@ export function assertStringArrayContainsString(
       expected
     );
   }
-  return assertStringArraysOverlap(
-    name,
-    actual,
-    expected,
-    errorConstructor
-  );
+  return assertStringArraysOverlap(name, actual, expected, errorConstructor);
 }
 
 /**
@@ -114,11 +109,7 @@ export function assertStringArraysOverlap(
     actual = [actual];
   }
   if (!Array.isArray(actual)) {
-    throw new errorConstructor(
-      `${name} is not an array`,
-      actual,
-      expected
-    );
+    throw new errorConstructor(`${name} is not an array`, actual, expected);
   }
   const overlaps = actual.some((actualItem) => {
     if (typeof actualItem !== "string") {

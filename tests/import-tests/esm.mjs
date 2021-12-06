@@ -25,11 +25,5 @@ if (typeof https.fetchJson !== "function") {
   process.exit(1);
 }
 
-assertStringEquals(
-  JwtInvalidIssuerError,
-  "test foo",
-  "payload.iss",
-  "foo",
-  "foo"
-);
+assertStringEquals("test foo", "foo", "foo", JwtInvalidIssuerError);
 console.log("ESM import succeeded!");
