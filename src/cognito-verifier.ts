@@ -156,21 +156,19 @@ function validateCognitoJwtFields(
   // Check groups
   if (options.groups != null) {
     assertStringArraysOverlap(
-      CognitoJwtInvalidGroupError,
       "Cognito group",
-      "payload.cognito:groups",
       payload["cognito:groups"],
-      options.groups
+      options.groups,
+      CognitoJwtInvalidGroupError
     );
   }
 
   // Check token use
   assertStringArrayContainsString(
-    CognitoJwtInvalidTokenUseError,
     "Token use",
-    "payload.token_use",
     payload.token_use,
-    ["id", "access"]
+    ["id", "access"],
+    CognitoJwtInvalidTokenUseError
   );
   if (options.tokenUse !== null) {
     if (options.tokenUse === undefined) {
@@ -179,11 +177,10 @@ function validateCognitoJwtFields(
       );
     }
     assertStringEquals(
-      CognitoJwtInvalidTokenUseError,
       "Token use",
-      "payload.token_use",
       payload.token_use,
-      options.tokenUse
+      options.tokenUse,
+      CognitoJwtInvalidTokenUseError
     );
   }
 
@@ -196,19 +193,17 @@ function validateCognitoJwtFields(
     }
     if (payload.token_use === "id") {
       assertStringArrayContainsString(
-        CognitoJwtInvalidClientIdError,
         'Client ID ("audience")',
-        "payload.aud",
         payload.aud,
-        options.clientId
+        options.clientId,
+        CognitoJwtInvalidClientIdError
       );
     } else {
       assertStringArrayContainsString(
-        CognitoJwtInvalidClientIdError,
         "Client ID",
-        "payload.client_id",
         payload.client_id,
-        options.clientId
+        options.clientId,
+        CognitoJwtInvalidClientIdError
       );
     }
   }

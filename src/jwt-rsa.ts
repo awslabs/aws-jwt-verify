@@ -166,29 +166,27 @@ function verifySignatureAgainstJwk(
   jwkToKeyObjectTransformer: JwkToKeyObjectTransformer = transformJwkToKeyObject
 ) {
   // Check JWK use
-  assertStringEquals(JwkInvalidUseError, "JWK use", "jwk.use", jwk.use, "sig");
+  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
 
   // Check JWK kty
-  assertStringEquals(JwkInvalidKtyError, "JWK kty", "jwk.kty", jwk.kty, "RSA");
+  assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);
 
   // Check that JWT signature algorithm matches JWK
   if (jwk.alg) {
     assertStringEquals(
-      JwtInvalidSignatureAlgorithmError,
       "JWT signature algorithm",
-      "header.alg",
       header.alg,
-      jwk.alg
+      jwk.alg,
+      JwtInvalidSignatureAlgorithmError
     );
   }
 
   // Check JWT signature algorithm is RS256
   assertStringEquals(
-    JwtInvalidSignatureAlgorithmError,
     "JWT signature algorithm",
-    "header.alg",
     header.alg,
-    "RS256"
+    "RS256",
+    JwtInvalidSignatureAlgorithmError
   );
 
   // Convert JWK modulus and exponent into DER public key
@@ -621,11 +619,10 @@ export abstract class JwtRsaVerifierBase<
   } {
     const decomposedJwt = decomposeJwt(jwt);
     assertStringArrayContainsString(
-      JwtInvalidIssuerError,
       "Issuer",
-      "payload.iss",
       decomposedJwt.payload.iss,
-      this.expectedIssuers
+      this.expectedIssuers,
+      JwtInvalidIssuerError
     );
     const issuerConfig = this.getIssuerConfig(decomposedJwt.payload.iss);
     return {

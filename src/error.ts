@@ -3,42 +3,48 @@
 
 import { DecomposedJwt } from "./jwt.js";
 
-export type AssertedClaim =
-  | "payload.exp"
-  | "payload.nbf"
-  | "payload.iss"
-  | "payload.aud"
-  | "payload.scope"
-  | "jwk.use"
-  | "jwk.kty"
-  | "header.alg"
-  | "payload.client_id"
-  | "payload.token_use"
-  | "payload.cognito:groups";
+/**
+ * Base Error for all other errors in this file
+ */
+export abstract class JwtBaseError extends Error {}
 
-interface AssertionError extends Error {
+/**
+ * Interface for an error that is raised because an actual value does not match with the expected value
+ */
+interface AssertionError extends JwtBaseError {
   failedAssertion: {
-    claim: AssertedClaim;
     actual: unknown;
     expected?: string | string[];
   };
 }
 
+/**
+ * Constructor interface for AssertionError
+ */
 export interface AssertionErrorConstructor {
   new (
     msg: string,
-    claim: AssertedClaim,
     actual: unknown,
     expected?: string | string[]
   ): AssertionError;
 }
 
-interface ExposeRawJwt<E extends JwtBaseError> {
-  rawJwt?: DecomposedJwt;
-  withRawJwt<T extends E>(this: T, rawJwt: DecomposedJwt): T;
+/**
+ * An error that is raised because an actual value does not match with the expected value
+ */
+export class FailedAssertionError extends JwtBaseError {
+  failedAssertion: {
+    actual: unknown;
+    expected?: string | string[];
+  };
+  constructor(msg: string, actual: unknown, expected?: string | string[]) {
+    super(msg);
+    this.failedAssertion = {
+      actual,
+      expected,
+    };
+  }
 }
-
-export abstract class JwtBaseError extends Error {}
 
 /**
  * JWT errors
@@ -55,32 +61,9 @@ export class ParameterValidationError extends JwtBaseError {}
 
 export class JwtInvalidSignatureError extends JwtBaseError {}
 
-export abstract class FailedAssertionError
-  extends JwtBaseError
-  implements AssertionError
-{
-  failedAssertion: {
-    claim: AssertedClaim;
-    actual: unknown;
-    expected?: string | string[];
-  };
-  constructor(
-    msg: string,
-    claim: AssertedClaim,
-    actual: unknown,
-    expected?: string | string[]
-  ) {
-    super(msg);
-    this.failedAssertion = { claim, actual, expected };
-  }
-}
-
 export class JwtInvalidSignatureAlgorithmError extends FailedAssertionError {}
 
-export abstract class JwtInvalidClaimError
-  extends FailedAssertionError
-  implements ExposeRawJwt<JwtInvalidClaimError>
-{
+export abstract class JwtInvalidClaimError extends FailedAssertionError {
   public rawJwt?: DecomposedJwt;
   public withRawJwt<T extends JwtInvalidClaimError>(
     this: T,
@@ -121,43 +104,21 @@ export class Asn1DecodingError extends JwtBaseError {}
  * JWK errors
  */
 
-export abstract class JwkError extends JwtBaseError {}
+export class JwksValidationError extends JwtBaseError {}
 
-export class JwksValidationError extends JwkError {}
+export class JwkValidationError extends JwtBaseError {}
 
-export class JwkValidationError extends JwkError {}
+export class JwtWithoutValidKidError extends JwtBaseError {}
 
-export class JwtWithoutValidKidError extends JwkError {}
+export class KidNotFoundInJwksError extends JwtBaseError {}
 
-export class KidNotFoundInJwksError extends JwkError {}
+export class WaitPeriodNotYetEndedJwkError extends JwtBaseError {}
 
-export class WaitPeriodNotYetEndedJwkError extends JwkError {}
+export class JwksNotAvailableInCacheError extends JwtBaseError {}
 
-export class JwksNotAvailableInCacheError extends JwkError {}
+export class JwkInvalidUseError extends FailedAssertionError {}
 
-export abstract class JwkAssertionError
-  extends JwkError
-  implements AssertionError
-{
-  failedAssertion: {
-    claim: AssertedClaim;
-    actual: unknown;
-    expected?: string | string[];
-  };
-  constructor(
-    msg: string,
-    claim: AssertedClaim,
-    actual: unknown,
-    expected?: string | string[]
-  ) {
-    super(msg);
-    this.failedAssertion = { claim, actual, expected };
-  }
-}
-
-export class JwkInvalidUseError extends JwkAssertionError {}
-
-export class JwkInvalidKtyError extends JwkAssertionError {}
+export class JwkInvalidKtyError extends FailedAssertionError {}
 
 /**
  * HTTPS fetch errors

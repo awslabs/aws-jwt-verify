@@ -172,7 +172,6 @@ export function validateJwtFields(
     if (payload.exp + (options.graceSeconds ?? 0) < Date.now() / 1000) {
       throw new JwtExpiredError(
         `Token expired at ${new Date(payload.exp * 1000).toISOString()}`,
-        "payload.exp",
         payload.exp
       );
     }
@@ -185,7 +184,6 @@ export function validateJwtFields(
         `Token can't be used before ${new Date(
           payload.nbf * 1000
         ).toISOString()}`,
-        "payload.nbf",
         payload.nbf
       );
     }
@@ -199,11 +197,10 @@ export function validateJwtFields(
       );
     }
     assertStringArrayContainsString(
-      JwtInvalidIssuerError,
       "Issuer",
-      "payload.iss",
       payload.iss,
-      options.issuer
+      options.issuer,
+      JwtInvalidIssuerError
     );
   }
 
@@ -215,22 +212,20 @@ export function validateJwtFields(
       );
     }
     assertStringArraysOverlap(
-      JwtInvalidAudienceError,
       "Audience",
-      "payload.aud",
       payload.aud,
-      options.audience
+      options.audience,
+      JwtInvalidAudienceError
     );
   }
 
   // Check scope
   if (options.scope != null) {
     assertStringArraysOverlap(
-      JwtInvalidScopeError,
       "Scope",
-      "payload.scope",
       payload.scope?.split(" "),
-      options.scope
+      options.scope,
+      JwtInvalidScopeError
     );
   }
 }

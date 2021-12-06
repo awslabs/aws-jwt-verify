@@ -410,7 +410,7 @@ describe("unit tests jwt verifier", () => {
             audience: null,
             issuer: null,
           });
-        expect.assertions(4);
+        expect.assertions(3);
         expect(statement).toThrow(`Token expired at ${exp.toISOString()}`);
         expect(statement).toThrow(JwtExpiredError);
         try {
@@ -418,7 +418,6 @@ describe("unit tests jwt verifier", () => {
         } catch (err) {
           if (err instanceof JwtInvalidClaimError) {
             expect(err.failedAssertion.actual).toEqual(payload.exp);
-            expect(err.failedAssertion.claim).toEqual("payload.exp");
           }
         }
       });
@@ -507,7 +506,6 @@ describe("unit tests jwt verifier", () => {
         } catch (err) {
           if (err instanceof JwtInvalidClaimError) {
             expect(err.failedAssertion.actual).toEqual(nbf);
-            expect(err.failedAssertion.claim).toEqual("payload.nbf");
           }
         }
       });
@@ -596,7 +594,7 @@ describe("unit tests jwt verifier", () => {
         } catch (err) {
           if (err instanceof JwtInvalidClaimError) {
             expect(err.failedAssertion.actual).toEqual(["blah", "blah2"]);
-            expect(err.failedAssertion.claim).toEqual("payload.scope");
+            expect(err.failedAssertion.expected).toEqual("blah3");
           }
         }
       });
