@@ -83,6 +83,7 @@ This library was specifically designed to be easy to use in:
   - [Using the generic JWT RSA verifier for Cognito JWTs](#using-the-generic-jwt-rsa-verifier-for-cognito-jwts)
 - [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
   - [Verify parameters](#jwtrsaverifier-verify-parameters)
+- [Verification errors](#verification-errors)
 - [The JWKS cache](#the-jwks-cache)
   - [Loading the JWKS from file](#loading-the-jwks-from-file)
   - [Rate limiting](#rate-limiting)
@@ -351,6 +352,67 @@ Supported parameters are:
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
+
+## Verification errors
+
+When verification of a JWT fails, this library will throw an error. All errors are defined in [./src/error.ts](src/error.ts) and can be imported and tested for like so:
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { JwtExpiredError } from "aws-jwt-verify/error";
+
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: "<user_pool_id>",
+  tokenUse: "access",
+  clientId: "<client_id>",
+});
+
+try {
+  const payload = await verifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // the JWT as string
+  );
+} catch (err) {
+  // An error is thrown, so the JWT is not valid
+  // Use `instanceof` to test for specific error cases:
+  if (err instanceof JwtExpiredError) {
+    console.error("JWT expired!");
+  }
+  throw err;
+}
+```
+
+If you want to peek inside invalid JWTs, set `includeRawJwtInErrors` to `true` when creating the verifier. The thrown error will then include the raw JWT:
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { JwtInvalidClaimError } from "aws-jwt-verify/error";
+
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: "<user_pool_id>",
+  tokenUse: "access",
+  clientId: "<client_id>",
+  includeRawJwtInErrors: true, // can also be specified as parameter to the `verify` call
+});
+
+try {
+  const payload = await verifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // the JWT as string
+  );
+} catch (err) {
+  if (err instanceof JwtInvalidClaimError) {
+    console.error("JWT invalid:", err.rawJwt);
+  }
+  throw err;
+}
+```
+
+The `instanceof` check in the `catch` block above is crucial, because not all errors will include the rawJwt, only errors that subclass `JwtInvalidClaimError` will. In order to understand why this makes sense, you must understand that this library verifies JWTs in 3 stages, that all must succeed for the JWT to be considered valid:
+
+- Stage 1: Verify JWT structure and JSON parse the JWT
+- Stage 2: Verify JWT cryptographic signature (i.e. RS256)
+- Stage 3: Verify JWT claims (such as e.g. its expiration)
+
+Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid. You should still treat the JWT as invalid, but you might execute different business logic to handle the verification error depending on the situation at hand.
 
 ## The JWKS cache
 
