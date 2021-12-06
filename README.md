@@ -358,7 +358,7 @@ Supported parameters are:
 
 ## Verification errors
 
-When verification of a JWT fails, this library will throw an error. All errors are defined in [./src/error.ts](src/error.ts) and can be imported and tested for like so:
+When verification of a JWT fails, this library will throw an error. All errors are defined in [src/error.ts](./src/error.ts) and can be imported and tested for like so:
 
 ```typescript
 import { CognitoJwtVerifier } from "aws-jwt-verify";
