@@ -142,7 +142,7 @@ Supported parameters are:
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#Checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT (and JWK) checks to execute (see also below).
-- `includeRawJwtInErrors` (optional): set to true if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+- `includeRawJwtInErrors` (optional): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
 
 ```typescript
 import { CognitoJwtVerifier } from "aws-jwt-verify";
@@ -354,7 +354,7 @@ Supported parameters are:
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
-- `includeRawJwtInErrors` (optional): set to true if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+- `includeRawJwtInErrors` (optional): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
 
 ## Verification errors
 
@@ -411,13 +411,13 @@ try {
 }
 ```
 
-The `instanceof` check in the `catch` block above is crucial, because not all errors will include the rawJwt, only errors that subclass `JwtInvalidClaimError` will. In order to understand why this makes sense, you must understand that this library verifies JWTs in 3 stages, that all must succeed for the JWT to be considered valid:
+The `instanceof` check in the `catch` block above is crucial, because not all errors will include the rawJwt, only errors that subclass `JwtInvalidClaimError` will. In order to understand why this makes sense, you should know that this library verifies JWTs in 3 stages, that all must succeed for the JWT to be considered valid:
 
 - Stage 1: Verify JWT structure and JSON parse the JWT
 - Stage 2: Verify JWT cryptographic signature (i.e. RS256)
 - Stage 3: Verify JWT claims (such as e.g. its expiration)
 
-Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid. You should still treat the JWT as invalid, but you might execute different business logic to handle the verification error depending on the situation at hand.
+Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid (stages 1 and 2 succeeded).
 
 ## The JWKS cache
 
