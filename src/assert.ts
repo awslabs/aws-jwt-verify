@@ -9,34 +9,34 @@ import { AssertionErrorConstructor, FailedAssertionError } from "./error";
  * Assert value is a non-empty string and equal to the expected value,
  * or throw an error otherwise
  *
- * @param displayName - Name for the value being checked
+ * @param name - Name for the value being checked
  * @param actual - The value to check
  * @param expected - The expected value
  * @param errorConstructor - Constructor for the concrete error to be thrown
  */
 export function assertStringEquals(
-  displayName: string,
+  name: string,
   actual: unknown,
   expected: string,
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
 ): void {
   if (!actual) {
     throw new errorConstructor(
-      `Missing ${displayName}. Expected: ${expected}`,
+      `Missing ${name}. Expected: ${expected}`,
       actual,
       expected
     );
   }
   if (typeof actual !== "string") {
     throw new errorConstructor(
-      `${displayName} is not of type string`,
+      `${name} is not of type string`,
       actual,
       expected
     );
   }
   if (expected !== actual) {
     throw new errorConstructor(
-      `${displayName} not allowed: ${actual}. Expected: ${expected}`,
+      `${name} not allowed: ${actual}. Expected: ${expected}`,
       actual,
       expected
     );
@@ -47,21 +47,21 @@ export function assertStringEquals(
  * Assert value is a non-empty string and is indeed one of the expected values,
  * or throw an error otherwise
  *
- * @param displayName - Name for the value being checked
+ * @param name - Name for the value being checked
  * @param actual - The value to check
  * @param expected - The array of expected values. For your convenience you can provide
  * @param errorConstructor - Constructor for the concrete error to be thrown
  * a string here as well, which will mean an array with just that string
  */
 export function assertStringArrayContainsString(
-  displayName: string,
+  name: string,
   actual: unknown,
   expected: string | string[],
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
 ): void {
   if (!actual) {
     throw new errorConstructor(
-      `Missing ${displayName}. ${expectationMessage(expected)}`,
+      `Missing ${name}. ${expectationMessage(expected)}`,
 
       actual,
       expected
@@ -69,14 +69,14 @@ export function assertStringArrayContainsString(
   }
   if (typeof actual !== "string") {
     throw new errorConstructor(
-      `${displayName} is not of type string`,
+      `${name} is not of type string`,
 
       actual,
       expected
     );
   }
   return assertStringArraysOverlap(
-    displayName,
+    name,
     actual,
     expected,
     errorConstructor
@@ -87,7 +87,7 @@ export function assertStringArrayContainsString(
  * Assert value is an array of strings, where at least one of the strings is indeed one of the expected values,
  * or throw an error otherwise
  *
- * @param displayName - Name for the value being checked
+ * @param name - Name for the value being checked
  * @param actual - The value to check, must be an array of strings, or a single string (which will be treated
  * as an array with just that string)
  * @param expected - The array of expected values. For your convenience you can provide
@@ -95,14 +95,14 @@ export function assertStringArrayContainsString(
  * @param errorConstructor - Constructor for the concrete error to be thrown
  */
 export function assertStringArraysOverlap(
-  displayName: string,
+  name: string,
   actual: unknown,
   expected: string | string[],
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
 ): void {
   if (!actual) {
     throw new errorConstructor(
-      `Missing ${displayName}. ${expectationMessage(expected)}`,
+      `Missing ${name}. ${expectationMessage(expected)}`,
       actual,
       expected
     );
@@ -115,7 +115,7 @@ export function assertStringArraysOverlap(
   }
   if (!Array.isArray(actual)) {
     throw new errorConstructor(
-      `${displayName} is not an array`,
+      `${name} is not an array`,
       actual,
       expected
     );
@@ -123,7 +123,7 @@ export function assertStringArraysOverlap(
   const overlaps = actual.some((actualItem) => {
     if (typeof actualItem !== "string") {
       throw new errorConstructor(
-        `${displayName} includes elements that are not of type string`,
+        `${name} includes elements that are not of type string`,
         actual,
         expected
       );
@@ -132,7 +132,7 @@ export function assertStringArraysOverlap(
   });
   if (!overlaps) {
     throw new errorConstructor(
-      `${displayName} not allowed: ${actual.join(", ")}. ${expectationMessage(
+      `${name} not allowed: ${actual.join(", ")}. ${expectationMessage(
         expected
       )}`,
       actual,
