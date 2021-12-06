@@ -140,7 +140,6 @@ export function isJwk(jwk: Json): jwk is Jwk {
 
 export interface PenaltyBox {
   wait: (jwksUri: string, kid: string) => Promise<void>;
-  release: (jwksUri: string, kid?: string) => void;
   registerFailedAttempt: (jwksUri: string, kid: string) => void;
   registerSuccessfulAttempt: (jwksUri: string, kid: string) => void;
 }
