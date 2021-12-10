@@ -498,12 +498,12 @@ export abstract class JwtRsaVerifierBase<
    * @returns void
    */
   public cacheJwks(
-    ...args: MultiIssuer extends false
+    ...[jwks, issuer]: MultiIssuer extends false
       ? [jwks: Jwks, issuer?: string]
       : [jwks: Jwks, issuer: string]
   ): void {
-    const issuerConfig = this.getIssuerConfig(args[1]);
-    this.jwksCache.addJwks(issuerConfig.jwksUri, args[0]);
+    const issuerConfig = this.getIssuerConfig(issuer);
+    this.jwksCache.addJwks(issuerConfig.jwksUri, jwks);
     this.publicKeyCache.clearCache(issuerConfig.issuer);
   }
 
@@ -529,10 +529,10 @@ export abstract class JwtRsaVerifierBase<
    * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
    */
   public verifySync(
-    ...args: VerifyParameters<SpecificVerifyProperties>
+    ...[jwt, properties]: VerifyParameters<SpecificVerifyProperties>
   ): JwtPayload {
     const { decomposedJwt, jwksUri, verifyProperties } =
-      this.getVerifyParameters(args[0], args[1]);
+      this.getVerifyParameters(jwt, properties);
     return this.verifyDecomposedJwtSync(
       decomposedJwt,
       jwksUri,
@@ -572,10 +572,10 @@ export abstract class JwtRsaVerifierBase<
    * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
    */
   public async verify(
-    ...args: VerifyParameters<SpecificVerifyProperties>
+    ...[jwt, properties]: VerifyParameters<SpecificVerifyProperties>
   ): Promise<JwtPayload> {
     const { decomposedJwt, jwksUri, verifyProperties } =
-      this.getVerifyParameters(args[0], args[1]);
+      this.getVerifyParameters(jwt, properties);
     return this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
   }
 

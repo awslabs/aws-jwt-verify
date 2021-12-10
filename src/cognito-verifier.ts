@@ -312,10 +312,10 @@ export class CognitoJwtVerifier<
    * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
    */
   public verifySync<T extends SpecificVerifyProperties>(
-    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
+    ...[jwt, properties]: CognitoVerifyParameters<SpecificVerifyProperties>
   ): CognitoIdOrAccessTokenPayload<IssuerConfig, T> {
     const { decomposedJwt, jwksUri, verifyProperties } =
-      this.getVerifyParameters(args[0], args[1]);
+      this.getVerifyParameters(jwt, properties);
     this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
     try {
       validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
@@ -344,10 +344,10 @@ export class CognitoJwtVerifier<
    * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
    */
   public async verify<T extends SpecificVerifyProperties>(
-    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
+    ...[jwt, properties]: CognitoVerifyParameters<SpecificVerifyProperties>
   ): Promise<CognitoIdOrAccessTokenPayload<IssuerConfig, T>> {
     const { decomposedJwt, jwksUri, verifyProperties } =
-      this.getVerifyParameters(args[0], args[1]);
+      this.getVerifyParameters(jwt, properties);
     await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
     try {
       validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
@@ -378,17 +378,17 @@ export class CognitoJwtVerifier<
    * @returns void
    */
   public cacheJwks(
-    ...args: MultiIssuer extends false
+    ...[jwks, userPoolId]: MultiIssuer extends false
       ? [jwks: Jwks, userPoolId?: string]
       : [jwks: Jwks, userPoolId: string]
   ): void {
     let issuer: string | undefined;
-    if (args[1] !== undefined) {
-      issuer = CognitoJwtVerifier.parseUserPoolId(args[1]).issuer;
+    if (userPoolId !== undefined) {
+      issuer = CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer;
     } else if (this.expectedIssuers.length > 1) {
       throw new ParameterValidationError("userPoolId must be provided");
     }
     const issuerConfig = this.getIssuerConfig(issuer);
-    super.cacheJwks(args[0], issuerConfig.issuer);
+    super.cacheJwks(jwks, issuerConfig.issuer);
   }
 }
