@@ -142,7 +142,7 @@ Supported parameters are:
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#Checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT (and JWK) checks to execute (see also below).
-- `includeRawJwtInErrors` (optional): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+- `includeRawJwtInErrors` (optional, default `false`): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
 
 ```typescript
 import { CognitoJwtVerifier } from "aws-jwt-verify";
@@ -354,7 +354,7 @@ Supported parameters are:
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
-- `includeRawJwtInErrors` (optional): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+- `includeRawJwtInErrors` (optional, default `false`): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
 
 ## Verification errors
 
