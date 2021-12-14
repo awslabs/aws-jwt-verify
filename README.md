@@ -419,6 +419,8 @@ The `instanceof` check in the `catch` block above is crucial, because not all er
 
 Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid (stages 1 and 2 succeeded).
 
+Note that if you use [custom JWT checks](#custom-jwt-and-jwk-checks), you are in charge of throwing errors in your custom code. You can (optionally) subclass your errors from `JwtInvalidClaimError`, so that the raw JWT will be included on the errors you throw as well.
+
 ## The JWKS cache
 
 The JWKS cache is responsible for fetching the JWKS from the JWKS URI, caching it, and selecting the right JWK from it. Both the `CognitoJwtVerifier` and the (generic) `JwtRsaVerifier` utilize an in-memory JWKS cache. For each `issuer` a JWKS cache is maintained, and each JWK in a JWKS is selected and cached using its `kid` (key id). The JWKS for an `issuer` will be fetched once initially, and thereafter only upon key rotations (detected by the occurrence of a JWT with a `kid` that is not yet in the cache).

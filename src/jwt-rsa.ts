@@ -287,15 +287,14 @@ async function verifyDecomposedJwt(
 
   try {
     validateJwtFields(payload, options);
+    if (options.customJwtCheck) {
+      await options.customJwtCheck({ header, payload, jwk });
+    }
   } catch (err) {
     if (options.includeRawJwtInErrors && err instanceof JwtInvalidClaimError) {
       throw err.withRawJwt(decomposedJwt);
     }
     throw err;
-  }
-
-  if (options.customJwtCheck) {
-    await options.customJwtCheck({ header, payload, jwk });
   }
 
   return payload;
