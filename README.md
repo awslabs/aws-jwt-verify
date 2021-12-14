@@ -419,7 +419,36 @@ The `instanceof` check in the `catch` block above is crucial, because not all er
 
 Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid (stages 1 and 2 succeeded).
 
-Note that if you use [custom JWT checks](#custom-jwt-and-jwk-checks), you are in charge of throwing errors in your custom code. You can (optionally) subclass your errors from `JwtInvalidClaimError`, so that the raw JWT will be included on the errors you throw as well.
+Note that if you use [custom JWT checks](#custom-jwt-and-jwk-checks), you are in charge of throwing errors in your custom code. You can (optionally) subclass your errors from `JwtInvalidClaimError`, so that the raw JWT will be included on the errors you throw as well:
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { JwtInvalidClaimError } from "aws-jwt-verify/error";
+
+class CustomError extends JwtInvalidClaimError {}
+
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: "<user_pool_id>",
+  tokenUse: "access",
+  clientId: "<client_id>",
+  includeRawJwtInErrors: true,
+  customJwtCheck: ({ payload }) => {
+    if (payload.custom_claim !== "expected")
+      throw new CustomError("Invalid JWT", payload.custom_claim, "expected");
+  },
+});
+
+try {
+  const payload = await verifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // the JWT as string
+  );
+} catch (err) {
+  if (err instanceof JwtInvalidClaimError) {
+    console.error("JWT invalid:", err.rawJwt.payload);
+  }
+  throw err;
+}
+```
 
 ## The JWKS cache
 
