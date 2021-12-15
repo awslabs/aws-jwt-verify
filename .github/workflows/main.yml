@@ -20,4 +20,10 @@ jobs:
           npm run dist
       - name: test
         run: |
-          npm run test:all
+          npm run prettier:check
+          npm run lint:check
+          npm run test:unit
+          npm run test:speed
+          npm run dist
+          npm run test:install
+          npm run test:import
