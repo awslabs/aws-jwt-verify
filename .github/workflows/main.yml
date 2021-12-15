@@ -1,23 +1,29 @@
 name: test
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04 
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: "14"
       - name: install
         run: |
           npm install
           npm run dist
       - name: test
         run: |
-          npm run test:all
+          npm run prettier:check
+          npm run lint:check
+          npm run test:unit
+          npm run test:speed
+          npm run dist
+          npm run test:install
+          npm run test:import
