@@ -395,20 +395,19 @@ function verifyDecomposedJwtSync(
 
   try {
     validateJwtFields(payload, options);
+    if (options.customJwtCheck) {
+      const res = options.customJwtCheck({ header, payload, jwk });
+      if (res !== undefined && (res as unknown) instanceof Promise) {
+        throw new ParameterValidationError(
+          "Custom JWT checks must be synchronous but a promise was returned"
+        );
+      }
+    }
   } catch (err) {
     if (options.includeRawJwtInErrors && err instanceof JwtInvalidClaimError) {
       throw err.withRawJwt(decomposedJwt);
     }
     throw err;
-  }
-
-  if (options.customJwtCheck) {
-    const res = options.customJwtCheck({ header, payload, jwk });
-    if (res !== undefined && (res as unknown) instanceof Promise) {
-      throw new ParameterValidationError(
-        "Custom JWT checks must be synchronous but a promise was returned"
-      );
-    }
   }
 
   return payload;
