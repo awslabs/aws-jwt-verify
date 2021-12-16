@@ -405,9 +405,12 @@ try {
   );
 } catch (err) {
   if (err instanceof JwtInvalidClaimError) {
-    console.error("JWT invalid:", err.rawJwt.payload);
+    // You can log the payload of the raw JWT, e.g. to aid in debugging and alerting on authentication errors
+    // Be careful not to disclose information on the error reason to the the client
+    console.error("JWT invalid because:", err.message);
+    console.error("Raw JWT:", err.rawJwt.payload);
   }
-  throw err;
+  throw new Error("Unauthorized");
 }
 ```
 
@@ -446,7 +449,7 @@ try {
   if (err instanceof JwtInvalidClaimError) {
     console.error("JWT invalid:", err.rawJwt.payload);
   }
-  throw err;
+  throw new Error("Unauthorized");
 }
 ```
 
@@ -840,7 +843,7 @@ exports.handler = async (event) => {
     await jwtVerifier.verify(accessToken);
   } catch {
     return {
-      isAuthorized: False,
+      isAuthorized: false,
     };
   }
   //Proceed with additional authorization logic
