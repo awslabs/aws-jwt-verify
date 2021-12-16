@@ -9,6 +9,7 @@ import {} from "aws-jwt-verify/jwt-model";
 import {} from "aws-jwt-verify/jwt-rsa";
 import {} from "aws-jwt-verify/jwt";
 import {} from "aws-jwt-verify/safe-json-parse";
+import { JwtInvalidIssuerError } from "aws-jwt-verify/error";
 
 JwtRsaVerifier.create({
   jwksUri: "https://example.com/keys/jwks.json",
@@ -24,5 +25,5 @@ if (typeof https.fetchJson !== "function") {
   process.exit(1);
 }
 
-assertStringEquals("test foo", "foo", "foo");
+assertStringEquals("test foo", "foo", "foo", JwtInvalidIssuerError);
 console.log("ESM import succeeded!");

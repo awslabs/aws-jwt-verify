@@ -1,7 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ParameterValidationError } from "./error.js";
+import {
+  CognitoJwtInvalidClientIdError,
+  CognitoJwtInvalidGroupError,
+  CognitoJwtInvalidTokenUseError,
+  JwtInvalidClaimError,
+  ParameterValidationError,
+} from "./error.js";
 import { JwtRsaVerifierBase, JwtRsaVerifierProperties } from "./jwt-rsa.js";
 import { JwksCache, Jwks, Jwk } from "./jwk.js";
 import {
@@ -62,6 +68,13 @@ interface CognitoVerifyProperties {
     payload: JwtPayload;
     jwk: Jwk;
   }) => Promise<void> | void;
+  /**
+   * If you want to peek inside the invalid JWT when verification fails, set `includeRawJwtInErrors` to true.
+   * Then, if an error is thrown during verification of the invalid JWT (e.g. the JWT is invalid because it is expired),
+   * the Error object will include a property `rawJwt`, with the raw decoded contents of the **invalid** JWT.
+   * The `rawJwt` will only be included in the Error object, if the JWT's signature can at least be verified.
+   */
+  includeRawJwtInErrors?: boolean;
 }
 
 /** Type for Cognito JWT verifier properties, for a single User Pool */
@@ -145,22 +158,30 @@ function validateCognitoJwtFields(
     assertStringArraysOverlap(
       "Cognito group",
       payload["cognito:groups"],
-      options.groups
+      options.groups,
+      CognitoJwtInvalidGroupError
     );
   }
 
   // Check token use
-  assertStringArrayContainsString("Token use", payload.token_use, [
-    "id",
-    "access",
-  ]);
+  assertStringArrayContainsString(
+    "Token use",
+    payload.token_use,
+    ["id", "access"],
+    CognitoJwtInvalidTokenUseError
+  );
   if (options.tokenUse !== null) {
     if (options.tokenUse === undefined) {
       throw new ParameterValidationError(
         "tokenUse must be provided or set to null explicitly"
       );
     }
-    assertStringEquals("Token use", payload.token_use, options.tokenUse);
+    assertStringEquals(
+      "Token use",
+      payload.token_use,
+      options.tokenUse,
+      CognitoJwtInvalidTokenUseError
+    );
   }
 
   // Check clientId aka audience
@@ -174,13 +195,15 @@ function validateCognitoJwtFields(
       assertStringArrayContainsString(
         'Client ID ("audience")',
         payload.aud,
-        options.clientId
+        options.clientId,
+        CognitoJwtInvalidClientIdError
       );
     } else {
       assertStringArrayContainsString(
         "Client ID",
         payload.client_id,
-        options.clientId
+        options.clientId,
+        CognitoJwtInvalidClientIdError
       );
     }
   }
@@ -289,16 +312,26 @@ export class CognitoJwtVerifier<
    * @returns The payload of the JWT––if the JWT is valid, otherwise an error is thrown
    */
   public verifySync<T extends SpecificVerifyProperties>(
-    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
+    ...[jwt, properties]: CognitoVerifyParameters<SpecificVerifyProperties>
   ): CognitoIdOrAccessTokenPayload<IssuerConfig, T> {
-    const payload = super.verifySync(...args);
-    const issuerConfig = this.getIssuerConfig(payload.iss);
-    const verifyProperties = {
-      ...issuerConfig,
-      ...args[1],
-    };
-    validateCognitoJwtFields(payload, verifyProperties);
-    return payload as CognitoIdOrAccessTokenPayload<IssuerConfig, T>;
+    const { decomposedJwt, jwksUri, verifyProperties } =
+      this.getVerifyParameters(jwt, properties);
+    this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
+    try {
+      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
+    } catch (err) {
+      if (
+        verifyProperties.includeRawJwtInErrors &&
+        err instanceof JwtInvalidClaimError
+      ) {
+        throw err.withRawJwt(decomposedJwt);
+      }
+      throw err;
+    }
+    return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
+      IssuerConfig,
+      T
+    >;
   }
 
   /**
@@ -311,16 +344,26 @@ export class CognitoJwtVerifier<
    * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
    */
   public async verify<T extends SpecificVerifyProperties>(
-    ...args: CognitoVerifyParameters<SpecificVerifyProperties>
+    ...[jwt, properties]: CognitoVerifyParameters<SpecificVerifyProperties>
   ): Promise<CognitoIdOrAccessTokenPayload<IssuerConfig, T>> {
-    const payload = await super.verify(...args);
-    const issuerConfig = this.getIssuerConfig(payload.iss);
-    const verifyProperties = {
-      ...issuerConfig,
-      ...args[1],
-    };
-    validateCognitoJwtFields(payload, verifyProperties);
-    return payload as CognitoIdOrAccessTokenPayload<IssuerConfig, T>;
+    const { decomposedJwt, jwksUri, verifyProperties } =
+      this.getVerifyParameters(jwt, properties);
+    await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
+    try {
+      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
+    } catch (err) {
+      if (
+        verifyProperties.includeRawJwtInErrors &&
+        err instanceof JwtInvalidClaimError
+      ) {
+        throw err.withRawJwt(decomposedJwt);
+      }
+      throw err;
+    }
+    return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
+      IssuerConfig,
+      T
+    >;
   }
 
   /**
@@ -335,17 +378,17 @@ export class CognitoJwtVerifier<
    * @returns void
    */
   public cacheJwks(
-    ...args: MultiIssuer extends false
+    ...[jwks, userPoolId]: MultiIssuer extends false
       ? [jwks: Jwks, userPoolId?: string]
       : [jwks: Jwks, userPoolId: string]
   ): void {
     let issuer: string | undefined;
-    if (args[1] !== undefined) {
-      issuer = CognitoJwtVerifier.parseUserPoolId(args[1]).issuer;
+    if (userPoolId !== undefined) {
+      issuer = CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer;
     } else if (this.expectedIssuers.length > 1) {
       throw new ParameterValidationError("userPoolId must be provided");
     }
     const issuerConfig = this.getIssuerConfig(issuer);
-    super.cacheJwks(args[0], issuerConfig.issuer);
+    super.cacheJwks(jwks, issuerConfig.issuer);
   }
 }

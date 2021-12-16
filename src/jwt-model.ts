@@ -22,6 +22,11 @@ interface JwtPayloadStandardFields {
 
 export type JwtPayload = JwtPayloadStandardFields & JsonObject;
 
+export interface Jwt {
+  header: JwtHeader;
+  payload: JwtPayload;
+}
+
 export type CognitoIdOrAccessTokenPayload<IssuerConfig, VerifyProps> =
   VerifyProps extends { tokenUse: null }
     ? CognitoJwtPayload
@@ -79,3 +84,8 @@ interface CognitoAccessTokenFields extends CognitoJwtFields {
 }
 
 export type CognitoAccessTokenPayload = CognitoAccessTokenFields & JsonObject;
+
+export interface CognitoJwt {
+  header: JwtHeader;
+  payload: CognitoAccessTokenPayload | CognitoIdTokenPayload;
+}

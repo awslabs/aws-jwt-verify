@@ -9,15 +9,19 @@ import {
 } from "./test-util";
 import { decomposeJwt } from "../../src/jwt";
 import {
-  JwtInvalidSignatureError,
-  JwtInvalidClaimError,
-  ParameterValidationError,
-  JwtParseError,
+  JwkInvalidUseError,
   JwtExpiredError,
+  JwtInvalidAudienceError,
+  JwtInvalidClaimError,
+  JwtInvalidIssuerError,
+  JwtInvalidScopeError,
+  JwtInvalidSignatureAlgorithmError,
+  JwtInvalidSignatureError,
   JwtNotBeforeError,
-  AssertionError,
-  KidNotFoundInJwksError,
+  JwtParseError,
   JwtWithoutValidKidError,
+  KidNotFoundInJwksError,
+  ParameterValidationError,
 } from "../../src/error";
 import {
   JwtRsaVerifier,
@@ -116,7 +120,7 @@ describe("unit tests jwt verifier", () => {
         );
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience });
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
         expect(statement).toThrow(
           "JWT signature algorithm not allowed: RS512. Expected: RS256"
         );
@@ -199,7 +203,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Audience not allowed: actualAudience. Expected: expectedAudience"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidAudienceError);
       });
       test("missing issuer", () => {
         const signedJwt = signJwt({}, {}, keypair.privateKey);
@@ -209,7 +213,7 @@ describe("unit tests jwt verifier", () => {
             issuer: "expectedIssuer",
           });
         expect(statement).toThrow("Missing Issuer. Expected: expectedIssuer");
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidIssuerError);
       });
     });
 
@@ -399,18 +403,23 @@ describe("unit tests jwt verifier", () => {
     describe("expiry", () => {
       test("expired jwt", () => {
         const exp = new Date();
-        const signedJwt = signJwt(
-          {},
-          { exp: exp.valueOf() / 1000 },
-          keypair.privateKey
-        );
+        const payload = { exp: exp.valueOf() / 1000 };
+        const signedJwt = signJwt({}, payload, keypair.privateKey);
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
             audience: null,
             issuer: null,
           });
+        expect.assertions(3);
         expect(statement).toThrow(`Token expired at ${exp.toISOString()}`);
         expect(statement).toThrow(JwtExpiredError);
+        try {
+          statement();
+        } catch (err) {
+          if (err instanceof JwtInvalidClaimError) {
+            expect(err.failedAssertion.actual).toEqual(payload.exp);
+          }
+        }
       });
       test("jwt with nonsense exp", () => {
         const signedJwt = signJwt({}, { exp: "Garbage" }, keypair.privateKey);
@@ -492,6 +501,13 @@ describe("unit tests jwt verifier", () => {
           });
         expect(statement).toThrow("JWT payload nbf claim is not a number");
         expect(statement).toThrow(JwtParseError);
+        try {
+          statement();
+        } catch (err) {
+          if (err instanceof JwtInvalidClaimError) {
+            expect(err.failedAssertion.actual).toEqual(nbf);
+          }
+        }
       });
       test("just enough graceSeconds", () => {
         const nbf = new Date();
@@ -572,7 +588,15 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Scope not allowed: blah, blah2. Expected: blah3"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidScopeError);
+        try {
+          statement();
+        } catch (err) {
+          if (err instanceof JwtInvalidClaimError) {
+            expect(err.failedAssertion.actual).toEqual(["blah", "blah2"]);
+            expect(err.failedAssertion.expected).toEqual("blah3");
+          }
+        }
       });
       test("error flow allowing mulitple scopes", () => {
         const statement = () =>
@@ -584,7 +608,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Scope not allowed: blah, blah2. Expected one of: blah3, blah4"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidScopeError);
       });
       test("error flow jwt without scope", () => {
         const jwtWithoutScope = signJwt(
@@ -599,7 +623,7 @@ describe("unit tests jwt verifier", () => {
             scope: "blah3",
           });
         expect(statement).toThrow("Missing Scope. Expected: blah3");
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidScopeError);
       });
     });
 
@@ -673,7 +697,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           `JWT signature algorithm not allowed: ${keypair.jwk.alg}. Expected: ${wrongJwk.alg}`
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("missing signature algorithm", () => {
         const issuer = "https://example.com";
@@ -688,7 +712,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Missing JWT signature algorithm. Expected: RS256"
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("wrong JWK use", () => {
         const wrongJwk = publicKeyToJwk(keypair.publicKey, { use: "notsig" });
@@ -704,7 +728,100 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           `JWK use not allowed: ${wrongJwk.use}. Expected: sig`
         );
-        expect(statement).toThrow(AssertionError);
+        expect(statement).toThrow(JwkInvalidUseError);
+      });
+    });
+    describe("includeJwtInErrors", () => {
+      test("expired jwt with flag set", () => {
+        const exp = new Date();
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = { hello: "world", exp: exp.valueOf() / 1000 };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+            includeRawJwtInErrors: true,
+          });
+        expect.assertions(2);
+        expect(statement).toThrow(JwtExpiredError);
+        try {
+          statement();
+        } catch (err) {
+          expect((err as JwtInvalidClaimError).rawJwt).toMatchObject({
+            header,
+            payload,
+          });
+        }
+      });
+      test("not included if flag not set", () => {
+        const signedJwt = signJwt({}, {}, keypair.privateKey, false);
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect.assertions(1);
+        try {
+          statement();
+        } catch (err) {
+          expect((err as JwtInvalidClaimError).rawJwt).toBe(undefined);
+        }
+      });
+      test("not included if flag set to false", () => {
+        const signedJwt = signJwt({}, {}, keypair.privateKey, false);
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+            includeRawJwtInErrors: false,
+          });
+        expect.assertions(1);
+        try {
+          statement();
+        } catch (err) {
+          expect((err as JwtInvalidClaimError).rawJwt).toBe(undefined);
+        }
+      });
+      test("never included on invalid signature", () => {
+        const signedJwt = signJwt({}, {}, keypair.privateKey, false);
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+            includeRawJwtInErrors: true,
+          });
+        expect.assertions(1);
+        try {
+          statement();
+        } catch (err) {
+          expect((err as JwtInvalidClaimError).rawJwt).toBe(undefined);
+        }
+      });
+      test("included on custom errors too if subclassed from FailedAssertionError", () => {
+        class CustomError extends JwtInvalidClaimError {}
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = { hello: "world" };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+            includeRawJwtInErrors: true,
+            customJwtCheck: () => {
+              throw new CustomError("Oops", "actualValue");
+            },
+          });
+        expect.assertions(2);
+        expect(statement).toThrow(CustomError);
+        try {
+          statement();
+        } catch (err) {
+          expect((err as CustomError).rawJwt).toMatchObject({
+            header,
+            payload,
+          });
+        }
       });
     });
   });
@@ -728,6 +845,84 @@ describe("unit tests jwt verifier", () => {
           audience,
         })
       ).resolves.toMatchObject({ hello: "world" });
+    });
+    describe("includeJwtInErrors", () => {
+      test("expired jwt and includeRawJwtInErrors", async () => {
+        const exp = new Date();
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = { hello: "world", exp: exp.valueOf() / 1000 };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const statement = () =>
+          verifyJwt(
+            signedJwt,
+            "https://example.com/some/path/to/jwks.json",
+            {
+              audience: null,
+              issuer: null,
+              includeRawJwtInErrors: true,
+            },
+            async () => Promise.resolve(keypair.jwk)
+          );
+        expect.assertions(2);
+        await expect(statement).rejects.toThrow(JwtExpiredError);
+        return statement().catch((err) => {
+          expect((err as JwtInvalidClaimError).rawJwt).toMatchObject({
+            header,
+            payload,
+          });
+        });
+      });
+      test("expired jwt and NOT includeRawJwtInErrors", async () => {
+        const exp = new Date();
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = { hello: "world", exp: exp.valueOf() / 1000 };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const statement = () =>
+          verifyJwt(
+            signedJwt,
+            "https://example.com/some/path/to/jwks.json",
+            {
+              audience: null,
+              issuer: null,
+            },
+            async () => Promise.resolve(keypair.jwk)
+          );
+        expect.assertions(2);
+        await expect(statement).rejects.toThrow(JwtExpiredError);
+        return statement().catch((err) => {
+          expect((err as JwtInvalidClaimError).rawJwt).toBe(undefined);
+        });
+      });
+      test("included on custom errors too if subclassed from FailedAssertionError", async () => {
+        class CustomError extends JwtInvalidClaimError {}
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = { hello: "world" };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const statement = () =>
+          verifyJwt(
+            signedJwt,
+            "https://example.com/some/path/to/jwks.json",
+            {
+              audience: null,
+              issuer: null,
+              includeRawJwtInErrors: true,
+              customJwtCheck: () => {
+                throw new CustomError("Oops", "actualValue");
+              },
+            },
+            async () => Promise.resolve(keypair.jwk)
+          );
+        expect.assertions(2);
+        await expect(statement).rejects.toThrow(CustomError);
+        try {
+          await statement();
+        } catch (err) {
+          expect((err as CustomError).rawJwt).toMatchObject({
+            header,
+            payload,
+          });
+        }
+      });
     });
   });
 
@@ -782,7 +977,7 @@ describe("unit tests jwt verifier", () => {
         expect.assertions(2);
         const statement = () => verifier.verify(signedJwt);
         expect(statement).rejects.toThrow("iss");
-        expect(statement).rejects.toThrow(JwtInvalidClaimError);
+        expect(statement).rejects.toThrow(JwtInvalidIssuerError);
       });
       test("custom JWKS cache", () => {
         class CustomJwksCache implements JwksCache {
@@ -1010,7 +1205,7 @@ describe("unit tests jwt verifier", () => {
         verifier.cacheJwks(keypair.jwks);
         const statement = () => verifier.verifySync(signedJwt);
         expect(statement).toThrow("iss");
-        expect(statement).toThrow(JwtInvalidClaimError);
+        expect(statement).toThrow(JwtInvalidIssuerError);
       });
       test("jwt without kid claim", () => {
         const signedJwt = signJwt(

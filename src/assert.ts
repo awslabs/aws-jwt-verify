@@ -3,7 +3,7 @@
 //
 // Utilities to assert that supplied values match with expected values
 
-import { AssertionError } from "./error.js";
+import { AssertionErrorConstructor, FailedAssertionError } from "./error.js";
 
 /**
  * Assert value is a non-empty string and equal to the expected value,
@@ -12,21 +12,33 @@ import { AssertionError } from "./error.js";
  * @param name - Name for the value being checked
  * @param actual - The value to check
  * @param expected - The expected value
+ * @param errorConstructor - Constructor for the concrete error to be thrown
  */
 export function assertStringEquals(
   name: string,
   actual: unknown,
-  expected: string
+  expected: string,
+  errorConstructor: AssertionErrorConstructor = FailedAssertionError
 ): void {
   if (!actual) {
-    throw new AssertionError(`Missing ${name}. Expected: ${expected}`);
+    throw new errorConstructor(
+      `Missing ${name}. Expected: ${expected}`,
+      actual,
+      expected
+    );
   }
   if (typeof actual !== "string") {
-    throw new AssertionError(`${name} is not of type string`);
+    throw new errorConstructor(
+      `${name} is not of type string`,
+      actual,
+      expected
+    );
   }
   if (expected !== actual) {
-    throw new AssertionError(
-      `${name} not allowed: ${actual}. Expected: ${expected}`
+    throw new errorConstructor(
+      `${name} not allowed: ${actual}. Expected: ${expected}`,
+      actual,
+      expected
     );
   }
 }
@@ -38,22 +50,32 @@ export function assertStringEquals(
  * @param name - Name for the value being checked
  * @param actual - The value to check
  * @param expected - The array of expected values. For your convenience you can provide
+ * @param errorConstructor - Constructor for the concrete error to be thrown
  * a string here as well, which will mean an array with just that string
  */
 export function assertStringArrayContainsString(
   name: string,
   actual: unknown,
-  expected: string | string[]
+  expected: string | string[],
+  errorConstructor: AssertionErrorConstructor = FailedAssertionError
 ): void {
   if (!actual) {
-    throw new AssertionError(
-      `Missing ${name}. ${expectationMessage(expected)}`
+    throw new errorConstructor(
+      `Missing ${name}. ${expectationMessage(expected)}`,
+
+      actual,
+      expected
     );
   }
   if (typeof actual !== "string") {
-    throw new AssertionError(`${name} is not of type string`);
+    throw new errorConstructor(
+      `${name} is not of type string`,
+
+      actual,
+      expected
+    );
   }
-  return assertStringArraysOverlap(name, actual, expected);
+  return assertStringArraysOverlap(name, actual, expected, errorConstructor);
 }
 
 /**
@@ -65,15 +87,19 @@ export function assertStringArrayContainsString(
  * as an array with just that string)
  * @param expected - The array of expected values. For your convenience you can provide
  * a string here as well, which will mean an array with just that string
+ * @param errorConstructor - Constructor for the concrete error to be thrown
  */
 export function assertStringArraysOverlap(
   name: string,
   actual: unknown,
-  expected: string | string[]
+  expected: string | string[],
+  errorConstructor: AssertionErrorConstructor = FailedAssertionError
 ): void {
   if (!actual) {
-    throw new AssertionError(
-      `Missing ${name}. ${expectationMessage(expected)}`
+    throw new errorConstructor(
+      `Missing ${name}. ${expectationMessage(expected)}`,
+      actual,
+      expected
     );
   }
   const expectedAsSet = new Set(
@@ -83,21 +109,25 @@ export function assertStringArraysOverlap(
     actual = [actual];
   }
   if (!Array.isArray(actual)) {
-    throw new AssertionError(`${name} is not an array`);
+    throw new errorConstructor(`${name} is not an array`, actual, expected);
   }
   const overlaps = actual.some((actualItem) => {
     if (typeof actualItem !== "string") {
-      throw new AssertionError(
-        `${name} includes elements that are not of type string`
+      throw new errorConstructor(
+        `${name} includes elements that are not of type string`,
+        actual,
+        expected
       );
     }
     return expectedAsSet.has(actualItem);
   });
   if (!overlaps) {
-    throw new AssertionError(
+    throw new errorConstructor(
       `${name} not allowed: ${actual.join(", ")}. ${expectationMessage(
         expected
-      )}`
+      )}`,
+      actual,
+      expected
     );
   }
 }

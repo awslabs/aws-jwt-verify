@@ -7,7 +7,12 @@ import {
 import { decomposeJwt } from "../../src/jwt";
 import { JwksCache, Jwks } from "../../src/jwk";
 import { CognitoJwtVerifier } from "../../src/cognito-verifier";
-import { AssertionError, ParameterValidationError } from "../../src/error";
+import {
+  ParameterValidationError,
+  CognitoJwtInvalidTokenUseError,
+  CognitoJwtInvalidGroupError,
+  JwtInvalidClaimError,
+} from "../../src/error";
 
 describe("unit tests cognito verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
@@ -54,6 +59,149 @@ describe("unit tests cognito verifier", () => {
           payload: decomposedJwt.payload,
           jwk: keypair.jwk,
         });
+      });
+    });
+    describe("includeRawJwtInErrors", () => {
+      test("verify - flag set at statement level", () => {
+        const userPoolId = "us-east-1_123456";
+        const { issuer } = CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = {
+          hello: "world",
+          iss: issuer,
+          token_use: "access",
+        };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        const statement = () =>
+          cognitoVerifier.verify(signedJwt, {
+            clientId: null,
+            tokenUse: "id",
+            includeRawJwtInErrors: true,
+          });
+        expect.assertions(2);
+        expect(statement).rejects.toThrow(CognitoJwtInvalidTokenUseError);
+        return statement().catch((err) => {
+          expect((err as JwtInvalidClaimError).rawJwt).toMatchObject({
+            header,
+            payload,
+          });
+        });
+      });
+      test("verify - flag set at verifier level", () => {
+        const userPoolId = "us-east-1_123456";
+        const { issuer } = CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = {
+          hello: "world",
+          iss: issuer,
+          token_use: "access",
+        };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+          includeRawJwtInErrors: true,
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        const statement = () =>
+          cognitoVerifier.verify(signedJwt, {
+            clientId: null,
+            tokenUse: "id",
+          });
+        expect.assertions(2);
+        expect(statement).rejects.toThrow(CognitoJwtInvalidTokenUseError);
+        return statement().catch((err) => {
+          expect((err as JwtInvalidClaimError).rawJwt).toMatchObject({
+            header,
+            payload,
+          });
+        });
+      });
+      test("verify - flag NOT set", () => {
+        const userPoolId = "us-east-1_123456";
+        const { issuer } = CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = {
+          hello: "world",
+          iss: issuer,
+          token_use: "access",
+        };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        const statement = () =>
+          cognitoVerifier.verify(signedJwt, {
+            clientId: null,
+            tokenUse: "id",
+          });
+        expect.assertions(2);
+        expect(statement).rejects.toThrow(CognitoJwtInvalidTokenUseError);
+        return statement().catch((err) => {
+          expect((err as JwtInvalidClaimError).rawJwt).toBe(undefined);
+        });
+      });
+      test("verifySync - flag set at verifier level", () => {
+        const userPoolId = "us-east-1_123456";
+        const { issuer } = CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = {
+          hello: "world",
+          iss: issuer,
+          token_use: "access",
+        };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+          includeRawJwtInErrors: true,
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        const statement = () =>
+          cognitoVerifier.verifySync(signedJwt, {
+            clientId: null,
+            tokenUse: "id",
+          });
+        expect.assertions(2);
+        expect(statement).toThrow(CognitoJwtInvalidTokenUseError);
+        try {
+          statement();
+        } catch (err) {
+          expect((err as JwtInvalidClaimError).rawJwt).toMatchObject({
+            header,
+            payload,
+          });
+        }
+      });
+      test("verifySync - flag NOT set", () => {
+        const userPoolId = "us-east-1_123456";
+        const { issuer } = CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        const header = { alg: "RS256", kid: keypair.jwk.kid };
+        const payload = {
+          hello: "world",
+          iss: issuer,
+          token_use: "access",
+        };
+        const signedJwt = signJwt(header, payload, keypair.privateKey);
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        const statement = () =>
+          cognitoVerifier.verifySync(signedJwt, {
+            clientId: null,
+            tokenUse: "id",
+          });
+        expect.assertions(2);
+        expect(statement).toThrow(CognitoJwtInvalidTokenUseError);
+        try {
+          statement();
+        } catch (err) {
+          expect((err as JwtInvalidClaimError).rawJwt).toEqual(undefined);
+        }
       });
     });
     describe("verifySync", () => {
@@ -103,7 +251,7 @@ describe("unit tests cognito verifier", () => {
         });
         expect(() =>
           verifier.verifySync(signedIdJwt, { tokenUse: "access" })
-        ).toThrow(AssertionError);
+        ).toThrow(CognitoJwtInvalidTokenUseError);
       });
       test("access token check", () => {
         const verifier = CognitoJwtVerifier.create({
@@ -128,7 +276,7 @@ describe("unit tests cognito verifier", () => {
         });
         expect(() =>
           verifier.verifySync(signedAccessJwt, { tokenUse: "id" })
-        ).toThrow(AssertionError);
+        ).toThrow(CognitoJwtInvalidTokenUseError);
       });
       test("missing token use", () => {
         const verifier = CognitoJwtVerifier.create({
@@ -150,7 +298,7 @@ describe("unit tests cognito verifier", () => {
           "Missing Token use. Expected one of: id, access"
         );
         expect(() => verifier.verifySync(signedAccessJwt)).toThrow(
-          AssertionError
+          CognitoJwtInvalidTokenUseError
         );
       });
       test("Cognito group check works", () => {
@@ -197,14 +345,18 @@ describe("unit tests cognito verifier", () => {
           token_use: "access",
           hello: "world",
         });
-        expect(() => verifier.verifySync(userJwt)).toThrow(AssertionError);
+        expect(() => verifier.verifySync(userJwt)).toThrow(
+          CognitoJwtInvalidGroupError
+        );
         expect(
           verifier.verifySync(userJwt, { groups: ["users"] })
         ).toMatchObject({
           token_use: "access",
           hello: "world",
         });
-        expect(() => verifier.verifySync(noGroupJwt)).toThrow(AssertionError);
+        expect(() => verifier.verifySync(noGroupJwt)).toThrow(
+          CognitoJwtInvalidGroupError
+        );
       });
       test("clientId undefined", () => {
         const verifier = CognitoJwtVerifier.create({

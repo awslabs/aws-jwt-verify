@@ -10,6 +10,9 @@ import { safeJsonParse, isJsonObject } from "./safe-json-parse.js";
 import {
   JwtExpiredError,
   JwtNotBeforeError,
+  JwtInvalidIssuerError,
+  JwtInvalidAudienceError,
+  JwtInvalidScopeError,
   JwtParseError,
   ParameterValidationError,
 } from "./error.js";
@@ -146,6 +149,8 @@ export function decomposeJwt(jwt: unknown): {
   };
 }
 
+export type DecomposedJwt = ReturnType<typeof decomposeJwt>;
+
 /**
  * Validate JWT payload fields. Throws an error in case there's any validation issue.
  *
@@ -166,7 +171,8 @@ export function validateJwtFields(
   if (payload.exp !== undefined) {
     if (payload.exp + (options.graceSeconds ?? 0) < Date.now() / 1000) {
       throw new JwtExpiredError(
-        `Token expired at ${new Date(payload.exp * 1000).toISOString()}`
+        `Token expired at ${new Date(payload.exp * 1000).toISOString()}`,
+        payload.exp
       );
     }
   }
@@ -177,7 +183,8 @@ export function validateJwtFields(
       throw new JwtNotBeforeError(
         `Token can't be used before ${new Date(
           payload.nbf * 1000
-        ).toISOString()}`
+        ).toISOString()}`,
+        payload.nbf
       );
     }
   }
@@ -189,7 +196,12 @@ export function validateJwtFields(
         "issuer must be provided or set to null explicitly"
       );
     }
-    assertStringArrayContainsString("Issuer", payload.iss, options.issuer);
+    assertStringArrayContainsString(
+      "Issuer",
+      payload.iss,
+      options.issuer,
+      JwtInvalidIssuerError
+    );
   }
 
   // Check audience
@@ -199,7 +211,12 @@ export function validateJwtFields(
         "audience must be provided or set to null explicitly"
       );
     }
-    assertStringArraysOverlap("Audience", payload.aud, options.audience);
+    assertStringArraysOverlap(
+      "Audience",
+      payload.aud,
+      options.audience,
+      JwtInvalidAudienceError
+    );
   }
 
   // Check scope
@@ -207,7 +224,8 @@ export function validateJwtFields(
     assertStringArraysOverlap(
       "Scope",
       payload.scope?.split(" "),
-      options.scope
+      options.scope,
+      JwtInvalidScopeError
     );
   }
 }
