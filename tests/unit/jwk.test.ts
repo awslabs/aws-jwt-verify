@@ -195,7 +195,7 @@ describe("unit tests jwk", () => {
     }
     expect(error).toBeInstanceOf(KidNotFoundInJwksError);
     expect(fetcher.fetch).toHaveBeenCalledTimes(2);
-    jwksCache.penaltyBox.release(jwksUri);
+    penaltyBox.release(jwksUri);
   });
 
   describe("validate", () => {
