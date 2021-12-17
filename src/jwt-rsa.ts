@@ -27,12 +27,12 @@ import {
   JwkInvalidUseError,
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
+  JwtInvalidSignatureAlgorithmError,
   JwtInvalidSignatureError,
   KidNotFoundInJwksError,
   ParameterValidationError,
 } from "./error.js";
 import { JsonObject } from "./safe-json-parse.js";
-import { JwtInvalidSignatureAlgorithmError } from "./error.js";
 
 /** Interface for JWT verification properties */
 interface VerifyProperties {
