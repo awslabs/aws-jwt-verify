@@ -157,17 +157,7 @@ export function assertIsNotPromise(
   actual: unknown,
   errorFactory: () => Error
 ): void {
-  if (!actual) {
-    return;
+  if (actual && typeof (actual as { then?: unknown }).then === "function") {
+    throw errorFactory();
   }
-  if (typeof actual !== "object") {
-    return;
-  }
-  if (!(actual as { then: unknown }).then) {
-    return;
-  }
-  if (typeof (actual as { then: unknown }).then !== "function") {
-    return;
-  }
-  throw errorFactory();
 }
