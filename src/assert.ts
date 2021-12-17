@@ -146,3 +146,18 @@ function expectationMessage(expected: string | string[]) {
   }
   return `Expected: ${expected}`;
 }
+
+/**
+ * Assert value is not a promise, or throw an error otherwise
+ *
+ * @param actual - The value to check
+ * @param errorFactory - Function that returns the error to be thrown
+ */
+export function assertIsNotPromise(
+  actual: unknown,
+  errorFactory: () => Error
+): void {
+  if (actual && typeof (actual as { then?: unknown }).then === "function") {
+    throw errorFactory();
+  }
+}

@@ -1,8 +1,9 @@
 import { FailedAssertionError } from "../../src/error";
 import {
-  assertStringEquals,
+  assertIsNotPromise,
   assertStringArrayContainsString,
   assertStringArraysOverlap,
+  assertStringEquals,
 } from "../../src/assert";
 
 class CustomError extends FailedAssertionError {}
@@ -84,5 +85,16 @@ describe("unit tests assert", () => {
     expect(statement).toThrow(
       "Test includes elements that are not of type string"
     );
+  });
+
+  test("assert is not promise detects non-promise correctly", () => {
+    const errorFactory = () => new Error("You're passing a promise");
+    expect(assertIsNotPromise(null, errorFactory)).toEqual(undefined);
+    expect(assertIsNotPromise(() => {}, errorFactory)).toEqual(undefined);
+    expect(assertIsNotPromise([], errorFactory)).toEqual(undefined);
+    expect(assertIsNotPromise({ a: 1 }, errorFactory)).toEqual(undefined);
+    expect(
+      assertIsNotPromise({ then: "not a function" }, errorFactory)
+    ).toEqual(undefined);
   });
 });

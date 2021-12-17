@@ -15,6 +15,7 @@ import {
 } from "./jwk.js";
 import { constructPublicKeyInDerFormat } from "./asn1.js";
 import {
+  assertIsNotPromise,
   assertStringArrayContainsString,
   assertStringEquals,
 } from "./assert.js";
@@ -397,11 +398,13 @@ function verifyDecomposedJwtSync(
     validateJwtFields(payload, options);
     if (options.customJwtCheck) {
       const res = options.customJwtCheck({ header, payload, jwk });
-      if (res !== undefined && (res as unknown) instanceof Promise) {
-        throw new ParameterValidationError(
-          "Custom JWT checks must be synchronous but a promise was returned"
-        );
-      }
+      assertIsNotPromise(
+        res,
+        () =>
+          new ParameterValidationError(
+            "Custom JWT checks must be synchronous but a promise was returned"
+          )
+      );
     }
   } catch (err) {
     if (options.includeRawJwtInErrors && err instanceof JwtInvalidClaimError) {
