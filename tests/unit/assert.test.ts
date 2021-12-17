@@ -87,6 +87,15 @@ describe("unit tests assert", () => {
     );
   });
 
+  test("assert overlaps requires array of strings - with default error", () => {
+    const statement = () =>
+      assertStringArraysOverlap("Test", [123 as any], ["two"]);
+    expect(statement).toThrow(FailedAssertionError);
+    expect(statement).toThrow(
+      "Test includes elements that are not of type string"
+    );
+  });
+
   test("assert is not promise detects non-promise correctly", () => {
     const errorFactory = () => new Error("You're passing a promise");
     expect(assertIsNotPromise(null, errorFactory)).toEqual(undefined);

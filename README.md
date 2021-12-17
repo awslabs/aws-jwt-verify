@@ -689,9 +689,6 @@ class CustomPenaltyBox implements PenaltyBox {
     // implement something better
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }
-  public release(jwksUri: string, kid?: string) {
-    // implement
-  }
   public registerFailedAttempt(jwksUri: string, kid: string) {
     // implement
   }
