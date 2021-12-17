@@ -866,16 +866,16 @@ describe("unit tests jwt verifier", () => {
         expect.assertions(2);
         await expect(statement).rejects.toThrow(JwtExpiredError);
         return statement().catch((err) => {
-          expect((err as JwtInvalidClaimError).rawJwt).toMatchObject({
+          expect((err as JwtInvalidClaimError).rawJwt).toEqual({
             header,
             payload,
           });
         });
       });
       test("expired jwt and NOT includeRawJwtInErrors", async () => {
-        const exp = new Date();
+        const exp = Date.now() / 1000; // expires NOW
         const header = { alg: "RS256", kid: keypair.jwk.kid };
-        const payload = { hello: "world", exp: exp.valueOf() / 1000 };
+        const payload = { hello: "world", exp };
         const signedJwt = signJwt(header, payload, keypair.privateKey);
         const statement = () =>
           verifyJwt(
@@ -896,7 +896,8 @@ describe("unit tests jwt verifier", () => {
       test("included on custom errors too if subclassed from FailedAssertionError", async () => {
         class CustomError extends JwtInvalidClaimError {}
         const header = { alg: "RS256", kid: keypair.jwk.kid };
-        const payload = { hello: "world" };
+        const exp = Date.now() / 1000 + 10; // Expires in 10 secs
+        const payload = { hello: "world", exp };
         const signedJwt = signJwt(header, payload, keypair.privateKey);
         const statement = () =>
           verifyJwt(
@@ -917,7 +918,7 @@ describe("unit tests jwt verifier", () => {
         try {
           await statement();
         } catch (err) {
-          expect((err as CustomError).rawJwt).toMatchObject({
+          expect((err as CustomError).rawJwt).toEqual({
             header,
             payload,
           });

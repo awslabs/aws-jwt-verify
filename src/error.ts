@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DecomposedJwt } from "./jwt.js";
+import { JwtHeader, JwtPayload } from "./jwt-model.js";
 
 /**
  * Base Error for all other errors in this file
@@ -63,13 +63,21 @@ export class JwtInvalidSignatureError extends JwtBaseError {}
 
 export class JwtInvalidSignatureAlgorithmError extends FailedAssertionError {}
 
+interface RawJwt {
+  header: JwtHeader;
+  payload: JwtPayload;
+}
+
 export abstract class JwtInvalidClaimError extends FailedAssertionError {
-  public rawJwt?: DecomposedJwt;
+  public rawJwt?: RawJwt;
   public withRawJwt<T extends JwtInvalidClaimError>(
     this: T,
-    rawJwt: DecomposedJwt
+    { header, payload }: RawJwt
   ): T {
-    this.rawJwt = rawJwt;
+    this.rawJwt = {
+      header,
+      payload,
+    };
     return this;
   }
 }
