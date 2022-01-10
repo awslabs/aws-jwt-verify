@@ -154,7 +154,7 @@ type JwtRsaVerifierMultiIssuer<
  * @param payloadB64 The JWT payload in base64 encoded form
  * @param signatureB64 The JWT signature in base64 encoded form
  * @param jwk The JWK with which the JWT was signed
- * @param jwkToKeyObjectTransformer Function to transform the JWK into a NodeJS native key object
+ * @param jwkToKeyObjectTransformer Function to transform the JWK into a Node.js native key object
  * @returns void
  */
 function verifySignatureAgainstJwk(
@@ -210,7 +210,7 @@ function verifySignatureAgainstJwk(
  * @param jwksUri The JWKS URI, where the JWKS can be fetched from
  * @param options Verification options
  * @param jwkFetcher A function that can execute the fetch of the JWKS from the JWKS URI
- * @param jwkToKeyObjectTransformer A function that can transform a JWK into a NodeJS native key object
+ * @param jwkToKeyObjectTransformer A function that can transform a JWK into a Node.js native key object
  * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
  */
 export async function verifyJwt(
@@ -247,7 +247,7 @@ export async function verifyJwt(
  * @param jwksUri The JWKS URI, where the JWKS can be fetched from
  * @param options Verification options
  * @param jwkFetcher A function that can execute the fetch of the JWKS from the JWKS URI
- * @param jwkToKeyObjectTransformer A function that can transform a JWK into a NodeJS native key object
+ * @param jwkToKeyObjectTransformer A function that can transform a JWK into a Node.js native key object
  * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
  */
 async function verifyDecomposedJwt(
@@ -307,7 +307,7 @@ async function verifyDecomposedJwt(
  * @param jwt The JWT
  * @param jwkOrJwks The JWKS that includes the right JWK (indexed by kid). Alternatively, provide the right JWK directly
  * @param options Verification options
- * @param jwkToKeyObjectTransformer A function that can transform a JWK into a NodeJS native key object
+ * @param jwkToKeyObjectTransformer A function that can transform a JWK into a Node.js native key object
  * @returns The (JSON parsed) payload of the JWT––if the JWT is valid, otherwise an error is thrown
  */
 export function verifyJwtSync(
@@ -341,7 +341,7 @@ export function verifyJwtSync(
  * @param decomposedJwt The decomposed JWT
  * @param jwkOrJwks The JWKS that includes the right JWK (indexed by kid). Alternatively, provide the right JWK directly
  * @param options Verification options
- * @param jwkToKeyObjectTransformer A function that can transform a JWK into a NodeJS native key object
+ * @param jwkToKeyObjectTransformer A function that can transform a JWK into a Node.js native key object
  * @returns The (JSON parsed) payload of the JWT––if the JWT is valid, otherwise an error is thrown
  */
 function verifyDecomposedJwtSync(
@@ -709,7 +709,7 @@ export class JwtRsaVerifier<
   }
 }
 
-/** Interface for functions that can transform a JWK into an RSA public key in NodeJS native key object format */
+/** Interface for functions that can transform a JWK into an RSA public key in Node.js native key object format */
 export type JwkToKeyObjectTransformer = (
   jwk: Jwk,
   issuer?: string,
@@ -717,10 +717,10 @@ export type JwkToKeyObjectTransformer = (
 ) => KeyObject;
 
 /**
- * Transform the JWK into an RSA public key in NodeJS native key object format
+ * Transform the JWK into an RSA public key in Node.js native key object format
  *
  * @param jwk: the JWK
- * @returns the RSA public key in NodeJS native key object format
+ * @returns the RSA public key in Node.js native key object format
  */
 export const transformJwkToKeyObject: JwkToKeyObjectTransformer = (jwk: Jwk) =>
   createPublicKey({
@@ -733,9 +733,9 @@ export const transformJwkToKeyObject: JwkToKeyObjectTransformer = (jwk: Jwk) =>
   });
 
 /**
- * Class representing a cache of RSA public keys in NodeJS native key object format
+ * Class representing a cache of RSA public keys in Node.js native key object format
  *
- * Because it takes a bit of compute time to turn a JWK into NodeJS native key object format,
+ * Because it takes a bit of compute time to turn a JWK into Node.js native key object format,
  * we want to cache this computation.
  */
 export class KeyObjectCache {
@@ -746,13 +746,13 @@ export class KeyObjectCache {
   ) {}
 
   /**
-   * Transform the JWK into an RSA public key in NodeJS native key object format.
+   * Transform the JWK into an RSA public key in Node.js native key object format.
    * If the transformed JWK is already in the cache, it is returned from the cache instead.
    * The cache keys are: issuer, JWK kid (key id)
    *
    * @param jwk: the JWK
    * @param issuer: the issuer that uses the JWK for signing JWTs
-   * @returns the RSA public key in NodeJS native key object format
+   * @returns the RSA public key in Node.js native key object format
    */
   transformJwkToKeyObject(jwk: Jwk, issuer?: Issuer): KeyObject {
     if (!issuer) {
