@@ -26,7 +26,7 @@ const verifier = JwtRsaVerifier.create(
       fetcher: new SimpleJsonFetcher({
         defaultRequestOptions: {
           rejectUnauthorized: false, // ignore SSL errors because we use a self-signed cert for the test
-        } as unknown, // cast to unknown because the NodeJS types are not complete
+        } as unknown, // cast to unknown because the Node.js types are not complete
       }),
     }),
   }

@@ -1,10 +1,12 @@
 # AWS JWT Verify
 
-**NodeJS** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256**.
+**Node.js** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256**.
 
 ## Installation
 
 `npm install aws-jwt-verify`
+
+Note: this library can be used with Node.js 14 or higher. If used with TypeScript, TypeScript 4 or higher is required.
 
 ## Basic usage
 
@@ -56,9 +58,9 @@ See all verify parameters for JWTs from any IDP [here](#jwtrsaverifier-verify-pa
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
-- Pure **TypeScript** library that can be used in **NodeJS** v14 and above (both CommonJS and ESM supported).
+- Pure **TypeScript** library that can be used in **Node.js** v14 and above (both CommonJS and ESM supported).
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
-- **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI, and it includes a simple **ASN.1** encoder to transform JWKs into **DER-encoded RSA public keys** (in order to verify JWTs with NodeJS native crypto calls).
+- **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI, and it includes a simple **ASN.1** encoder to transform JWKs into **DER-encoded RSA public keys** (in order to verify JWTs with Node.js native crypto calls).
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://tools.ietf.org/id/draft-ietf-oauth-jwt-bcp-02.html#rfc.section.3).
 - Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above).
 
@@ -71,7 +73,7 @@ This library was specifically designed to be easy to use in:
 - [API Gateway Lambda authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html)
 - [AppSync Lambda authorizers](https://docs.aws.amazon.com/appsync/latest/devguide/security-authz.html#aws-lambda-authorization)
 - [CloudFront Lambda@Edge](https://docs.aws.amazon.com/lambda/latest/dg/lambda-edge.html)
-- NodeJS APIs, e.g. running in AWS Fargate, that need to verify incoming JWTs
+- Node.js APIs, e.g. running in AWS Fargate, that need to verify incoming JWTs
 
 ## Table of Contents
 
@@ -511,7 +513,7 @@ It is possible to implement a different rate limiting scheme yourself, by custom
 
 ### Explicitly hydrating the JWKS cache
 
-In a long running NodeJS API (e.g. a Fargate container), it might make sense to hydrate the JWKS cache upon server start up. This will speed up the first JWT verification, as the JWKS doesn't have to be downloaded anymore.
+In a long running Node.js API (e.g. a Fargate container), it might make sense to hydrate the JWKS cache upon server start up. This will speed up the first JWT verification, as the JWKS doesn't have to be downloaded anymore.
 
 This call will always fetch the current, latest, JWKS for each of the verifier's issuers (even though the JWKS might have been fetched and cached before):
 

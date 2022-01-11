@@ -20,9 +20,9 @@ export interface JsonFetcher<ResultType extends Json = Json> {
 }
 
 /**
- * Interface for Request Options, that adds one additional option to the NodeJS standard RequestOptions,
+ * Interface for Request Options, that adds one additional option to the Node.js standard RequestOptions,
  * "responseTimeout", with which a timeout can be set within which the response must be received.
- * (Note the "timeout" in the NodeJS standard RequestOptions, concerns something else: the socket idle timeout)
+ * (Note the "timeout" in the Node.js standard RequestOptions, concerns something else: the socket idle timeout)
  */
 type FetchRequestOptions = RequestOptions & {
   responseTimeout?: number;
