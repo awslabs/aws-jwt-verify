@@ -114,7 +114,7 @@ describe("unit tests jwt verifier", () => {
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
-          { kid: keypair.jwk.kid, alg: "RS512" },
+          { kid: keypair.jwk.kid, alg: "RS384" },
           { aud: audience, iss: issuer, hello: "world" },
           keypair.privateKey
         );
@@ -122,7 +122,7 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience });
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
         expect(statement).toThrow(
-          "JWT signature algorithm not allowed: RS512. Expected: RS256"
+          "JWT signature algorithm not allowed: RS384. Expected: RS256"
         );
       });
       test("error flow with wrong parameters", () => {
