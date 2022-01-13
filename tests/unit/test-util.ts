@@ -65,7 +65,10 @@ export function signJwt(
   privateKey: KeyObject,
   produceValidSignature = true
 ) {
-  header = { ...header, alg: header.alg ?? "RS256" };
+  header = {
+    ...header,
+    alg: Object.keys(header).includes("alg") ? header.alg : "RS256",
+  };
   payload = { exp: Math.floor(Date.now() / 1000 + 100), ...payload };
   const toSign = [
     base64url(JSON.stringify(header)),

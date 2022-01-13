@@ -713,6 +713,21 @@ describe("unit tests jwt verifier", () => {
         );
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
+      test("missing signature algorithm", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid, alg: undefined },
+          { aud: audience, iss: issuer, hello: "world" },
+          keypair.privateKey
+        );
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience });
+        expect(statement).toThrow(
+          "Missing JWT signature algorithm. Expected: RS256"
+        );
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
+      });
       test("wrong JWK use", () => {
         const wrongJwk = publicKeyToJwk(keypair.publicKey, { use: "notsig" });
         const issuer = "https://example.com";
