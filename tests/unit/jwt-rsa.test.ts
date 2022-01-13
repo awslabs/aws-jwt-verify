@@ -35,8 +35,10 @@ import { performance } from "perf_hooks";
 
 describe("unit tests jwt verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
+  let rs512keypair: ReturnType<typeof generateKeyPair>;
   beforeAll(() => {
     keypair = generateKeyPair();
+    rs512keypair = generateKeyPair({ alg: "RS512" });
     disallowAllRealNetworkTraffic();
   });
   afterAll(() => {
@@ -55,6 +57,18 @@ describe("unit tests jwt verifier", () => {
         );
         expect(
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with RS512 jwk", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { kid: rs512keypair.jwk.kid, alg: "RS512" },
+          { aud: audience, iss: issuer, hello: "world" },
+          rs512keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, rs512keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
       test("happy flow with jwk without alg", () => {
@@ -114,7 +128,7 @@ describe("unit tests jwt verifier", () => {
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
-          { kid: keypair.jwk.kid, alg: "RS512" },
+          { kid: keypair.jwk.kid, alg: "RS384" },
           { aud: audience, iss: issuer, hello: "world" },
           keypair.privateKey
         );
@@ -122,7 +136,7 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience });
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
         expect(statement).toThrow(
-          "JWT signature algorithm not allowed: RS512. Expected: RS256"
+          "JWT signature algorithm not allowed: RS384. Expected: RS256"
         );
       });
       test("error flow with wrong parameters", () => {
@@ -323,6 +337,20 @@ describe("unit tests jwt verifier", () => {
           });
         expect(statement).toThrow("JWT header alg claim is not a string");
         expect(statement).toThrow(JwtParseError);
+      });
+      test("JWT alg different from JWK alg", () => {
+        const header = base64url('{"alg":"RS512"}');
+        const payload = base64url('{"iss":"test"}');
+        const signedJwt = `${header}.${payload}.signature`;
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow(
+          "JWT signature algorithm not allowed: RS512. Expected: RS256"
+        );
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("JWT with iss that is not a string", () => {
         const header = base64url('{"alg":"RS256"}');
@@ -698,6 +726,38 @@ describe("unit tests jwt verifier", () => {
           `JWT signature algorithm not allowed: ${keypair.jwk.alg}. Expected: ${wrongJwk.alg}`
         );
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
+      });
+      test("unsupported signature algorithm", () => {
+        const header = base64url('{"alg":"PS256"}');
+        const payload = base64url('{"iss":"testiss","aud":"testaud"}');
+        const signedJwt = `${header}.${payload}.signature`;
+        const { alg: _, ...jwkWithoutAlg } = keypair.jwk;
+        const statementWithJwkWithoutAlg = () =>
+          verifyJwtSync(signedJwt, jwkWithoutAlg, {
+            audience: "testaud",
+            issuer: "testiss",
+          });
+        expect(statementWithJwkWithoutAlg).toThrow(
+          `JWT signature algorithm not allowed: PS256. Expected one of: RS256, RS384, RS512`
+        );
+        expect(statementWithJwkWithoutAlg).toThrow(
+          JwtInvalidSignatureAlgorithmError
+        );
+        const statementWithJwkWithWrongAlg = () =>
+          verifyJwtSync(
+            signedJwt,
+            { ...jwkWithoutAlg, alg: "PS256" },
+            {
+              audience: "testaud",
+              issuer: "testiss",
+            }
+          );
+        expect(statementWithJwkWithWrongAlg).toThrow(
+          `JWT signature algorithm not allowed: PS256. Expected one of: RS256, RS384, RS512`
+        );
+        expect(statementWithJwkWithWrongAlg).toThrow(
+          JwtInvalidSignatureAlgorithmError
+        );
       });
       test("missing signature algorithm", () => {
         const issuer = "https://example.com";

@@ -1,6 +1,6 @@
 # AWS JWT Verify
 
-**Node.js** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256**.
+**Node.js** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512**.
 
 ## Installation
 
@@ -60,11 +60,11 @@ See all verify parameters for JWTs from any IDP [here](#jwtrsaverifier-verify-pa
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
 - Pure **TypeScript** library that can be used in **Node.js** v14 and above (both CommonJS and ESM supported).
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
-- **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI, and it includes a simple **ASN.1** encoder to transform JWKs into **DER-encoded RSA public keys** (in order to verify JWTs with Node.js native crypto calls).
+- **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI, and it includes a simple **ASN.1** encoder to transform JWKs into **DER-encoded RSA public keys** (in order to verify JWTs with Node.js native crypto calls).
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://tools.ietf.org/id/draft-ietf-oauth-jwt-bcp-02.html#rfc.section.3).
 - Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above).
 
-Currently, only signature algorithm **RS256** is supported.
+Currently, only signature algorithms **RS256** , **RS384** and **RS512** are supported.
 
 ## Intended Usage
 
@@ -304,7 +304,7 @@ const verifier = JwtRsaVerifier.create([
 
 ## Verifying JWTs from any OIDC-compatible IDP
 
-The generic `JwtRsaVerifier` works for any OIDC-compatible IDP that signs JWTs with RS256:
+The generic `JwtRsaVerifier` works for any OIDC-compatible IDP that signs JWTs with RS256/RS384/RS512:
 
 ```typescript
 import { JwtRsaVerifier } from "aws-jwt-verify";
@@ -419,7 +419,7 @@ try {
 The `instanceof` check in the `catch` block above is crucial, because not all errors will include the rawJwt, only errors that subclass `JwtInvalidClaimError` will. In order to understand why this makes sense, you should know that this library verifies JWTs in 3 stages, that all must succeed for the JWT to be considered valid:
 
 - Stage 1: Verify JWT structure and JSON parse the JWT
-- Stage 2: Verify JWT cryptographic signature (i.e. RS256)
+- Stage 2: Verify JWT cryptographic signature (i.e. RS256/RS384/RS512)
 - Stage 3: Verify JWT claims (such as e.g. its expiration)
 
 Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid (stages 1 and 2 succeeded).
