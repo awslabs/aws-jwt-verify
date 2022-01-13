@@ -5,6 +5,11 @@ import { generateKeyPairSync, KeyObject, createSign } from "crypto";
 import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
 import { Jwks, Jwk } from "../../src/jwk";
 import nock from "nock";
+import { JwtSignatureAlgorithms } from "../../src/jwt-rsa";
+import {
+  FailedAssertionError,
+  JwtInvalidSignatureAlgorithmError,
+} from "../../src/error";
 
 export function disallowAllRealNetworkTraffic() {
   nock.disableNetConnect();
@@ -14,12 +19,15 @@ export function allowAllRealNetworkTraffic() {
   nock.enableNetConnect();
 }
 
-export function generateKeyPair(options?: { kid?: string }) {
+export function generateKeyPair(options?: { kid?: string; alg?: string }) {
   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
     modulusLength: 4096,
     publicExponent: 0x10001,
   });
-  const jwk = publicKeyToJwk(publicKey, { kid: options?.kid });
+  const jwk = publicKeyToJwk(publicKey, {
+    kid: options?.kid,
+    alg: options?.alg,
+  });
 
   return {
     publicKey,
@@ -61,13 +69,16 @@ export function signJwt(
   privateKey: KeyObject,
   produceValidSignature = true
 ) {
-  header = { alg: "RS256", ...header };
+  header = { ...header, alg: header.alg ?? "RS256" };
   payload = { exp: Math.floor(Date.now() / 1000 + 100), ...payload };
   const toSign = [
     base64url(JSON.stringify(header)),
     base64url(JSON.stringify(payload)),
   ].join(".");
-  const sign = createSign("RSA-SHA256");
+  const sign = createSign(
+    JwtSignatureAlgorithms[header.alg as keyof typeof JwtSignatureAlgorithms] ??
+      "RSA-SHA256"
+  );
   sign.write(toSign);
   sign.end();
   const signature = sign.sign(privateKey);

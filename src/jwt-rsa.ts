@@ -148,8 +148,9 @@ type JwtRsaVerifierMultiIssuer<
 /**
  * Enum to map supported JWT signature algorithms with OpenSSL message digest algorithm names
  */
-enum JwtSignatureAlgorithms {
+export enum JwtSignatureAlgorithms {
   RS256 = "RSA-SHA256",
+  RS384 = "RSA-SHA384",
   RS512 = "RSA-SHA512",
 }
 
@@ -190,11 +191,11 @@ function verifySignatureAgainstJwk(
     );
   }
 
-  // Check JWT signature algorithm is one of RS256, RS512
+  // Check JWT signature algorithm is one of RS256, RS384, RS512
   assertStringArrayContainsString(
     "JWT signature algorithm",
     header.alg,
-    ["RS256", "RS512"],
+    ["RS256", "RS384", "RS512"],
     JwtInvalidSignatureAlgorithmError
   );
 
@@ -430,7 +431,7 @@ type Issuer = string;
 type Kid = string;
 
 /**
- * Abstract class representing a verifier for JWTs signed with RSA (e.g. RS256, RS512)
+ * Abstract class representing a verifier for JWTs signed with RSA (e.g. RS256, RS384, RS512)
  *
  * A class is used, because there is state:
  * - The JWKS is fetched (downloaded) from the JWKS URI and cached in memory
@@ -532,7 +533,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (synchronously) a JWT that is signed using RS256 / RS512.
+   * Verify (synchronously) a JWT that is signed using RS256 / RS384 / RS512.
    *
    * @param jwt The JWT, as string
    * @param props Verification properties
@@ -551,7 +552,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (synchronously) an already decomposed JWT, that is signed using RS256 / RS512.
+   * Verify (synchronously) an already decomposed JWT, that is signed using RS256 / RS384 / RS512.
    *
    * @param decomposedJwt The decomposed Jwt
    * @param jwk The JWK to verify the JWTs signature with
@@ -573,7 +574,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (asynchronously) a JWT that is signed using RS256 / RS512.
+   * Verify (asynchronously) a JWT that is signed using RS256 / RS384 / RS512.
    * This call is asynchronous, and the JWKS will be fetched from the JWKS uri,
    * in case it is not yet available in the cache.
    *
@@ -590,7 +591,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (asynchronously) an already decomposed JWT, that is signed using RS256 / RS512.
+   * Verify (asynchronously) an already decomposed JWT, that is signed using RS256 / RS384 / RS512.
    *
    * @param decomposedJwt The decomposed Jwt
    * @param jwk The JWK to verify the JWTs signature with
@@ -669,7 +670,7 @@ export abstract class JwtRsaVerifierBase<
 }
 
 /**
- * Class representing a verifier for JWTs signed with RSA (e.g. RS256 / RS512)
+ * Class representing a verifier for JWTs signed with RSA (e.g. RS256 / RS384 / RS512)
  */
 export class JwtRsaVerifier<
   SpecificVerifyProperties extends Partial<VerifyProperties>,

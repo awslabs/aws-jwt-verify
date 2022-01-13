@@ -35,8 +35,10 @@ import { performance } from "perf_hooks";
 
 describe("unit tests jwt verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
+  let rs512keypair: ReturnType<typeof generateKeyPair>;
   beforeAll(() => {
     keypair = generateKeyPair();
+    rs512keypair = generateKeyPair({ alg: "RS512" });
     disallowAllRealNetworkTraffic();
   });
   afterAll(() => {
@@ -55,6 +57,18 @@ describe("unit tests jwt verifier", () => {
         );
         expect(
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with RS512 jwk", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { kid: rs512keypair.jwk.kid, alg: "RS512" },
+          { aud: audience, iss: issuer, hello: "world" },
+          rs512keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, rs512keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
       test("happy flow with jwk without alg", () => {
@@ -696,21 +710,6 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, wrongJwk, { issuer, audience });
         expect(statement).toThrow(
           `JWT signature algorithm not allowed: ${keypair.jwk.alg}. Expected: ${wrongJwk.alg}`
-        );
-        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
-      });
-      test("missing signature algorithm", () => {
-        const issuer = "https://example.com";
-        const audience = "1234";
-        const signedJwt = signJwt(
-          { kid: keypair.jwk.kid, alg: undefined },
-          { aud: audience, iss: issuer, hello: "world" },
-          keypair.privateKey
-        );
-        const statement = () =>
-          verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience });
-        expect(statement).toThrow(
-          "Missing JWT signature algorithm. Expected: RS256"
         );
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
