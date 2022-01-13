@@ -338,8 +338,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow("JWT header alg claim is not a string");
         expect(statement).toThrow(JwtParseError);
       });
-      test("JWT with unsupported alg", () => {
-        const header = base64url('{"alg":"PS256"}');
+      test("JWT alg different from JWK alg", () => {
+        const header = base64url('{"alg":"RS512"}');
         const payload = base64url('{"iss":"test"}');
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
@@ -348,7 +348,7 @@ describe("unit tests jwt verifier", () => {
             issuer: null,
           });
         expect(statement).toThrow(
-          "JWT signature algorithm not allowed: PS256. Expected: RS256"
+          "JWT signature algorithm not allowed: RS512. Expected: RS256"
         );
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
