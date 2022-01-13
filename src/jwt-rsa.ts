@@ -35,7 +35,7 @@ import {
 import { JsonObject } from "./safe-json-parse.js";
 
 /** Interface for JWT verification properties */
-interface VerifyProperties {
+export interface VerifyProperties {
   /**
    * The audience that you expect to be present in the JWT's aud claim.
    * If you provide a string array, that means at least one of those audiences
@@ -96,7 +96,7 @@ export type JwtRsaVerifierProperties<VerifyProps> = {
  * Type for JWT RSA verifier properties, when multiple issuers are used in the verifier.
  * In this case, you should be explicit in mapping audience to issuer.
  */
-type JwtRsaVerifierMultiProperties<T> = {
+export type JwtRsaVerifierMultiProperties<T> = {
   /**
    * URI where the JWKS (JSON Web Key Set) can be downloaded from.
    * The JWKS contains one or more JWKs, which represent the public keys with which
@@ -113,7 +113,7 @@ type JwtRsaVerifierMultiProperties<T> = {
 /**
  * JWT Verifier (RSA) for a single issuer
  */
-type JwtRsaVerifierSingleIssuer<
+export type JwtRsaVerifierSingleIssuer<
   T extends JwtRsaVerifierProperties<VerifyProperties>
 > = JwtRsaVerifier<
   Properties<VerifyProperties, T>,
@@ -137,7 +137,7 @@ type VerifyParameters<SpecificVerifyProperties> = {
 /**
  * JWT Verifier (RSA) for multiple issuers
  */
-type JwtRsaVerifierMultiIssuer<
+export type JwtRsaVerifierMultiIssuer<
   T extends JwtRsaVerifierMultiProperties<VerifyProperties>
 > = JwtRsaVerifier<
   Properties<VerifyProperties, T>,

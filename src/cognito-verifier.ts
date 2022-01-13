@@ -22,7 +22,7 @@ import {
 } from "./assert.js";
 import { Properties } from "./typing-util.js";
 
-interface CognitoVerifyProperties {
+export interface CognitoVerifyProperties {
   /**
    * The client ID that you expect to be present on the JWT
    * (In the ID token's aud claim, or the Access token's client_id claim).
@@ -78,7 +78,7 @@ interface CognitoVerifyProperties {
 }
 
 /** Type for Cognito JWT verifier properties, for a single User Pool */
-type CognitoJwtVerifierProperties = {
+export type CognitoJwtVerifierProperties = {
   /** The User Pool whose JWTs you want to verify */
   userPoolId: string;
 } & Partial<CognitoVerifyProperties>;
@@ -87,7 +87,7 @@ type CognitoJwtVerifierProperties = {
  * Type for Cognito JWT verifier properties, when multiple User Pools are used in the verifier.
  * In this case, you should be explicit in mapping `clientId` to User Pool.
  */
-type CognitoJwtVerifierMultiProperties = {
+export type CognitoJwtVerifierMultiProperties = {
   /** The User Pool whose JWTs you want to verify */
   userPoolId: string;
 } & CognitoVerifyProperties;
@@ -95,21 +95,22 @@ type CognitoJwtVerifierMultiProperties = {
 /**
  * Cognito JWT Verifier for a single user pool
  */
-type CognitoJwtVerifierSingleUserPool<T extends CognitoJwtVerifierProperties> =
-  CognitoJwtVerifier<
-    Properties<CognitoVerifyProperties, T>,
-    T &
-      JwtRsaVerifierProperties<CognitoVerifyProperties> & {
-        userPoolId: string;
-        audience: null;
-      },
-    false
-  >;
+export type CognitoJwtVerifierSingleUserPool<
+  T extends CognitoJwtVerifierProperties
+> = CognitoJwtVerifier<
+  Properties<CognitoVerifyProperties, T>,
+  T &
+    JwtRsaVerifierProperties<CognitoVerifyProperties> & {
+      userPoolId: string;
+      audience: null;
+    },
+  false
+>;
 
 /**
  * Cognito JWT Verifier for multiple user pools
  */
-type CognitoJwtVerifierMultiUserPool<
+export type CognitoJwtVerifierMultiUserPool<
   T extends CognitoJwtVerifierMultiProperties
 > = CognitoJwtVerifier<
   Properties<CognitoVerifyProperties, T>,
