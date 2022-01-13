@@ -727,6 +727,20 @@ describe("unit tests jwt verifier", () => {
         );
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
+      test("invalid signature algorithm", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = () =>
+          signJwt(
+            { kid: keypair.jwk.kid, alg: "PS512" },
+            { aud: audience, iss: issuer, hello: "world" },
+            keypair.privateKey
+          );
+        expect(signedJwt).toThrow(
+          `JWT signature algorithm not allowed: PS512. Expected one of: RS256, RS384, RS512`
+        );
+        expect(signedJwt).toThrow(JwtInvalidSignatureAlgorithmError);
+      });
       test("missing signature algorithm", () => {
         const issuer = "https://example.com";
         const audience = "1234";

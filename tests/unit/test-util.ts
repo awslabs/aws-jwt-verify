@@ -4,6 +4,8 @@ import { createSign, generateKeyPairSync, KeyObject } from "crypto";
 import nock from "nock";
 import { URL } from "url";
 import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
+import { assertStringArrayContainsString } from "../../src/assert";
+import { JwtInvalidSignatureAlgorithmError } from "../../src/error";
 import { Jwk, Jwks } from "../../src/jwk";
 import { JwtSignatureAlgorithms } from "../../src/jwt-rsa";
 
@@ -65,6 +67,15 @@ export function signJwt(
   privateKey: KeyObject,
   produceValidSignature = true
 ) {
+  if (header.alg) {
+    // Check JWT signature algorithm is one of RS256, RS384, RS512
+    assertStringArrayContainsString(
+      "JWT signature algorithm",
+      header.alg,
+      ["RS256", "RS384", "RS512"],
+      JwtInvalidSignatureAlgorithmError
+    );
+  }
   header = {
     ...header,
     alg: Object.keys(header).includes("alg") ? header.alg : "RS256",
