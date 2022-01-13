@@ -338,6 +338,20 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow("JWT header alg claim is not a string");
         expect(statement).toThrow(JwtParseError);
       });
+      test("JWT with unsupported alg", () => {
+        const header = base64url('{"alg":"PS256"}');
+        const payload = base64url('{"iss":"test"}');
+        const signedJwt = `${header}.${payload}.signature`;
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow(
+          "JWT signature algorithm not allowed: PS256. Expected: RS256"
+        );
+        expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
+      });
       test("JWT with iss that is not a string", () => {
         const header = base64url('{"alg":"RS256"}');
         const payload = base64url('{"iss":12345}');
