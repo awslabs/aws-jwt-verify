@@ -1,15 +1,11 @@
 /* istanbul ignore file */
 
-import { URL } from "url";
-import { generateKeyPairSync, KeyObject, createSign } from "crypto";
-import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
-import { Jwks, Jwk } from "../../src/jwk";
+import { createSign, generateKeyPairSync, KeyObject } from "crypto";
 import nock from "nock";
+import { URL } from "url";
+import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
+import { Jwk, Jwks } from "../../src/jwk";
 import { JwtSignatureAlgorithms } from "../../src/jwt-rsa";
-import {
-  FailedAssertionError,
-  JwtInvalidSignatureAlgorithmError,
-} from "../../src/error";
 
 export function disallowAllRealNetworkTraffic() {
   nock.disableNetConnect();
