@@ -727,7 +727,7 @@ describe("unit tests jwt verifier", () => {
         );
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
-      test("invalid signature algorithm", () => {
+      test("unsupported signature algorithm", () => {
         const header = base64url('{"alg":"PS256"}');
         const payload = base64url('{"iss":"testiss","aud":"testaud"}');
         const signedJwt = `${header}.${payload}.signature`;
