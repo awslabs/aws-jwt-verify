@@ -1,4 +1,4 @@
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtRsaVerifier, CognitoJwtVerifier } from "aws-jwt-verify";
 import * as awsJwtModule from "aws-jwt-verify";
 import * as https from "aws-jwt-verify/https";
 import { assertStringEquals } from "aws-jwt-verify/assert";
@@ -12,11 +12,10 @@ import { JwtInvalidIssuerError } from "aws-jwt-verify/error";
 import {
   CognitoJwtVerifierMultiUserPool,
   CognitoJwtVerifierSingleUserPool,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  CognitoVerifyProperties,
+  CognitoVerifyProperties as _CognitoVerifyProperties,
   CognitoJwtVerifierMultiProperties,
   CognitoJwtVerifierProperties,
-  CognitoJwtVerifier,
+  CognitoJwtVerifier as _CognitoJwtVerifier,
 } from "aws-jwt-verify/cognito-verifier";
 
 JwtRsaVerifier.create({
