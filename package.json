@@ -1,7 +1,7 @@
 {
   "name": "aws-jwt-verify",
   "version": "2.1.1",
-  "description": "Verify RS256 signed JSON Web Tokens (JWT)",
+  "description": "Verify RS256/RS384/RS512 signed JSON Web Tokens (JWT)",
   "license": "Apache-2.0",
   "author": {
     "name": "Amazon Web Services",
