@@ -1,3 +1,4 @@
+import { RequestOptions } from "http";
 import { JwtRsaVerifier } from "aws-jwt-verify";
 import { generateKeyPair, signJwt } from "../unit/test-util";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
@@ -26,7 +27,7 @@ const verifier = JwtRsaVerifier.create(
       fetcher: new SimpleJsonFetcher({
         defaultRequestOptions: {
           rejectUnauthorized: false, // ignore SSL errors because we use a self-signed cert for the test
-        } as unknown, // cast to unknown because the Node.js types are not complete
+        } as RequestOptions, // explicit cast because the Node.js types don't recognize `rejectUnauthorized`
       }),
     }),
   }
@@ -55,7 +56,7 @@ function startJwksServer() {
 
 function syncTest() {
   verifier.verifySync(validJwt);
-  let error: Error;
+  let error: unknown;
   try {
     verifier.verifySync(invalidJwt);
   } catch (err) {
@@ -68,7 +69,7 @@ function syncTest() {
 
 async function asyncTest() {
   await verifier.verify(validJwt);
-  let error: Error;
+  let error: unknown;
   try {
     await verifier.verify(invalidJwt);
   } catch (err) {
