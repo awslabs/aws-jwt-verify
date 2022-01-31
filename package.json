@@ -102,7 +102,7 @@
     "test:import": "cd tests/import-tests && npm i --prune --force && node esm.mjs && node commonjs.cjs && tsc typescript.ts && node typescript.js",
     "test:install": "./tests/installation-and-basic-usage/run-tests.sh",
     "test:speed": "jest -t \"speed\"",
-    "test:unit": "jest --collect-coverage -t \"unit\" --reporters=\"jest-junit\" --reporters=\"default\"",
+    "test:unit": "jest --collect-coverage -t \"unit\" --testMatch '**/*.test.ts' --reporters=\"jest-junit\" --reporters=\"default\"",
     "test": "npm run test:unit",
     "tsc": "tsc"
   },
