@@ -17,7 +17,6 @@ jobs:
       - name: install
         run: |
           npm install
-          npm run dist
       - name: test
         run: |
           npm run prettier:check
