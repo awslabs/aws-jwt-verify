@@ -1,8 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "es2019",
-    "module": "CommonJS",
-    "skipLibCheck": true,
-    "esModuleInterop": true
-  }
+  "extends": "../../tsconfig.json",
+  "include": ["."]
 }

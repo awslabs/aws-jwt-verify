@@ -1,7 +1,7 @@
 import * as outputs from "../outputs.json";
-import { CognitoJwtVerifier } from "../../../cognito-verifier";
-import { fetchJson } from "../../../https";
-import { JsonObject } from "../../../safe-json-parse";
+import { CognitoJwtVerifier } from "../../../src/cognito-verifier";
+import { fetchJson } from "../../../src/https";
+import { JsonObject } from "../../../src/safe-json-parse";
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,

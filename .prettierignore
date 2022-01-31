@@ -4,17 +4,19 @@ coverage
 dist
 
 # Submodules generated when building dist
-asn1
-assert
-error
-https
-jwk
-jwt
-test-util
-cognito-verifier
-jwt-model
-jwt-rsa
-safe-json-parse
+asn1.d.ts
+assert.d.ts
+cognito-verifier.d.ts
+error.d.ts
+https.d.ts
+index.d.ts
+jwk.d.ts
+jwt-model.d.ts
+jwt-rsa.d.ts
+jwt.d.ts
+safe-json-parse.d.ts
+test-util.d.ts
+typing-util.d.ts
 
 # compiled js
 src/*.js

@@ -1,7 +1,7 @@
 {
   "name": "aws-jwt-verify",
   "version": "2.1.1",
-  "description": "Verify RS256 signed JSON Web Tokens (JWT)",
+  "description": "Verify RS256/RS384/RS512 signed JSON Web Tokens (JWT)",
   "license": "Apache-2.0",
   "author": {
     "name": "Amazon Web Services",
@@ -9,20 +9,21 @@
   },
   "main": "dist/cjs/index.js",
   "type": "commonjs",
-  "types": "dist/esm/index.d.ts",
+  "types": "index.d.ts",
   "module": "dist/esm/index.js",
   "files": [
     "dist",
-    "asn1/package.json",
-    "assert/package.json",
-    "cognito-verifier/package.json",
-    "error/package.json",
-    "https/package.json",
-    "jwk/package.json",
-    "jwt/package.json",
-    "jwt-model/package.json",
-    "jwt-rsa/package.json",
-    "safe-json-parse/package.json"
+    "asn1.d.ts",
+    "assert.d.ts",
+    "cognito-verifier.d.ts",
+    "error.d.ts",
+    "https.d.ts",
+    "index.d.ts",
+    "jwk.d.ts",
+    "jwt.d.ts",
+    "jwt-model.d.ts",
+    "jwt-rsa.d.ts",
+    "safe-json-parse.d.ts"
   ],
   "exports": {
     ".": {
@@ -87,9 +88,10 @@
     "typescript": "^4.4.3"
   },
   "scripts": {
-    "dist:cjs": "tsc -p tsconfig-dist-cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
-    "dist:esm": "tsc -p tsconfig-dist-esm.json && echo '{\"type\":\"module\"}' > dist/esm/package.json",
-    "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npx ts-node ./typescript-compat.ts",
+    "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "dist:esm": "tsc --module ES2020 --outDir dist/esm && echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly",
+    "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:types",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
     "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",
     "prepare": "npm run dist",
@@ -100,7 +102,7 @@
     "test:import": "cd tests/import-tests && npm i --prune --force && node esm.mjs && node commonjs.cjs && tsc typescript.ts && node typescript.js",
     "test:install": "./tests/installation-and-basic-usage/run-tests.sh",
     "test:speed": "jest -t \"speed\"",
-    "test:unit": "jest --collect-coverage -t \"unit\" --reporters=\"jest-junit\" --reporters=\"default\"",
+    "test:unit": "jest --collect-coverage -t \"unit\" --testMatch '**/*.test.ts' --reporters=\"jest-junit\" --reporters=\"default\"",
     "test": "npm run test:unit",
     "tsc": "tsc"
   },
