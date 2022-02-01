@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "test": "if [ -f outputs.json ]; then jest; else echo \"ERROR: Deploy stack with AWS resources first: cdk deploy -O outputs.json --toolkit-stack-name AwsJwtVerifyTest-toolkit\"; exit 1; fi",
     "cdk": "cdk",
-    "postinstall": "npm pack ../.. && mv aws-jwt-verify-*.tgz aws-jwt-verify.tgz && cd lib/lambda-authorizer && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz"
+    "postinstall": "(cd ../.. && npm run pack-for-tests) && cd lib/lambda-authorizer && npm install --no-save --force --no-package-lock ../../../../aws-jwt-verify.tgz"
   },
   "devDependencies": {
     "@aws-cdk/assert": "1.129.0",

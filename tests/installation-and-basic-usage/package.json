@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aws-jwt-verify": "file:../.."
+    "aws-jwt-verify": "file:../../aws-jwt-verify.tgz"
   },
   "devDependencies": {
     "@types/node": "^16.10.2",

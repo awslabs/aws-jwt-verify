@@ -6,6 +6,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "aws-jwt-verify": "file:../.."
+    "aws-jwt-verify": "file:../../aws-jwt-verify.tgz"
   }
 }

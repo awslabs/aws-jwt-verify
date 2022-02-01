@@ -22,6 +22,6 @@ jobs:
           npm run prettier:check
           npm run lint:check
           npm run test:unit
-          npm run dist
+          npm run pack-for-tests
           npm run test:install
           npm run test:import
