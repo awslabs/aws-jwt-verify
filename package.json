@@ -12,18 +12,19 @@
   "types": "index.d.ts",
   "module": "dist/esm/index.js",
   "files": [
-    "dist",
     "asn1.d.ts",
     "assert.d.ts",
     "cognito-verifier.d.ts",
+    "dist",
     "error.d.ts",
     "https.d.ts",
     "index.d.ts",
     "jwk.d.ts",
-    "jwt.d.ts",
     "jwt-model.d.ts",
     "jwt-rsa.d.ts",
-    "safe-json-parse.d.ts"
+    "jwt.d.ts",
+    "safe-json-parse.d.ts",
+    "typing-util.d.ts"
   ],
   "exports": {
     ".": {
@@ -94,12 +95,13 @@
     "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:types",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
     "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",
-    "prepare": "npm run dist",
+    "pack-for-tests": "rm -f 'aws-jwt-verify-?.?.?.tgz' && npm pack && mv aws-jwt-verify-*.tgz aws-jwt-verify.tgz",
+    "prepack": "npm run dist",
     "prettier:check": "prettier --check .",
     "prettier": "prettier -w .",
     "test:all": "npm run prettier:check && npm run test:unit && npm run test:install && npm run test:import && npm run test:speed && npm run test:cognito",
     "test:cognito": "cd tests/cognito && npm run test",
-    "test:import": "cd tests/import-tests && npm i --prune --force && node esm.mjs && node commonjs.cjs && tsc typescript.ts && node typescript.js",
+    "test:import": "cd tests/import-tests && rm -rf node_modules package-lock.json && npm install && node esm.mjs && node commonjs.cjs && tsc && node typescript.js && COMPILE_ERRORS=$(2>&1 tsc -p tsconfig-should-not-compile.json || true) && ([ \"$COMPILE_ERRORS\" != \"\" ] || (echo \"Ooops I did compile successfully :(\"; false))",
     "test:install": "./tests/installation-and-basic-usage/run-tests.sh",
     "test:speed": "jest -t \"speed\"",
     "test:unit": "jest --collect-coverage -t \"unit\" --testMatch '**/*.test.ts' --reporters=\"jest-junit\" --reporters=\"default\"",

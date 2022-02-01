@@ -16,12 +16,13 @@ jobs:
           node-version: "14"
       - name: install
         run: |
+          npm install -g npm
           npm install
       - name: test
         run: |
           npm run prettier:check
           npm run lint:check
           npm run test:unit
-          npm run dist
+          npm run pack-for-tests
           npm run test:install
           npm run test:import
