@@ -1,9 +1,14 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { createVerify, createPublicKey, KeyObject } from "crypto";
-import { URL } from "url";
-import { join } from "path";
+import {
+  URL,
+  join,
+  createVerify,
+  createPublicKey,
+  KeyObject,
+  uint8ArrayFromString,
+} from "./node-web-compat";
 import {
   SimpleJwksCache,
   JwksCache,
@@ -735,8 +740,8 @@ export type JwkToKeyObjectTransformer = (
 export const transformJwkToKeyObject: JwkToKeyObjectTransformer = (jwk: Jwk) =>
   createPublicKey({
     key: constructPublicKeyInDerFormat(
-      Buffer.from(jwk.n, "base64"),
-      Buffer.from(jwk.e, "base64")
+      uint8ArrayFromString(jwk.n, "base64"),
+      uint8ArrayFromString(jwk.e, "base64")
     ),
     format: "der",
     type: "spki",
