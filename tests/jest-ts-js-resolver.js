@@ -5,7 +5,11 @@ const path = require("path");
 const srcPath = path.join(__dirname, "..", "src");
 module.exports = (request, options) => {
   if (options.basedir.startsWith(srcPath)) {
-    request = request.replace(/\.js$/, ".ts");
+    if (request.endsWith("node-web-compat.js")) {
+      request = request.replace(/\.js$/, ".cjs");
+    } else {
+      request = request.replace(/\.js$/, ".ts");
+    }
   }
   return options.defaultResolver(request, options);
 };

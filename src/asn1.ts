@@ -4,7 +4,10 @@
 // Utility to encode RSA public keys (a pair of modulus (n) and exponent (e)) into DER-encoding, per ASN.1 specification.
 
 import { Asn1DecodingError } from "./error.js";
-import { concatUint8Arrays, numberFromUint8ArrayBE } from "./node-web-compat";
+import {
+  concatUint8Arrays,
+  numberFromUint8ArrayBE,
+} from "./node-web-compat.js";
 
 /** Enum with possible values for supported ASN.1 classes */
 enum Asn1Class {

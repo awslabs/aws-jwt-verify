@@ -7,8 +7,8 @@ main() {
     DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
     cd $DIR
 
-    # Install aws-jwt-verify , since package-lock.json would not be generate prior, we use install instead of ci
-    npm i
+    # Install aws-jwt-verify
+    npm install --force
 
     # Compile test files
     npx tsc

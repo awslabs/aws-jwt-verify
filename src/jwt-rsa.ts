@@ -7,7 +7,7 @@ import {
   createPublicKey,
   KeyObject,
   uint8ArrayFromString,
-} from "./node-web-compat";
+} from "./node-web-compat.js";
 import {
   SimpleJwksCache,
   JwksCache,

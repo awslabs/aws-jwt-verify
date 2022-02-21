@@ -1,5 +1,3 @@
-/* istanbul ignore file */
-
 import { createSign, generateKeyPairSync, KeyObject } from "crypto";
 import nock from "nock";
 import { URL } from "url";
