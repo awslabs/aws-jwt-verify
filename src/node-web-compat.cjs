@@ -9,18 +9,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const concatUint8Arrays = (...arrays) => Buffer.concat(arrays);
 const numberFromUint8ArrayBE = (uint8Array, length) =>
   Buffer.from(uint8Array).readUIntBE(0, length);
-const uint8ArrayFromString = (uint8Array, encoding) =>
-  Buffer.from(uint8Array, encoding);
+const uint8ArrayFromB64String = (b64) => Buffer.from(b64, "base64");
 const { createVerify, createPublicKey } = require("crypto");
 const { join } = require("path");
 const { fetchJson } = require("./https-node.js");
+const utf8StringFromB64String = (b64) =>
+  Buffer.from(b64, "base64").toString("utf8");
 
 module.exports = {
   concatUint8Arrays,
   numberFromUint8ArrayBE,
-  uint8ArrayFromString,
+  uint8ArrayFromB64String,
   createVerify,
   createPublicKey,
   join,
   fetchJson,
+  utf8StringFromB64String,
 };

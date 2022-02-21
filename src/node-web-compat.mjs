@@ -28,18 +28,20 @@ export let createVerify,
   join,
   concatUint8Arrays,
   numberFromUint8ArrayBE,
-  uint8ArrayFromString,
-  fetchJson;
+  uint8ArrayFromB64String,
+  fetchJson,
+  utf8StringFromB64String;
 
 if (runningInNode) {
   concatUint8Arrays = (...arrays) => Buffer.concat(arrays);
   numberFromUint8ArrayBE = (uint8Array, length) =>
     Buffer.from(uint8Array).readUIntBE(0, length);
-  uint8ArrayFromString = (uint8Array, encoding) =>
-    Buffer.from(uint8Array, encoding);
+  uint8ArrayFromB64String = (b64) => Buffer.from(b64, "base64");
   ({ createVerify, createPublicKey } = await import("crypto"));
   ({ join } = await import("path"));
   ({ fetchJson } = await import("./https-node.js"));
+  utf8StringFromB64String = (b64) =>
+    Buffer.from(b64, "base64").toString("utf8");
 } else if (runningInBrowser) {
   concatUint8Arrays = (...arrays) => {
     const concatenatedLength = arrays.reduce(
@@ -56,7 +58,12 @@ if (runningInNode) {
   fetchJson = (uri, requestOptions, data) =>
     // eslint-disable-next-line no-undef
     fetch(uri, { ...requestOptions, body: data }).then((res) => res.json());
-  throw new Error("Not implemented");
+  join = (args) => args.map((arg) => arg.replace("/$", "")).join("/");
+  // eslint-disable-next-line no-undef
+  utf8StringFromB64String = (b64) => window.atob(b64);
+  uint8ArrayFromB64String = (b64) =>
+    // eslint-disable-next-line no-undef
+    Uint8Array.from(window.atob(b64), (c) => c.charCodeAt(0));
 } else {
   throw new Error(
     "Unknown environment: only Node.js and Browser are supported"

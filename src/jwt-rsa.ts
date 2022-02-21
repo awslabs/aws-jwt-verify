@@ -6,7 +6,7 @@ import {
   createVerify,
   createPublicKey,
   KeyObject,
-  uint8ArrayFromString,
+  uint8ArrayFromB64String,
 } from "./node-web-compat.js";
 import {
   SimpleJwksCache,
@@ -739,8 +739,8 @@ export type JwkToKeyObjectTransformer = (
 export const transformJwkToKeyObject: JwkToKeyObjectTransformer = (jwk: Jwk) =>
   createPublicKey({
     key: constructPublicKeyInDerFormat(
-      uint8ArrayFromString(jwk.n, "base64"),
-      uint8ArrayFromString(jwk.e, "base64")
+      uint8ArrayFromB64String(jwk.n),
+      uint8ArrayFromB64String(jwk.e)
     ),
     format: "der",
     type: "spki",

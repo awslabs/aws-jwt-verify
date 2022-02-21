@@ -30,7 +30,10 @@ export let join: (...segments: string[]) => string;
 // Buffer (Uint8) functions
 export let concatUint8Arrays: (...arrays: Uint8Array[]) => Uint8Array;
 export let numberFromUint8ArrayBE: (_: Uint8Array, length: number) => number;
-export let uint8ArrayFromString: (_: string, encoding: "base64") => Uint8Array;
+export let uint8ArrayFromB64String: (_: string) => Uint8Array;
+
+// Convert base64 to UTF8
+export let utf8StringFromB64String: (b64: string) => string;
 
 // Fetch JSON
 export let fetchJson: <ResultType extends Json>(
