@@ -61,9 +61,9 @@ if (runningInNode) {
   join = (args) => args.map((arg) => arg.replace("/$", "")).join("/");
   // eslint-disable-next-line no-undef
   utf8StringFromB64String = (b64) => window.atob(b64);
-  uint8ArrayFromB64String = (b64) =>
-    // eslint-disable-next-line no-undef
-    Uint8Array.from(window.atob(b64), (c) => c.charCodeAt(0));
+  uint8ArrayFromB64String = (b64) => {
+    throw new Error("Not yet implemented");
+  };
 } else {
   throw new Error(
     "Unknown environment: only Node.js and Browser are supported"
