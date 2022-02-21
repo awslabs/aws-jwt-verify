@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Utilities for fetching the JWKS URI, to get the public keys with which to verify JWTs
+// NodeJS implementation for fetching JSON documents over HTTPS
 
 import { request } from "https";
 import { IncomingHttpHeaders, RequestOptions } from "http";
