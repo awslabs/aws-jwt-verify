@@ -133,7 +133,7 @@ export class CognitoStack extends cdk.Stack {
       physicalResourceId: cr.PhysicalResourceId.of(
         clientWithSecret.userPoolClientId
       ),
-      outputPath: "UserPoolClient.ClientSecret",
+      outputPaths: ["UserPoolClient.ClientSecret"],
     };
     const clientSecretGetter = new cr.AwsCustomResource(
       this,
@@ -187,7 +187,7 @@ export class CognitoStack extends cdk.Stack {
     httpApi.addRoutes({
       path: "/mock",
       methods: [apigw.HttpMethod.GET],
-      integration: new apigwint.HttpLambdaIntegration("Mock", mock),
+      integration: new apigwint.HttpLambdaIntegration("MockIntegration", mock),
       authorizer: apiAuthorizer,
     });
 
