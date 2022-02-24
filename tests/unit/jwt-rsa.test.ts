@@ -28,8 +28,8 @@ import {
   verifyJwt,
   verifyJwtSync,
   KeyObjectCache,
-  transformJwkToKeyObject,
 } from "../../src/jwt-rsa";
+import { transformJwkToKeyObjectSync } from "../../src/node-web-compat-node";
 import { JwksCache, Jwks } from "../../src/jwk";
 import { performance } from "perf_hooks";
 
@@ -912,20 +912,18 @@ describe("unit tests jwt verifier", () => {
         const header = { alg: "RS256", kid: keypair.jwk.kid };
         const payload = { hello: "world", exp: exp.valueOf() / 1000 };
         const signedJwt = signJwt(header, payload, keypair.privateKey);
+        mockHttpsUri("https://example.com/some/path/to/jwks.json", {
+          responsePayload: JSON.stringify(keypair.jwks),
+        });
         const statement = () =>
-          verifyJwt(
-            signedJwt,
-            "https://example.com/some/path/to/jwks.json",
-            {
-              audience: null,
-              issuer: null,
-              includeRawJwtInErrors: true,
-            },
-            async () => Promise.resolve(keypair.jwk)
-          );
+          verifyJwt(signedJwt, "https://example.com/some/path/to/jwks.json", {
+            audience: null,
+            issuer: null,
+            includeRawJwtInErrors: true,
+          });
         expect.assertions(2);
-        await expect(statement).rejects.toThrow(JwtExpiredError);
         return statement().catch((err) => {
+          expect(err).toBeInstanceOf(JwtExpiredError);
           expect((err as JwtInvalidClaimError).rawJwt).toEqual({
             header,
             payload,
@@ -937,19 +935,17 @@ describe("unit tests jwt verifier", () => {
         const header = { alg: "RS256", kid: keypair.jwk.kid };
         const payload = { hello: "world", exp };
         const signedJwt = signJwt(header, payload, keypair.privateKey);
+        mockHttpsUri("https://example.com/some/path/to/jwks.json", {
+          responsePayload: JSON.stringify(keypair.jwks),
+        });
         const statement = () =>
-          verifyJwt(
-            signedJwt,
-            "https://example.com/some/path/to/jwks.json",
-            {
-              audience: null,
-              issuer: null,
-            },
-            async () => Promise.resolve(keypair.jwk)
-          );
+          verifyJwt(signedJwt, "https://example.com/some/path/to/jwks.json", {
+            audience: null,
+            issuer: null,
+          });
         expect.assertions(2);
-        await expect(statement).rejects.toThrow(JwtExpiredError);
         return statement().catch((err) => {
+          expect(err).toBeInstanceOf(JwtExpiredError);
           expect((err as JwtInvalidClaimError).rawJwt).toBe(undefined);
         });
       });
@@ -959,25 +955,23 @@ describe("unit tests jwt verifier", () => {
         const exp = Date.now() / 1000 + 10; // Expires in 10 secs
         const payload = { hello: "world", exp };
         const signedJwt = signJwt(header, payload, keypair.privateKey);
+        mockHttpsUri("https://example.com/some/path/to/jwks.json", {
+          responsePayload: JSON.stringify(keypair.jwks),
+        });
         const statement = () =>
-          verifyJwt(
-            signedJwt,
-            "https://example.com/some/path/to/jwks.json",
-            {
-              audience: null,
-              issuer: null,
-              includeRawJwtInErrors: true,
-              customJwtCheck: () => {
-                throw new CustomError("Oops", "actualValue");
-              },
+          verifyJwt(signedJwt, "https://example.com/some/path/to/jwks.json", {
+            audience: null,
+            issuer: null,
+            includeRawJwtInErrors: true,
+            customJwtCheck: () => {
+              throw new CustomError("Oops", "actualValue");
             },
-            async () => Promise.resolve(keypair.jwk)
-          );
+          });
         expect.assertions(2);
-        await expect(statement).rejects.toThrow(CustomError);
         try {
           await statement();
         } catch (err) {
+          expect(err).toBeInstanceOf(CustomError);
           expect((err as CustomError).rawJwt).toEqual({
             header,
             payload,
@@ -1465,29 +1459,35 @@ describe("unit tests jwt verifier", () => {
 
   describe("public key cache", () => {
     test("happy flow with cache", () => {
-      const jwkToKeyObjectTransformerSpy = jest.fn(transformJwkToKeyObject);
+      const jwkToKeyObjectTransformerSpy = jest.fn(transformJwkToKeyObjectSync);
       const pubkeyCache = new KeyObjectCache(jwkToKeyObjectTransformerSpy);
       const issuer = "testissuer";
-      const pubkey = pubkeyCache.transformJwkToKeyObject(keypair.jwk, issuer);
+      const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
+        keypair.jwk,
+        issuer
+      );
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );
-      pubkeyCache.transformJwkToKeyObject(keypair.jwk, "testissuer"); // same JWK, same issuer, transform from cache
-      pubkeyCache.transformJwkToKeyObject(keypair.jwk, "othertestissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(keypair.jwk, "testissuer"); // same JWK, same issuer, transform from cache
+      pubkeyCache.transformJwkToKeyObjectSync(keypair.jwk, "othertestissuer");
       // Using a different JWK (with other kid) forces the transformer to run
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(2);
       const otherKeyPair = generateKeyPair({ kid: "otherkid" });
-      pubkeyCache.transformJwkToKeyObject(otherKeyPair.jwk, "testissuer");
-      pubkeyCache.transformJwkToKeyObject(otherKeyPair.jwk, "testissuer"); // same JWK, same issuer, transform from cache
-      pubkeyCache.transformJwkToKeyObject(otherKeyPair.jwk, "othertestissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(otherKeyPair.jwk, "testissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(otherKeyPair.jwk, "testissuer"); // same JWK, same issuer, transform from cache
+      pubkeyCache.transformJwkToKeyObjectSync(
+        otherKeyPair.jwk,
+        "othertestissuer"
+      );
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(4);
       pubkeyCache.clearCache(issuer);
-      pubkeyCache.transformJwkToKeyObject(otherKeyPair.jwk, "testissuer"); // Cache is empty, so must be regenerated
+      pubkeyCache.transformJwkToKeyObjectSync(otherKeyPair.jwk, "testissuer"); // Cache is empty, so must be regenerated
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(5);
     });
     test("no issuer and kid", () => {
       const pubkeyCache = new KeyObjectCache();
-      const pubkey = pubkeyCache.transformJwkToKeyObject(keypair.jwk);
+      const pubkey = pubkeyCache.transformJwkToKeyObjectSync(keypair.jwk);
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );

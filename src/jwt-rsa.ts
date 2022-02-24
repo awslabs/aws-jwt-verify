@@ -2,13 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  join,
-  createVerify,
-  createPublicKey,
-  KeyObject,
-  uint8ArrayFromB64String,
-} from "./node-web-compat.js";
-import {
   SimpleJwksCache,
   JwksCache,
   Jwk,
@@ -17,14 +10,13 @@ import {
   isJwks,
   fetchJwk,
 } from "./jwk.js";
-import { constructPublicKeyInDerFormat } from "./asn1.js";
 import {
   assertIsNotPromise,
   assertStringArrayContainsString,
   assertStringEquals,
 } from "./assert.js";
 import { JwtHeader, JwtPayload } from "./jwt-model.js";
-import { Properties } from "./typing-util.js";
+import { AsAsync, Properties } from "./typing-util.js";
 import { decomposeJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
 import {
   JwkInvalidKtyError,
@@ -37,6 +29,12 @@ import {
   ParameterValidationError,
 } from "./error.js";
 import { JsonObject } from "./safe-json-parse.js";
+import {
+  transformJwkToKeyObjectSync,
+  verifySignatureSync,
+  transformJwkToKeyObjectAsync,
+  verifySignatureAsync,
+} from "./node-web-compat.js";
 
 /** Interface for JWT verification properties */
 export interface VerifyProperties {
@@ -149,36 +147,17 @@ export type JwtRsaVerifierMultiIssuer<
   true
 >;
 
-/**
- * Enum to map supported JWT signature algorithms with OpenSSL message digest algorithm names
- */
-export enum JwtSignatureAlgorithms {
-  RS256 = "RSA-SHA256",
-  RS384 = "RSA-SHA384",
-  RS512 = "RSA-SHA512",
-}
+export type JwsSignatureVerificationFunctionSync = (props: {
+  keyObject: GenericKeyObject;
+  alg: "RS256" | "RS384" | "RS512";
+  jwsSigningInput: string;
+  signature: string;
+}) => boolean;
 
-/**
- * Verify a JWTs signature agains a JWK. This function throws an error if the JWT is not valid
- *
- * @param header The decoded and JSON parsed JWT header
- * @param headerB64 The JWT header in base64 encoded form
- * @param payload The decoded and JSON parsed JWT payload
- * @param payloadB64 The JWT payload in base64 encoded form
- * @param signatureB64 The JWT signature in base64 encoded form
- * @param jwk The JWK with which the JWT was signed
- * @param jwkToKeyObjectTransformer Function to transform the JWK into a Node.js native key object
- * @returns void
- */
-function verifySignatureAgainstJwk(
-  header: JwtHeader,
-  headerB64: string,
-  payload: JwtPayload,
-  payloadB64: string,
-  signatureB64: string,
-  jwk: Jwk,
-  jwkToKeyObjectTransformer: JwkToKeyObjectTransformer = transformJwkToKeyObject
-) {
+export type JwsSignatureVerificationFunctionAsync =
+  AsAsync<JwsSignatureVerificationFunctionSync>;
+
+function validateJwtHeaderAndJwk(header: JwtHeader, jwk: Jwk) {
   // Check JWK use
   assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
 
@@ -202,19 +181,6 @@ function verifySignatureAgainstJwk(
     ["RS256", "RS384", "RS512"],
     JwtInvalidSignatureAlgorithmError
   );
-
-  // Convert JWK modulus and exponent into DER public key
-  const publicKey = jwkToKeyObjectTransformer(jwk, payload.iss, header.kid);
-
-  // Verify the JWT signature
-  const valid = createVerify(
-    JwtSignatureAlgorithms[header.alg as keyof typeof JwtSignatureAlgorithms]
-  )
-    .update(`${headerB64}.${payloadB64}`)
-    .verify(publicKey, signatureB64, "base64");
-  if (!valid) {
-    throw new JwtInvalidSignatureError("Invalid signature");
-  }
 }
 
 /**
@@ -241,17 +207,9 @@ export async function verifyJwt(
       jwk: Jwk;
     }) => Promise<void> | void;
     includeRawJwtInErrors?: boolean;
-  },
-  jwkFetcher?: (jwksUri: string, decomposedJwt: DecomposedJwt) => Promise<Jwk>,
-  jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
+  }
 ): Promise<JwtPayload> {
-  return verifyDecomposedJwt(
-    decomposeJwt(jwt),
-    jwksUri,
-    options,
-    jwkFetcher,
-    jwkToKeyObjectTransformer
-  );
+  return verifyDecomposedJwt(decomposeJwt(jwt), jwksUri, options);
 }
 
 /**
@@ -283,22 +241,33 @@ async function verifyDecomposedJwt(
     jwksUri: string,
     decomposedJwt: DecomposedJwt
   ) => Promise<Jwk> = fetchJwk,
-  jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
+  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerAsync = transformJwkToKeyObjectAsync
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
     decomposedJwt;
 
   const jwk = await jwkFetcher(jwksUri, decomposedJwt);
 
-  verifySignatureAgainstJwk(
-    header,
-    headerB64,
-    payload,
-    payloadB64,
-    signatureB64,
+  validateJwtHeaderAndJwk(decomposedJwt.header, jwk);
+
+  // Transform the JWK to native key format, that can be used with verifySignature
+  const keyObject = await transformJwkToKeyObjectFn(
     jwk,
-    jwkToKeyObjectTransformer
+    header.alg as "RS256" | "RS384" | "RS512",
+    payload.iss,
+    header.kid
   );
+
+  // Verify the JWT signature
+  const valid = await verifySignatureAsync({
+    jwsSigningInput: `${headerB64}.${payloadB64}`,
+    signature: signatureB64,
+    alg: header.alg as "RS256" | "RS384" | "RS512",
+    keyObject,
+  });
+  if (!valid) {
+    throw new JwtInvalidSignatureError("Invalid signature");
+  }
 
   try {
     validateJwtFields(payload, options);
@@ -339,13 +308,13 @@ export function verifyJwtSync(
     }) => void;
     includeRawJwtInErrors?: boolean;
   },
-  jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
+  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerSync = transformJwkToKeyObjectSync
 ): JwtPayload {
   return verifyDecomposedJwtSync(
     decomposeJwt(jwt),
     jwkOrJwks,
     options,
-    jwkToKeyObjectTransformer
+    transformJwkToKeyObjectFn
   );
 }
 
@@ -373,7 +342,7 @@ function verifyDecomposedJwtSync(
     }) => void;
     includeRawJwtInErrors?: boolean;
   },
-  jwkToKeyObjectTransformer?: JwkToKeyObjectTransformer
+  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerSync
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
     decomposedJwt;
@@ -398,15 +367,26 @@ function verifyDecomposedJwtSync(
     );
   }
 
-  verifySignatureAgainstJwk(
-    header,
-    headerB64,
-    payload,
-    payloadB64,
-    signatureB64,
+  validateJwtHeaderAndJwk(decomposedJwt.header, jwk);
+
+  // Transform the JWK to native key format, that can be used with verifySignature
+  const keyObject = transformJwkToKeyObjectFn(
     jwk,
-    jwkToKeyObjectTransformer
+    header.alg as "RS256" | "RS384" | "RS512",
+    payload.iss,
+    header.kid
   );
+
+  // Verify the JWT signature
+  const valid = verifySignatureSync({
+    jwsSigningInput: `${headerB64}.${payloadB64}`,
+    signature: signatureB64,
+    alg: header.alg as "RS256" | "RS384" | "RS512",
+    keyObject,
+  });
+  if (!valid) {
+    throw new JwtInvalidSignatureError("Invalid signature");
+  }
 
   try {
     validateJwtFields(payload, options);
@@ -573,7 +553,7 @@ export abstract class JwtRsaVerifierBase<
       decomposedJwt,
       jwk,
       verifyProperties,
-      this.publicKeyCache.transformJwkToKeyObject.bind(this.publicKeyCache)
+      this.publicKeyCache.transformJwkToKeyObjectSync.bind(this.publicKeyCache)
     );
   }
 
@@ -612,7 +592,7 @@ export abstract class JwtRsaVerifierBase<
       jwksUri,
       verifyProperties,
       this.jwksCache.getJwk.bind(this.jwksCache),
-      this.publicKeyCache.transformJwkToKeyObject.bind(this.publicKeyCache)
+      this.publicKeyCache.transformJwkToKeyObjectAsync.bind(this.publicKeyCache)
     );
   }
 
@@ -662,12 +642,10 @@ export abstract class JwtRsaVerifierBase<
     if (config.jwksUri) {
       return config as IssuerConfig & { jwksUri: string };
     }
-    const issuerUri = new URL(config.issuer);
+    const issuerUri = new URL(config.issuer).pathname.replace(/\/$/, "");
     return {
-      jwksUri: new URL(
-        join(issuerUri.pathname, "/.well-known/jwks.json"),
-        config.issuer
-      ).href,
+      jwksUri: new URL(`${issuerUri}/.well-known/jwks.json`, config.issuer)
+        .href,
       ...config,
     };
   }
@@ -723,67 +701,85 @@ export class JwtRsaVerifier<
   }
 }
 
-/** Interface for functions that can transform a JWK into an RSA public key in Node.js native key object format */
-export type JwkToKeyObjectTransformer = (
+type GenericKeyObject = any;
+
+/** Interface for functions that can transform a JWK into an RSA public key in native key object format */
+export type JwkToKeyObjectTransformerSync = (
   jwk: Jwk,
+  alg?: "RS256" | "RS384" | "RS512",
   issuer?: string,
   kid?: string
-) => KeyObject;
+) => GenericKeyObject;
+
+export type JwkToKeyObjectTransformerAsync = (
+  jwk: Jwk,
+  alg?: "RS256" | "RS384" | "RS512",
+  issuer?: string,
+  kid?: string
+) => Promise<GenericKeyObject>;
 
 /**
- * Transform the JWK into an RSA public key in Node.js native key object format
+ * Class representing a cache of RSA public keys in native key object format
  *
- * @param jwk: the JWK
- * @returns the RSA public key in Node.js native key object format
- */
-export const transformJwkToKeyObject: JwkToKeyObjectTransformer = (jwk: Jwk) =>
-  createPublicKey({
-    key: constructPublicKeyInDerFormat(
-      uint8ArrayFromB64String(jwk.n),
-      uint8ArrayFromB64String(jwk.e)
-    ),
-    format: "der",
-    type: "spki",
-  });
-
-/**
- * Class representing a cache of RSA public keys in Node.js native key object format
- *
- * Because it takes a bit of compute time to turn a JWK into Node.js native key object format,
+ * Because it takes a bit of compute time to turn a JWK into native key object format,
  * we want to cache this computation.
  */
 export class KeyObjectCache {
-  private publicKeys: Map<Issuer, Map<Kid, KeyObject>> = new Map();
+  private publicKeys: Map<Issuer, Map<Kid, GenericKeyObject>> = new Map();
 
   constructor(
-    public jwkToKeyObjectTransformer: JwkToKeyObjectTransformer = transformJwkToKeyObject
+    public transformJwkToKeyObjectSyncFn: JwkToKeyObjectTransformerSync = transformJwkToKeyObjectSync,
+    public transformJwkToKeyObjectAsyncFn: JwkToKeyObjectTransformerAsync = transformJwkToKeyObjectAsync
   ) {}
 
   /**
-   * Transform the JWK into an RSA public key in Node.js native key object format.
+   * Transform the JWK into an RSA public key in native key object format.
    * If the transformed JWK is already in the cache, it is returned from the cache instead.
    * The cache keys are: issuer, JWK kid (key id)
    *
    * @param jwk: the JWK
    * @param issuer: the issuer that uses the JWK for signing JWTs
-   * @returns the RSA public key in Node.js native key object format
+   * @returns the RSA public key in native key object format
    */
-  transformJwkToKeyObject(jwk: Jwk, issuer?: Issuer): KeyObject {
+  transformJwkToKeyObjectSync(jwk: Jwk, issuer?: Issuer): GenericKeyObject {
     if (!issuer) {
-      return this.jwkToKeyObjectTransformer(jwk);
+      return this.transformJwkToKeyObjectSyncFn(jwk);
     }
+    const fromCache = this.getFromCache(jwk, issuer);
+    if (fromCache) return fromCache;
+    const publicKey = this.transformJwkToKeyObjectSyncFn(jwk);
+    this.putInCache(jwk, issuer, publicKey);
+    return publicKey;
+  }
+
+  async transformJwkToKeyObjectAsync(
+    jwk: Jwk,
+    issuer?: Issuer
+  ): Promise<GenericKeyObject> {
+    if (!issuer) {
+      return this.transformJwkToKeyObjectAsyncFn(jwk);
+    }
+    const fromCache = this.getFromCache(jwk, issuer);
+    if (fromCache) return fromCache;
+    const publicKey = await this.transformJwkToKeyObjectAsyncFn(jwk);
+    this.putInCache(jwk, issuer, publicKey);
+    return publicKey;
+  }
+
+  private getFromCache(jwk: Jwk, issuer: Issuer) {
     const cachedPublicKey = this.publicKeys.get(issuer)?.get(jwk.kid);
     if (cachedPublicKey) {
       return cachedPublicKey;
     }
-    const publicKey = this.jwkToKeyObjectTransformer(jwk);
+  }
+
+  private putInCache(jwk: Jwk, issuer: string, publicKey: GenericKeyObject) {
     const cachedIssuer = this.publicKeys.get(issuer);
     if (cachedIssuer) {
       cachedIssuer.set(jwk.kid, publicKey);
     } else {
       this.publicKeys.set(issuer, new Map([[jwk.kid, publicKey]]));
     }
-    return publicKey;
   }
 
   clearCache(issuer: Issuer): void {

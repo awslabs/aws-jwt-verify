@@ -19,7 +19,7 @@ export function assertStringEquals(
   actual: unknown,
   expected: string,
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
-): void {
+): asserts actual is string {
   if (!actual) {
     throw new errorConstructor(
       `Missing ${name}. Expected: ${expected}`,
@@ -58,7 +58,7 @@ export function assertStringArrayContainsString(
   actual: unknown,
   expected: string | string[],
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
-): void {
+): asserts actual is string {
   if (!actual) {
     throw new errorConstructor(
       `Missing ${name}. ${expectationMessage(expected)}`,
@@ -94,7 +94,7 @@ export function assertStringArraysOverlap(
   actual: unknown,
   expected: string | string[],
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
-): void {
+): asserts actual is string[] {
   if (!actual) {
     throw new errorConstructor(
       `Missing ${name}. ${expectationMessage(expected)}`,

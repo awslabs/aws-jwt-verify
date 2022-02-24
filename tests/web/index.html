@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>aws-jwt-verify</title>
+  </head>
+  <body>
+    <script type="module">
+      import { CognitoJwtVerifier } from "./dist/web/index.js";
+
+      // Verifier that expects valid access tokens:
+      const verifier = CognitoJwtVerifier.create({
+        userPoolId: "eu-west-1_cfE3x56oc",
+        tokenUse: "access",
+        clientId: "42knffvu5cujtrs02u4ec0aegs",
+      });
+
+      try {
+        const payload = await verifier.verify(
+          "eyJraWQiOiJhYnY4N2R4N2l5Y1p5MnNmVGNXT1I1UWZjeDNxRGZEQmxBbFdqM20zR093PSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiIxZjcxYTdiNC0zNDE3LTQwZGMtOWNkMC00OWI1NWJlMmQwN2QiLCJjb2duaXRvOmdyb3VwcyI6WyJ0ZXN0MyIsImV1LXdlc3QtMV9jZkUzeDU2b2NfR29vZ2xlIl0sInRva2VuX3VzZSI6ImFjY2VzcyIsInNjb3BlIjoiYXdzLmNvZ25pdG8uc2lnbmluLnVzZXIuYWRtaW4gaHR0cHM6XC9cL2FwaS5vdHRvLWF3cy5jb21cL2hlbGxvXC9yZWFkIHBob25lIG9wZW5pZCBwcm9maWxlIGVtYWlsIiwiYXV0aF90aW1lIjoxNjQ1NDYwMjUyLCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAuZXUtd2VzdC0xLmFtYXpvbmF3cy5jb21cL2V1LXdlc3QtMV9jZkUzeDU2b2MiLCJleHAiOjE2NDU0NjM4NTIsImlhdCI6MTY0NTQ2MDI1MiwidmVyc2lvbiI6MiwianRpIjoiM2E0MTg1NzktZjdiNC00OTY2LWI3MTMtNzQ0OTg3NDk2ZTUxIiwiY2xpZW50X2lkIjoiNDJrbmZmdnU1Y3VqdHJzMDJ1NGVjMGFlZ3MiLCJ1c2VybmFtZSI6Ikdvb2dsZV8xMTI4Njk4MzY0MDI5MzgyNDQ2NzYifQ.hrZZKK8JxL-CyH1tIe9z12VveZwhBAs4Z-YOSVPD93UvVwhoZ_KGI8kaxwplYxrVaQ9KmM7wam2QE31vsj8lBZ83HKbRmK3Qsay0_d9CNpRRbZ2XzzrFriJS6xdo0GCauPTOdWFvCIdaBqGWOHtv2umkOpZfA0dFIXfqi7L-vZISl2IK1ktLP1sNA3YotgjnxsA2Phy4yAx6EEbkBbWMvie1qnlkxeeVgiooTBAhnLzma7wqTEA43kVSf_K6c9Xmp0x82tweT-jLCB87skzDKqD5dPEKK49DTqBy4T0HTKK_xqtHXlrTB2IqljO9pI3A0gGfTn8eX5durllklMb6vA" // the JWT as string
+        );
+        console.log("Token is valid. Payload:", payload);
+      } catch (err) {
+        console.log("Token not valid!", err);
+      }
+    </script>
+    <p>Let's verify some JWTs!</p>
+  </body>
+</html>

@@ -53,3 +53,16 @@ export type Properties<Base, Provided> = StillToProvideProperties<
   Provided
 > &
   Partial<Base>;
+
+export type AsAsync<T extends (...args: any[]) => any> = (
+  ...args: Parameters<T>
+) => Promise<ReturnType<T>>;
+
+export function wrapResultInPromise<T extends (...args: any[]) => any>(
+  toWrap: T
+) {
+  return function (...args: Parameters<T>): Promise<ReturnType<T>> {
+    const res = toWrap(...args) as ReturnType<T>;
+    return Promise.resolve(res);
+  };
+}

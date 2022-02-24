@@ -3,7 +3,7 @@ import nock from "nock";
 import { URL } from "url";
 import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
 import { Jwk, Jwks } from "../../src/jwk";
-import { JwtSignatureAlgorithms } from "../../src/jwt-rsa";
+import { JwtSignatureAlgorithms } from "../../src/node-web-compat-node";
 
 export function disallowAllRealNetworkTraffic() {
   nock.disableNetConnect();

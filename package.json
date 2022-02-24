@@ -91,10 +91,11 @@
     "typescript": "^4.4.3"
   },
   "scripts": {
-    "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json && cp src/node-web-compat.cjs dist/cjs/node-web-compat.js",
-    "dist:esm": "tsc --module ES2020 --outDir dist/esm && echo '{\"type\":\"module\"}' > dist/esm/package.json && cp src/node-web-compat.mjs dist/esm/node-web-compat.js",
+    "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json && mv dist/cjs/node-web-compat-node.js dist/cjs/node-web-compat.js && rm dist/cjs/node-web-compat-web.js",
+    "dist:esm": "tsc --module ES2020 --outDir dist/esm && echo '{\"type\":\"module\"}' > dist/esm/package.json && mv dist/esm/node-web-compat-node.js dist/esm/node-web-compat.js && rm dist/esm/node-web-compat-web.js",
+    "dist:web": "tsc --module ES2020 --outDir dist/web && echo '{\"type\":\"module\"}' > dist/esm/package.json && mv dist/web/node-web-compat-web.js dist/web/node-web-compat.js && rm dist/web/node-web-compat-node.js",
     "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly",
-    "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:types",
+    "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:web && npm run dist:types",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
     "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",
     "pack-for-tests": "rm -f aws-jwt-verify.tgz 'aws-jwt-verify-?.?.?.tgz' && npm pack && mv aws-jwt-verify-*.tgz aws-jwt-verify.tgz",

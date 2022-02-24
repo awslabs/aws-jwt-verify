@@ -4,10 +4,6 @@
 // Utility to encode RSA public keys (a pair of modulus (n) and exponent (e)) into DER-encoding, per ASN.1 specification.
 
 import { Asn1DecodingError } from "./error.js";
-import {
-  concatUint8Arrays,
-  numberFromUint8ArrayBE,
-} from "./node-web-compat.js";
 
 /** Enum with possible values for supported ASN.1 classes */
 enum Asn1Class {
@@ -41,14 +37,14 @@ interface Identifier {
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.1.2
  *
  * @param identifier - The ASN.1 identifier
- * @returns The Uint8Array
+ * @returns The buffer
  */
 function encodeIdentifier(identifier: Identifier) {
   const identifierAsNumber =
     (identifier.class << 7) |
     (identifier.primitiveOrConstructed << 5) |
     identifier.tag;
-  return Uint8Array.from([identifierAsNumber]);
+  return Buffer.from([identifierAsNumber]);
 }
 
 /**
@@ -56,11 +52,11 @@ function encodeIdentifier(identifier: Identifier) {
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.1.3
  *
  * @param length - The length of the ASN.1 type
- * @returns The Uint8Array
+ * @returns The buffer
  */
 function encodeLength(length: number) {
   if (length < 128) {
-    return Uint8Array.from([length]);
+    return Buffer.from([length]);
   }
   const integers: number[] = [];
   while (length > 0) {
@@ -68,26 +64,26 @@ function encodeLength(length: number) {
     length = length >> 8;
   }
   integers.reverse();
-  return Uint8Array.from([128 | integers.length, ...integers]);
+  return Buffer.from([128 | integers.length, ...integers]);
 }
 
 /**
- * Encode a Uint8Array (that represent an integer) as integer per ASN.1 spec (DER-encoding)
+ * Encode a buffer (that represent an integer) as integer per ASN.1 spec (DER-encoding)
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.3
  *
- * @param Uint8Array - The Uint8Array that represent an integer to encode
- * @returns The Uint8Array
+ * @param buffer - The buffer that represent an integer to encode
+ * @returns The buffer
  */
-function encodeUint8ArrayAsInteger(Uint8Array: Uint8Array) {
-  return concatUint8Arrays(
+function encodeBufferAsInteger(buffer: Buffer) {
+  return Buffer.concat([
     encodeIdentifier({
       class: Asn1Class.Universal,
       primitiveOrConstructed: Asn1Encoding.Primitive,
       tag: Asn1Tag.Integer,
     }),
-    encodeLength(Uint8Array.length),
-    Uint8Array
-  );
+    encodeLength(buffer.length),
+    buffer,
+  ]);
 }
 
 /**
@@ -95,7 +91,7 @@ function encodeUint8ArrayAsInteger(Uint8Array: Uint8Array) {
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.19
  *
  * @param oid - The object identifier to encode
- * @returns The Uint8Array
+ * @returns The buffer
  */
 function encodeObjectIdentifier(oid: string) {
   const oidComponents = oid.split(".").map((i) => parseInt(i));
@@ -112,39 +108,39 @@ function encodeObjectIdentifier(oid: string) {
         bytes.map((b, index) => (index ? b + 128 : b)).reverse()
       );
     }, [] as number[]);
-  const oidUint8Array = Uint8Array.from([
+  const oidBuffer = Buffer.from([
     firstSubidentifier,
     ...subsequentSubidentifiers,
   ]);
-  return concatUint8Arrays(
+  return Buffer.concat([
     encodeIdentifier({
       class: Asn1Class.Universal,
       primitiveOrConstructed: Asn1Encoding.Primitive,
       tag: Asn1Tag.ObjectIdentifier,
     }),
-    encodeLength(oidUint8Array.length),
-    oidUint8Array
-  );
+    encodeLength(oidBuffer.length),
+    oidBuffer,
+  ]);
 }
 
 /**
- * Encode a Uint8Array as bit string per ASN.1 spec (DER-encoding)
+ * Encode a buffer as bit string per ASN.1 spec (DER-encoding)
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.6
  *
- * @param uint8Array - The Uint8Array to encode
- * @returns The Uint8Array
+ * @param buffer - The buffer to encode
+ * @returns The buffer
  */
-function encodeUint8ArrayAsBitString(uint8Array: Uint8Array) {
-  const bitString = concatUint8Arrays(new Uint8Array(1), uint8Array);
-  return concatUint8Arrays(
+function encodeBufferAsBitString(buffer: Buffer) {
+  const bitString = Buffer.concat([Buffer.from([0]), buffer]);
+  return Buffer.concat([
     encodeIdentifier({
       class: Asn1Class.Universal,
       primitiveOrConstructed: Asn1Encoding.Primitive,
       tag: Asn1Tag.BitString,
     }),
     encodeLength(bitString.length),
-    bitString
-  );
+    bitString,
+  ]);
 }
 
 /**
@@ -152,36 +148,36 @@ function encodeUint8ArrayAsBitString(uint8Array: Uint8Array) {
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.9
  *
  * @param sequenceItems - The sequence of DER-encoded items
- * @returns The Uint8Array
+ * @returns The buffer
  */
-function encodeSequence(sequenceItems: Uint8Array[]) {
-  const concatenated = concatUint8Arrays(...sequenceItems);
-  return concatUint8Arrays(
+function encodeSequence(sequenceItems: Buffer[]) {
+  const concatenated = Buffer.concat(sequenceItems);
+  return Buffer.concat([
     encodeIdentifier({
       class: Asn1Class.Universal,
       primitiveOrConstructed: Asn1Encoding.Constructed,
       tag: Asn1Tag.Sequence,
     }),
     encodeLength(concatenated.length),
-    concatenated
-  );
+    concatenated,
+  ]);
 }
 
 /**
  * Encode null per ASN.1 spec (DER-encoding)
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.8
  *
- * @returns The Uint8Array
+ * @returns The buffer
  */
 function encodeNull() {
-  return concatUint8Arrays(
+  return Buffer.concat([
     encodeIdentifier({
       class: Asn1Class.Universal,
       primitiveOrConstructed: Asn1Encoding.Primitive,
       tag: Asn1Tag.Null,
     }),
-    encodeLength(0)
-  );
+    encodeLength(0),
+  ]);
 }
 
 /**
@@ -207,23 +203,17 @@ const ALGORITHM_RSA_ENCRYPTION = encodeSequence([
 
 /**
  * Transform an RSA public key, which is a pair of modulus (n) and exponent (e),
- *  into a Uint8Array per ASN.1 spec (DER-encoding)
+ *  into a buffer per ASN.1 spec (DER-encoding)
  *
- * @param n - The modulus of the public key as Uint8Array
- * @param e - The exponent of the public key as Uint8Array
- * @returns The Uint8Array, which is the public key encoded per ASN.1 spec (DER-encoding)
+ * @param n - The modulus of the public key as buffer
+ * @param e - The exponent of the public key as buffer
+ * @returns The buffer, which is the public key encoded per ASN.1 spec (DER-encoding)
  */
-export function constructPublicKeyInDerFormat(
-  n: Uint8Array,
-  e: Uint8Array
-): Uint8Array {
+export function constructPublicKeyInDerFormat(n: Buffer, e: Buffer): Buffer {
   return encodeSequence([
     ALGORITHM_RSA_ENCRYPTION,
-    encodeUint8ArrayAsBitString(
-      encodeSequence([
-        encodeUint8ArrayAsInteger(n),
-        encodeUint8ArrayAsInteger(e),
-      ])
+    encodeBufferAsBitString(
+      encodeSequence([encodeBufferAsInteger(n), encodeBufferAsInteger(e)])
     ),
   ]);
 }
@@ -256,7 +246,7 @@ function decodeIdentifier(identifier: number) {
  * @param blockOfLengthValues - The ASN.1 length value
  * @returns The length and byte range of the first included length value
  */
-function decodeLengthValue(blockOfLengthValues: Uint8Array) {
+function decodeLengthValue(blockOfLengthValues: Buffer) {
   if (!(blockOfLengthValues[0] & 0b10000000)) {
     return {
       length: blockOfLengthValues[0],
@@ -265,10 +255,9 @@ function decodeLengthValue(blockOfLengthValues: Uint8Array) {
     };
   }
   const nrLengthOctets = blockOfLengthValues[0] & 0b01111111;
-  const length = numberFromUint8ArrayBE(
-    Uint8Array.from(blockOfLengthValues.slice(1, 1 + 1 + nrLengthOctets)),
-    nrLengthOctets
-  );
+  const length = Buffer.from(
+    blockOfLengthValues.slice(1, 1 + 1 + nrLengthOctets)
+  ).readUIntBE(0, nrLengthOctets);
   return {
     length,
     firstByteOffset: 1 + nrLengthOctets,
@@ -280,7 +269,7 @@ function decodeLengthValue(blockOfLengthValues: Uint8Array) {
 interface ILV {
   identifier: Identifier;
   length: number;
-  value: Uint8Array;
+  value: Buffer;
 }
 
 /**
@@ -290,7 +279,7 @@ interface ILV {
  * @param sequenceValue - The ASN.1 sequence value
  * @returns Array of identifier-length-value triplets
  */
-function decodeSequence(sequence: Uint8Array) {
+function decodeSequence(sequence: Buffer) {
   const { tag } = decodeIdentifier(sequence[0]);
   if (tag !== Asn1Tag.Sequence) {
     throw new Asn1DecodingError(
@@ -307,7 +296,7 @@ function decodeSequence(sequence: Uint8Array) {
   const parts: ILV[] = [];
   let offset = 0;
   while (offset < sequenceValue.length) {
-    // Silence false postive: accessing an octet in a Uint8Array at a particular index
+    // Silence false postive: accessing an octet in a Buffer at a particular index
     // is to be done with index operator: [index]
     // eslint-disable-next-line security/detect-object-injection
     const identifier = decodeIdentifier(sequenceValue[offset]);
@@ -330,7 +319,7 @@ function decodeSequence(sequence: Uint8Array) {
  * @param bitStringValue - The ASN.1 bit string value
  * @returns Array of identifier-length-value triplets
  */
-function decodeBitStringWrappedSequenceValue(bitStringValue: Uint8Array) {
+function decodeBitStringWrappedSequenceValue(bitStringValue: Buffer) {
   const wrappedSequence = bitStringValue.slice(1);
   return decodeSequence(wrappedSequence);
 }
@@ -341,9 +330,9 @@ function decodeBitStringWrappedSequenceValue(bitStringValue: Uint8Array) {
  * @param publicKey - The ASN.1 DER-encoded public key
  * @returns Object with modulus (n) and exponent (e)
  */
-export function deconstructPublicKeyInDerFormat(publicKey: Uint8Array): {
-  n: Uint8Array;
-  e: Uint8Array;
+export function deconstructPublicKeyInDerFormat(publicKey: Buffer): {
+  n: Buffer;
+  e: Buffer;
 } {
   const [, pubkeyinfo] = decodeSequence(publicKey);
   const [n, e] = decodeBitStringWrappedSequenceValue(pubkeyinfo.value);

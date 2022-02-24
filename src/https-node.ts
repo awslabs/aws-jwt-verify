@@ -29,7 +29,7 @@ type FetchRequestOptions = RequestOptions & {
 export async function fetchJson<ResultType extends Json>(
   uri: string,
   requestOptions?: FetchRequestOptions,
-  data?: Buffer
+  data?: Uint8Array
 ): Promise<ResultType> {
   let responseTimeout: NodeJS.Timeout;
   return new Promise<ResultType>((resolve, reject) => {
