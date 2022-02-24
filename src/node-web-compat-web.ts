@@ -68,7 +68,9 @@ export const verifySignatureAsync: JwsSignatureVerificationFunctionAsync = ({
 }) =>
   window.crypto.subtle.verify(
     // eslint-disable-next-line security/detect-object-injection
-    JwtSignatureAlgorithmsWebCrypto[alg],
+    {
+      name: "RSASSA-PKCS1-v1_5",
+    },
     keyObject,
     fromBase64url(signature),
     new TextEncoder().encode(jwsSigningInput)
