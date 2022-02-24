@@ -520,6 +520,7 @@ Resources:
               Fn::Sub: arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*
           - Action:
               - apigateway:GET
+              - apigateway:PATCH
               - apigateway:POST
               - apigateway:DELETE
             Effect: Allow
