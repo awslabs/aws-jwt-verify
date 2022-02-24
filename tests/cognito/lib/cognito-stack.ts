@@ -133,7 +133,7 @@ export class CognitoStack extends cdk.Stack {
       physicalResourceId: cr.PhysicalResourceId.of(
         clientWithSecret.userPoolClientId
       ),
-      outputPath: "UserPoolClient.ClientSecret",
+      outputPaths: ["UserPoolClient.ClientSecret"],
     };
     const clientSecretGetter = new cr.AwsCustomResource(
       this,
@@ -175,18 +175,19 @@ export class CognitoStack extends cdk.Stack {
         },
       }
     );
-    const apiAuthorizer = new apigwauth.HttpLambdaAuthorizer({
-      authorizerName: "LambdaAuthorizer",
-      responseTypes: [apigwauth.HttpLambdaResponseType.SIMPLE],
-      handler: lambdaAuthorizer,
-    });
+    const apiAuthorizer = new apigwauth.HttpLambdaAuthorizer(
+      "LambdaAuthorizer",
+      lambdaAuthorizer,
+      {
+        authorizerName: "LambdaAuthorizer",
+        responseTypes: [apigwauth.HttpLambdaResponseType.SIMPLE],
+      }
+    );
     const httpApi = new apigw.HttpApi(this, "HttpApi");
     httpApi.addRoutes({
       path: "/mock",
       methods: [apigw.HttpMethod.GET],
-      integration: new apigwint.LambdaProxyIntegration({
-        handler: mock,
-      }),
+      integration: new apigwint.HttpLambdaIntegration("MockIntegration", mock),
       authorizer: apiAuthorizer,
     });
 
