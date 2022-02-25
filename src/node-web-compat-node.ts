@@ -37,7 +37,7 @@ export const transformJwkToKeyObjectAsync = wrapResultInPromise(
 /**
  * Enum to map supported JWT signature algorithms with OpenSSL message digest algorithm names
  */
-export enum JwtSignatureAlgorithms {
+enum JwtSignatureAlgorithms {
   RS256 = "RSA-SHA256",
   RS384 = "RSA-SHA384",
   RS512 = "RSA-SHA512",

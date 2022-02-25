@@ -139,3 +139,9 @@ export class FetchError extends JwtBaseError {
 }
 
 export class NonRetryableFetchError extends FetchError {}
+
+/**
+ * Web compatibility errors
+ */
+
+export class NotSupportedError extends JwtBaseError {}

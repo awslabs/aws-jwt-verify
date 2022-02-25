@@ -3,7 +3,6 @@ import nock from "nock";
 import { URL } from "url";
 import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
 import { Jwk, Jwks } from "../../src/jwk";
-import { JwtSignatureAlgorithms } from "../../src/node-web-compat-node";
 
 export function disallowAllRealNetworkTraffic() {
   nock.disableNetConnect();
@@ -55,6 +54,12 @@ export function publicKeyToJwk(
     n: Buffer.from(n).toString("base64"),
     e: Buffer.from(e).toString("base64"),
   } as Jwk;
+}
+
+enum JwtSignatureAlgorithms {
+  RS256 = "RSA-SHA256",
+  RS384 = "RSA-SHA384",
+  RS512 = "RSA-SHA512",
 }
 
 export function signJwt(

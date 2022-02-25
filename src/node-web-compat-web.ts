@@ -9,21 +9,25 @@ import {
 } from "./jwt-rsa";
 import { Jwk } from "./jwk";
 import { Json } from "./safe-json-parse";
+import { NotSupportedError } from "./error";
 
 export const fetchJson: <ResultType extends Json>(
   uri: string,
   requestOptions?: Record<string, unknown>,
   data?: Uint8Array
 ) => Promise<ResultType> = (uri, requestOptions, data) =>
-  // eslint-disable-next-line no-undef
   fetch(uri, { ...requestOptions, body: data }).then((res) => res.json());
 
 export const transformJwkToKeyObjectSync: JwkToKeyObjectTransformerSync =
   () => {
-    throw new Error("Sync not implemented");
+    throw new NotSupportedError(
+      "Synchronously transforming a JWK into a key object is not supported in the browser"
+    );
   };
 export const verifySignatureSync: JwsSignatureVerificationFunctionSync = () => {
-  throw new Error("Sync not implemented");
+  throw new NotSupportedError(
+    "Synchronously verifying a JWT signature is not supported in the browser"
+  );
 };
 
 /**
@@ -61,7 +65,6 @@ enum JwtSignatureAlgorithmsWebCrypto {
 }
 
 export const verifySignatureAsync: JwsSignatureVerificationFunctionAsync = ({
-  alg,
   jwsSigningInput,
   keyObject,
   signature,
@@ -72,71 +75,34 @@ export const verifySignatureAsync: JwsSignatureVerificationFunctionAsync = ({
       name: "RSASSA-PKCS1-v1_5",
     },
     keyObject,
-    fromBase64url(signature),
+    bufferFromBase64url(signature),
     new TextEncoder().encode(jwsSigningInput)
   );
 
 export const utf8StringFromB64String = (b64: string): string => {
-  return new TextDecoder().decode(fromBase64url(b64));
+  return new TextDecoder().decode(bufferFromBase64url(b64));
 };
 
-// modified version of MIT licensed https://github.com/niklasvh/base64-arraybuffer
-// TODO reimplement
-/**
-Copyright (c) 2012 Niklas von Hertzen
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation
-files (the "Software"), to deal in the Software without
-restriction, including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
- */
-const chars =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-const lookup = new Uint8Array(256);
-for (let i = 0; i < chars.length; i++) {
-  lookup[chars.charCodeAt(i)] = i;
-}
-export const fromBase64url = (base64url: string): ArrayBuffer => {
-  const len = base64url.length;
-  let bufferLength = len * 0.75,
-    i,
-    p = 0,
-    encoded1,
-    encoded2,
-    encoded3,
-    encoded4;
-  if (base64url[len - 1] === "=") {
-    bufferLength--;
-    if (base64url[len - 2] === "=") {
-      bufferLength--;
-    }
-  }
-  const arraybuffer = new ArrayBuffer(bufferLength),
-    bytes = new Uint8Array(arraybuffer);
-  for (i = 0; i < len; i += 4) {
-    encoded1 = lookup[base64url.charCodeAt(i)];
-    encoded2 = lookup[base64url.charCodeAt(i + 1)];
-    encoded3 = lookup[base64url.charCodeAt(i + 2)];
-    encoded4 = lookup[base64url.charCodeAt(i + 3)];
-    bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
-    bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
-    bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
-  }
-  return arraybuffer;
-};
+const bufferFromBase64url = (function () {
+  const map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    .split("")
+    .reduce(
+      (acc, char, index) => Object.assign(acc, { [char.charCodeAt(0)]: index }),
+      {} as { [key: number]: number }
+    );
+  return function (base64url: string) {
+    const paddingLength = base64url.match(/^.+(=?=?)$/)![1].length;
+    const bufferLength = (base64url.length * 3) / 4 - paddingLength;
+    let first: number, second: number, third: number, fourth: number;
+    return base64url.match(/.{1,4}/g)!.reduce((acc, chunk, index) => {
+      first = map[chunk.charCodeAt(0)];
+      second = map[chunk.charCodeAt(1)];
+      third = map[chunk.charCodeAt(2)];
+      fourth = map[chunk.charCodeAt(3)];
+      acc[3 * index] = (first << 2) | (second >> 4);
+      acc[3 * index + 1] = ((second & 15) << 4) | (third >> 2);
+      acc[3 * index + 2] = ((third & 3) << 6) | (fourth & 63);
+      return acc;
+    }, new Uint8Array(bufferLength));
+  };
+})();
