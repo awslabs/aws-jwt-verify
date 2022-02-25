@@ -1,11 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+//
+// Web implementations for the node-web-compatibility layer
 
 import {
   JwkToKeyObjectTransformerSync,
   JwkToKeyObjectTransformerAsync,
-  JwsSignatureVerificationFunctionSync,
-  JwsSignatureVerificationFunctionAsync,
+  JwsVerificationFunctionSync,
+  JwsVerificationFunctionAsync,
 } from "./jwt-rsa";
 import { Jwk } from "./jwk";
 import { Json } from "./safe-json-parse";
@@ -24,7 +26,7 @@ export const transformJwkToKeyObjectSync: JwkToKeyObjectTransformerSync =
       "Synchronously transforming a JWK into a key object is not supported in the browser"
     );
   };
-export const verifySignatureSync: JwsSignatureVerificationFunctionSync = () => {
+export const verifySignatureSync: JwsVerificationFunctionSync = () => {
   throw new NotSupportedError(
     "Synchronously verifying a JWT signature is not supported in the browser"
   );
@@ -64,7 +66,7 @@ enum JwtSignatureAlgorithmsWebCrypto {
   RS512 = "SHA-512",
 }
 
-export const verifySignatureAsync: JwsSignatureVerificationFunctionAsync = ({
+export const verifySignatureAsync: JwsVerificationFunctionAsync = ({
   jwsSigningInput,
   keyObject,
   signature,

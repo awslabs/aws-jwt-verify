@@ -147,15 +147,14 @@ export type JwtRsaVerifierMultiIssuer<
   true
 >;
 
-export type JwsSignatureVerificationFunctionSync = (props: {
+export type JwsVerificationFunctionSync = (props: {
   keyObject: GenericKeyObject;
   alg: "RS256" | "RS384" | "RS512";
   jwsSigningInput: string;
   signature: string;
 }) => boolean;
 
-export type JwsSignatureVerificationFunctionAsync =
-  AsAsync<JwsSignatureVerificationFunctionSync>;
+export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
 
 function validateJwtHeaderAndJwk(header: JwtHeader, jwk: Jwk) {
   // Check JWK use

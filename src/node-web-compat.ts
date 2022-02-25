@@ -9,8 +9,8 @@ import { Json } from "./safe-json-parse.js";
 import {
   JwkToKeyObjectTransformerSync,
   JwkToKeyObjectTransformerAsync,
-  JwsSignatureVerificationFunctionSync,
-  JwsSignatureVerificationFunctionAsync,
+  JwsVerificationFunctionSync,
+  JwsVerificationFunctionAsync,
 } from "./jwt-rsa";
 
 // Convert base64 to UTF8
@@ -25,5 +25,5 @@ export let fetchJson: <ResultType extends Json>(
 
 export let transformJwkToKeyObjectSync: JwkToKeyObjectTransformerSync;
 export let transformJwkToKeyObjectAsync: JwkToKeyObjectTransformerAsync;
-export let verifySignatureSync: JwsSignatureVerificationFunctionSync;
-export let verifySignatureAsync: JwsSignatureVerificationFunctionAsync;
+export let verifySignatureSync: JwsVerificationFunctionSync;
+export let verifySignatureAsync: JwsVerificationFunctionAsync;

@@ -6,6 +6,7 @@ const srcPath = path.join(__dirname, "..", "src");
 module.exports = (request, options) => {
   if (options.basedir.startsWith(srcPath)) {
     if (request.endsWith("node-web-compat.js")) {
+      // when running unit tests, we want to use the Node.js implementation (not Web)
       request = request.replace(
         "node-web-compat.js",
         "node-web-compat-node.ts"

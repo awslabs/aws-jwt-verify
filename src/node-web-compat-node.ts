@@ -1,11 +1,12 @@
-"use strict";
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+//
+// Node.js implementations for the node-web-compatibility layer
 
 import { createPublicKey, createVerify, KeyObject } from "crypto";
 import {
   JwkToKeyObjectTransformerSync,
-  JwsSignatureVerificationFunctionSync,
+  JwsVerificationFunctionSync,
 } from "./jwt-rsa";
 import { Jwk } from "./jwk.js";
 import { constructPublicKeyInDerFormat } from "./asn1.js";
@@ -43,7 +44,7 @@ enum JwtSignatureAlgorithms {
   RS512 = "RSA-SHA512",
 }
 
-export const verifySignatureSync: JwsSignatureVerificationFunctionSync = ({
+export const verifySignatureSync: JwsVerificationFunctionSync = ({
   alg,
   keyObject,
   jwsSigningInput,

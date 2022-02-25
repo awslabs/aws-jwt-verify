@@ -51,8 +51,8 @@ export function publicKeyToJwk(
   );
   return {
     ...jwkOptions,
-    n: Buffer.from(n).toString("base64"),
-    e: Buffer.from(e).toString("base64"),
+    n: n.toString("base64"),
+    e: e.toString("base64"),
   } as Jwk;
 }
 
