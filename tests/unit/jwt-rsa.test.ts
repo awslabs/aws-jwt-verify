@@ -32,6 +32,7 @@ import {
 import { transformJwkToKeyObjectSync } from "../../src/node-web-compat-node";
 import { JwksCache, Jwks } from "../../src/jwk";
 import { performance } from "perf_hooks";
+import { KeyObject } from "crypto";
 
 describe("unit tests jwt verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
@@ -202,6 +203,28 @@ describe("unit tests jwt verifier", () => {
           });
         expect(statement).toThrow("Invalid signature");
         expect(statement).toThrow(JwtInvalidSignatureError);
+      });
+      test("invalid signature - async", async () => {
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          {},
+          keypair.privateKey,
+          false
+        );
+        const statement = () =>
+          verifyJwt(signedJwt, "https://example.com/path/to/jwks.json", {
+            audience: null,
+            issuer: null,
+          });
+        expect.assertions(2);
+        mockHttpsUri("https://example.com/path/to/jwks.json", {
+          responsePayload: JSON.stringify(keypair.jwks),
+        });
+        await expect(statement).rejects.toThrow("Invalid signature");
+        mockHttpsUri("https://example.com/path/to/jwks.json", {
+          responsePayload: JSON.stringify(keypair.jwks),
+        });
+        await expect(statement).rejects.toThrow(JwtInvalidSignatureError);
       });
       test("invalid audience", () => {
         const signedJwt = signJwt(
@@ -1465,7 +1488,7 @@ describe("unit tests jwt verifier", () => {
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
         keypair.jwk,
         issuer
-      );
+      ) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );
@@ -1487,7 +1510,18 @@ describe("unit tests jwt verifier", () => {
     });
     test("no issuer and kid", () => {
       const pubkeyCache = new KeyObjectCache();
-      const pubkey = pubkeyCache.transformJwkToKeyObjectSync(keypair.jwk);
+      const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
+        keypair.jwk
+      ) as KeyObject;
+      expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
+        keypair.publicKeyDer
+      );
+    });
+    test("no issuer and kid - async", async () => {
+      const pubkeyCache = new KeyObjectCache();
+      const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
+        keypair.jwk
+      )) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );
