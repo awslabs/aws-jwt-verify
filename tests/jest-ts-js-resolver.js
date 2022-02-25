@@ -6,7 +6,10 @@ const srcPath = path.join(__dirname, "..", "src");
 module.exports = (request, options) => {
   if (options.basedir.startsWith(srcPath)) {
     if (request.endsWith("node-web-compat.js")) {
-      request = request.replace("node-web-compat.js", "node-web-compat-node.ts");
+      request = request.replace(
+        "node-web-compat.js",
+        "node-web-compat-node.ts"
+      );
     } else {
       request = request.replace(/\.js$/, ".ts");
     }
