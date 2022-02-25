@@ -91,8 +91,7 @@ const bufferFromBase64url = (function () {
       {} as { [key: number]: number }
     );
   return function (base64url: string) {
-    const paddingLength = base64url.match(/^.+(=?=?)$/)![1].length;
-    const bufferLength = (base64url.length * 3) / 4 - paddingLength;
+    const paddingLength = base64url.match(/^.+?(=?=?)$/)![1].length;
     let first: number, second: number, third: number, fourth: number;
     return base64url.match(/.{1,4}/g)!.reduce((acc, chunk, index) => {
       first = map[chunk.charCodeAt(0)];
@@ -103,6 +102,6 @@ const bufferFromBase64url = (function () {
       acc[3 * index + 1] = ((second & 15) << 4) | (third >> 2);
       acc[3 * index + 2] = ((third & 3) << 6) | (fourth & 63);
       return acc;
-    }, new Uint8Array(bufferLength));
+    }, new Uint8Array((base64url.length * 3) / 4 - paddingLength));
   };
 })();
