@@ -6,7 +6,7 @@
   </head>
   <body>
     <script type="module">
-      import { CognitoJwtVerifier } from "./dist/web/bundle.js";
+      import { CognitoJwtVerifier } from "./dist/web/bundle.js"; // Code that uses Webpack or so would just be able to import from "aws-jwt-verify"
 
       // Verifier that expects valid access tokens:
       const verifier = CognitoJwtVerifier.create({
