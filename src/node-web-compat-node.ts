@@ -2,7 +2,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { createPublicKey, createVerify } from "crypto";
+import { createPublicKey, createVerify, KeyObject } from "crypto";
 import {
   JwkToKeyObjectTransformerSync,
   JwsSignatureVerificationFunctionSync,
@@ -52,7 +52,7 @@ export const verifySignatureSync: JwsSignatureVerificationFunctionSync = ({
   // eslint-disable-next-line security/detect-object-injection
   return createVerify(JwtSignatureAlgorithms[alg])
     .update(jwsSigningInput)
-    .verify(keyObject, signature, "base64");
+    .verify(keyObject as KeyObject, signature, "base64");
 };
 
 export const verifySignatureAsync = wrapResultInPromise(verifySignatureSync);

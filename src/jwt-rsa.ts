@@ -178,7 +178,7 @@ function validateJwtHeaderAndJwk(header: JwtHeader, jwk: Jwk) {
   assertStringArrayContainsString(
     "JWT signature algorithm",
     header.alg,
-    ["RS256", "RS384", "RS512"],
+    ["RS256", "RS384", "RS512"] as const,
     JwtInvalidSignatureAlgorithmError
   );
 }
@@ -701,7 +701,7 @@ export class JwtRsaVerifier<
   }
 }
 
-type GenericKeyObject = any;
+type GenericKeyObject<ConcreteType = unknown> = NonNullable<ConcreteType>;
 
 /** Interface for functions that can transform a JWK into an RSA public key in native key object format */
 export type JwkToKeyObjectTransformerSync = (

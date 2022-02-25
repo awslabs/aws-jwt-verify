@@ -74,7 +74,7 @@ export const verifySignatureAsync: JwsSignatureVerificationFunctionAsync = ({
     {
       name: "RSASSA-PKCS1-v1_5",
     },
-    keyObject,
+    keyObject as CryptoKey,
     bufferFromBase64url(signature),
     new TextEncoder().encode(jwsSigningInput)
   );

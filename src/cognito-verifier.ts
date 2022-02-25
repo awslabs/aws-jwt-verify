@@ -168,7 +168,7 @@ function validateCognitoJwtFields(
   assertStringArrayContainsString(
     "Token use",
     payload.token_use,
-    ["id", "access"],
+    ["id", "access"] as const,
     CognitoJwtInvalidTokenUseError
   );
   if (options.tokenUse !== null) {
