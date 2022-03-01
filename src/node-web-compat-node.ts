@@ -58,5 +58,5 @@ export const verifySignatureSync: JwsVerificationFunctionSync = ({
 
 export const verifySignatureAsync = wrapResultInPromise(verifySignatureSync);
 
-export const utf8StringFromB64String = (b64: string): string =>
+export const parseB64UrlString = (b64: string): string =>
   Buffer.from(b64, "base64").toString("utf8");

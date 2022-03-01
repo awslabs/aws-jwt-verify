@@ -16,7 +16,7 @@ import {
   JwtParseError,
   ParameterValidationError,
 } from "./error.js";
-import { utf8StringFromB64String } from "#node-web-compat";
+import { parseB64UrlString } from "#node-web-compat";
 
 /**
  * Assert that the argument is a valid JWT header object.
@@ -114,7 +114,7 @@ export function decomposeJwt(jwt: unknown): {
 
   // B64 decode header and payload
   const [headerString, payloadString] = [headerB64, payloadB64].map(
-    utf8StringFromB64String
+    parseB64UrlString
   );
 
   // Parse header

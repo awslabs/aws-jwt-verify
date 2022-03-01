@@ -81,7 +81,7 @@ export const verifySignatureAsync: JwsVerificationFunctionAsync = ({
     new TextEncoder().encode(jwsSigningInput)
   );
 
-export const utf8StringFromB64String = (b64: string): string => {
+export const parseB64UrlString = (b64: string): string => {
   return new TextDecoder().decode(bufferFromBase64url(b64));
 };
 
