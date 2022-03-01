@@ -58,13 +58,3 @@ export type Properties<Base, Provided> = StillToProvideProperties<
 export type AsAsync<T extends (...args: any[]) => unknown> = (
   ...args: Parameters<T>
 ) => Promise<ReturnType<T>>;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function wrapResultInPromise<T extends (...args: any[]) => unknown>(
-  toWrap: T
-) {
-  return function (...args: Parameters<T>): Promise<ReturnType<T>> {
-    const res = toWrap(...args) as ReturnType<T>;
-    return Promise.resolve(res);
-  };
-}

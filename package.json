@@ -24,7 +24,6 @@
     "jwt-model.d.ts",
     "jwt-rsa.d.ts",
     "jwt.d.ts",
-    "node-web-compat.d.ts",
     "safe-json-parse.d.ts",
     "typing-util.d.ts"
   ],
@@ -94,7 +93,7 @@
   "scripts": {
     "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && echo '{\"type\":\"commonjs\",\"imports\":{\"#node-web-compat\":{\"browser\":\"./node-web-compat-web.js\",\"default\":\"./node-web-compat-node.js\"}}}' > dist/cjs/package.json",
     "dist:esm": "tsc --module ES2020 --outDir dist/esm && echo '{\"type\":\"module\",\"imports\":{\"#node-web-compat\":{\"browser\":\"./node-web-compat-web.js\",\"default\":\"./node-web-compat-node.js\"}}}' > dist/esm/package.json",
-    "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly && cp src/node-web-compat.d.ts . && for D_TS in $(ls *.d.ts); do sed -i 's|#node-web-compat|./node-web-compat.js|g' $D_TS; done",
+    "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly",
     "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:types",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
     "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",

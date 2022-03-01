@@ -5,8 +5,16 @@
 
 import { Json } from "./safe-json-parse.js";
 import { NonRetryableFetchError } from "./error.js";
-import { fetchJson } from "#node-web-compat";
-export { fetchJson } from "#node-web-compat";
+import { nodeWebCompat } from "#node-web-compat";
+
+/**
+ * Execute a HTTPS request
+ * @param uri - The URI
+ * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
+ * @param data - Data to send to the URI (e.g. POST data)
+ * @returns - The response as parsed JSON
+ */
+export const fetchJson = nodeWebCompat.fetchJson;
 
 type FetchRequestOptions = Record<string, unknown>;
 
@@ -28,8 +36,8 @@ export class SimpleJsonFetcher implements JsonFetcher {
   defaultRequestOptions: FetchRequestOptions;
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
     this.defaultRequestOptions = {
-      timeout: 500, // socket idle timeout
-      responseTimeout: 1500, // total round trip timeout
+      timeout: 500, // socket idle timeout (Only of use in Node.js runtime)
+      responseTimeout: 1500, // total round trip timeout (Only of use in Node.js runtime)
       ...props?.defaultRequestOptions,
     };
   }
