@@ -1,5 +1,5 @@
 /**
- * Custom resolver for jest, needed because of this issue: https://github.com/kulshekhar/ts-jest/issues/1057
+ * Custom resolver for jest
  */
 const path = require("path");
 const srcPath = path.join(__dirname, "..", "src");
@@ -12,6 +12,7 @@ module.exports = (request, options) => {
         "./node-web-compat-node.ts"
       );
     } else {
+      // needed because of this issue: https://github.com/kulshekhar/ts-jest/issues/1057
       request = request.replace(/\.js$/, ".ts");
     }
   }
