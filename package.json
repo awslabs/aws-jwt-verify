@@ -8,7 +8,6 @@
     "url": "https://aws.amazon.com"
   },
   "main": "dist/cjs/index.js",
-  "browser": "dist/web/bundle.js",
   "type": "commonjs",
   "types": "index.d.ts",
   "module": "dist/esm/index.js",
@@ -31,7 +30,6 @@
   ],
   "exports": {
     ".": {
-      "browser": "./dist/web/bundle.js",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
     },
@@ -94,12 +92,10 @@
     "typescript": "^4.4.3"
   },
   "scripts": {
-    "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json && mv dist/cjs/node-web-compat-node.js dist/cjs/node-web-compat.js && rm dist/cjs/node-web-compat-web.js",
-    "dist:esm": "tsc --module ES2020 --outDir dist/esm && echo '{\"type\":\"module\"}' > dist/esm/package.json && mv dist/esm/node-web-compat-node.js dist/esm/node-web-compat.js && rm dist/esm/node-web-compat-web.js",
-    "dist:web": "tsc --module ES2020 --outDir dist/web && echo '{\"type\":\"module\"}' > dist/web/package.json && mv dist/web/node-web-compat-web.js dist/web/node-web-compat.js && rm dist/web/node-web-compat-node.js",
-    "dist:web-bundle": "cd dist/web && esbuild index.js --bundle --outfile=bundle.js --sourcemap --format=esm && ls *.js | grep -v bundle | xargs rm",
-    "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly",
-    "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:web && npm run dist:web-bundle && npm run dist:types",
+    "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && echo '{\"type\":\"commonjs\",\"imports\":{\"#node-web-compat\":{\"browser\":\"./node-web-compat-web.js\",\"default\":\"./node-web-compat-node.js\"}}}' > dist/cjs/package.json",
+    "dist:esm": "tsc --module ES2020 --outDir dist/esm && echo '{\"type\":\"module\",\"imports\":{\"#node-web-compat\":{\"browser\":\"./node-web-compat-web.js\",\"default\":\"./node-web-compat-node.js\"}}}' > dist/esm/package.json",
+    "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly && cp src/node-web-compat.d.ts . && for D_TS in $(ls *.d.ts); do sed -i 's|#node-web-compat|./node-web-compat.js|g' $D_TS; done",
+    "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:types",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
     "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",
     "pack-for-tests": "rm -f aws-jwt-verify.tgz 'aws-jwt-verify-?.?.?.tgz' && npm pack && mv aws-jwt-verify-*.tgz aws-jwt-verify.tgz",

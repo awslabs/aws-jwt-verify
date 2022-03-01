@@ -6,7 +6,10 @@ module.exports = {
   },
   testEnvironment: "node",
   moduleNameMapper: {
+    // Jest, why do we need this ... :|
+    "#node-web-compat":
+      "<rootDir>/node_modules/aws-jwt-verify/dist/cjs/node-web-compat-node.js",
     "aws-jwt-verify/https":
-      "<rootDir>/node_modules/aws-jwt-verify/dist/cjs/https.js", // Jest, why do we need this ... :|
+      "<rootDir>/node_modules/aws-jwt-verify/dist/cjs/https.js",
   },
 };

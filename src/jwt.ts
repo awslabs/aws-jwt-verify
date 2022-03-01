@@ -16,7 +16,7 @@ import {
   JwtParseError,
   ParameterValidationError,
 } from "./error.js";
-import { utf8StringFromB64String } from "./node-web-compat.js";
+import { utf8StringFromB64String } from "#node-web-compat";
 
 /**
  * Assert that the argument is a valid JWT header object.

@@ -8,10 +8,10 @@ import {
   JwkToKeyObjectTransformerAsync,
   JwsVerificationFunctionSync,
   JwsVerificationFunctionAsync,
-} from "./jwt-rsa";
-import { Jwk } from "./jwk";
-import { Json } from "./safe-json-parse";
-import { NotSupportedError } from "./error";
+} from "./jwt-rsa.js";
+import { Jwk } from "./jwk.js";
+import { Json } from "./safe-json-parse.js";
+import { NotSupportedError } from "./error.js";
 
 export const fetchJson: <ResultType extends Json>(
   uri: string,
@@ -101,8 +101,8 @@ const bufferFromBase64url = (function () {
       third = map[chunk.charCodeAt(2)];
       fourth = map[chunk.charCodeAt(3)];
       acc[3 * index] = (first << 2) | (second >> 4);
-      acc[3 * index + 1] = ((second & 15) << 4) | (third >> 2);
-      acc[3 * index + 2] = ((third & 3) << 6) | (fourth & 63);
+      acc[3 * index + 1] = ((second & 0b1111) << 4) | (third >> 2);
+      acc[3 * index + 2] = ((third & 0b11) << 6) | fourth;
       return acc;
     }, new Uint8Array((base64url.length * 3) / 4 - paddingLength));
   };

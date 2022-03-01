@@ -5,8 +5,8 @@
 
 import { Json } from "./safe-json-parse.js";
 import { NonRetryableFetchError } from "./error.js";
-import { fetchJson } from "./node-web-compat.js";
-export { fetchJson } from "./node-web-compat.js";
+import { fetchJson } from "#node-web-compat";
+export { fetchJson } from "#node-web-compat";
 
 type FetchRequestOptions = Record<string, unknown>;
 

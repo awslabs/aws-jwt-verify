@@ -34,7 +34,7 @@ import {
   verifySignatureSync,
   transformJwkToKeyObjectAsync,
   verifySignatureAsync,
-} from "./node-web-compat.js";
+} from "#node-web-compat";
 
 /** Interface for JWT verification properties */
 export interface VerifyProperties {
