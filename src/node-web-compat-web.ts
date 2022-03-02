@@ -3,59 +3,10 @@
 //
 // Web implementations for the node-web-compatibility layer
 
-import {
-  JwkToKeyObjectTransformerSync,
-  JwkToKeyObjectTransformerAsync,
-  JwsVerificationFunctionSync,
-  JwsVerificationFunctionAsync,
-} from "./jwt-rsa";
-import { Jwk } from "./jwk";
-import { Json } from "./safe-json-parse";
-import { NotSupportedError } from "./error";
-
-export const fetchJson: <ResultType extends Json>(
-  uri: string,
-  requestOptions?: Record<string, unknown>,
-  data?: Uint8Array
-) => Promise<ResultType> = (uri, requestOptions, data) =>
-  fetch(uri, { ...requestOptions, body: data }).then((res) => res.json());
-
-export const transformJwkToKeyObjectSync: JwkToKeyObjectTransformerSync =
-  () => {
-    throw new NotSupportedError(
-      "Synchronously transforming a JWK into a key object is not supported in the browser"
-    );
-  };
-export const verifySignatureSync: JwsVerificationFunctionSync = () => {
-  throw new NotSupportedError(
-    "Synchronously verifying a JWT signature is not supported in the browser"
-  );
-};
-
-/**
- * Transform the JWK into an RSA public key in WebCrypto native key object format
- *
- * @param jwk: the JWK
- * @returns the RSA public key in EbCrypto native key object format
- */
-export const transformJwkToKeyObjectAsync: JwkToKeyObjectTransformerAsync = (
-  jwk: Jwk
-) => {
-  return window.crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: {
-        name: JwtSignatureAlgorithmsWebCrypto[
-          jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto
-        ],
-      },
-    },
-    false,
-    ["verify"]
-  );
-};
+import { Jwk } from "./jwk.js";
+import { FetchError, NotSupportedError } from "./error.js";
+import { NodeWebCompat, validateHttpsJsonResponse } from "./node-web-compat";
+import { Json, safeJsonParse } from "./safe-json-parse";
 
 /**
  * Enum to map supported JWT signature algorithms with WebCrypto message digest algorithm names
@@ -66,23 +17,76 @@ enum JwtSignatureAlgorithmsWebCrypto {
   RS512 = "SHA-512",
 }
 
-export const verifySignatureAsync: JwsVerificationFunctionAsync = ({
-  jwsSigningInput,
-  keyObject,
-  signature,
-}) =>
-  window.crypto.subtle.verify(
-    // eslint-disable-next-line security/detect-object-injection
-    {
-      name: "RSASSA-PKCS1-v1_5",
-    },
-    keyObject as CryptoKey,
-    bufferFromBase64url(signature),
-    new TextEncoder().encode(jwsSigningInput)
-  );
-
-export const utf8StringFromB64String = (b64: string): string => {
-  return new TextDecoder().decode(bufferFromBase64url(b64));
+export const nodeWebCompat: NodeWebCompat = {
+  fetchJson: async <ResultType extends Json>(
+    uri: string,
+    requestOptions?: Record<string, unknown>,
+    data?: Uint8Array
+  ) => {
+    const responseTimeout = Number(requestOptions?.["responseTimeout"]);
+    if (responseTimeout) {
+      const abort = new AbortController();
+      setTimeout(
+        () =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (abort.abort as any)(
+            new FetchError(
+              uri,
+              `Response time-out (after ${responseTimeout} ms.)`
+            )
+          ),
+        responseTimeout
+      ).unref();
+      requestOptions = { signal: abort.signal, ...requestOptions };
+    }
+    const response = await fetch(uri, { ...requestOptions, body: data });
+    validateHttpsJsonResponse(
+      uri,
+      response.status,
+      response.headers.get("content-type") ?? undefined
+    );
+    return response.text().then((text) => safeJsonParse(text) as ResultType);
+  },
+  defaultFetchTimeouts: {
+    response: 3000,
+  },
+  transformJwkToKeyObjectSync: () => {
+    throw new NotSupportedError(
+      "Synchronously transforming a JWK into a key object is not supported in the browser"
+    );
+  },
+  transformJwkToKeyObjectAsync: (jwk: Jwk) =>
+    window.crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: {
+          name: JwtSignatureAlgorithmsWebCrypto[
+            jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto
+          ],
+        },
+      },
+      false,
+      ["verify"]
+    ),
+  verifySignatureSync: () => {
+    throw new NotSupportedError(
+      "Synchronously verifying a JWT signature is not supported in the browser"
+    );
+  },
+  verifySignatureAsync: ({ jwsSigningInput, keyObject, signature }) =>
+    window.crypto.subtle.verify(
+      // eslint-disable-next-line security/detect-object-injection
+      {
+        name: "RSASSA-PKCS1-v1_5",
+      },
+      keyObject as CryptoKey,
+      bufferFromBase64url(signature),
+      new TextEncoder().encode(jwsSigningInput)
+    ),
+  parseB64UrlString: (b64: string): string =>
+    new TextDecoder().decode(bufferFromBase64url(b64)),
 };
 
 const bufferFromBase64url = (function () {
@@ -101,8 +105,8 @@ const bufferFromBase64url = (function () {
       third = map[chunk.charCodeAt(2)];
       fourth = map[chunk.charCodeAt(3)];
       acc[3 * index] = (first << 2) | (second >> 4);
-      acc[3 * index + 1] = ((second & 15) << 4) | (third >> 2);
-      acc[3 * index + 2] = ((third & 3) << 6) | (fourth & 63);
+      acc[3 * index + 1] = ((second & 0b1111) << 4) | (third >> 2);
+      acc[3 * index + 2] = ((third & 0b11) << 6) | fourth;
       return acc;
     }, new Uint8Array((base64url.length * 3) / 4 - paddingLength));
   };

@@ -29,7 +29,7 @@ import {
   verifyJwtSync,
   KeyObjectCache,
 } from "../../src/jwt-rsa";
-import { transformJwkToKeyObjectSync } from "../../src/node-web-compat-node";
+import { nodeWebCompat } from "../../src/node-web-compat-node";
 import { JwksCache, Jwks } from "../../src/jwk";
 import { performance } from "perf_hooks";
 import { KeyObject } from "crypto";
@@ -1482,7 +1482,9 @@ describe("unit tests jwt verifier", () => {
 
   describe("public key cache", () => {
     test("happy flow with cache", () => {
-      const jwkToKeyObjectTransformerSpy = jest.fn(transformJwkToKeyObjectSync);
+      const jwkToKeyObjectTransformerSpy = jest.fn(
+        nodeWebCompat.transformJwkToKeyObjectSync
+      );
       const pubkeyCache = new KeyObjectCache(jwkToKeyObjectTransformerSpy);
       const issuer = "testissuer";
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
