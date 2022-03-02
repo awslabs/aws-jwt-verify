@@ -27,3 +27,4 @@ tests/installation-and-basic-usage/*.js
 tests/cognito/cdk.out/*
 tests/import-tests/typescript.js
 tests/import-tests/should-not-compile.js
+tests/vite-app/util/generateExampleTokens.js

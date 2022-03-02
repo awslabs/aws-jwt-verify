@@ -1,19 +1,24 @@
 /// <reference types="cypress" />
-import { JwtRsaVerifier } from 'aws-jwt-verify';
-import { VAILD_TOKEN, ISSUER, AUDIENCE, JWKSURI } from '../fixtures/token-data.json';
+import { JwtRsaVerifier } from "aws-jwt-verify";
+import {
+  VAILD_TOKEN,
+  ISSUER,
+  AUDIENCE,
+  JWKSURI,
+} from "../fixtures/token-data.json";
 
-describe('unit tests', () => {
-  it('expect true', () => {
+describe("unit tests", () => {
+  it("expect true", () => {
     expect(true).to.be.true;
   });
 
-  it('JwtRsaVerifier create & verify', async () => {
-    cy.intercept('GET', JWKSURI, { fixture: 'example-JWKS' });
+  it("JwtRsaVerifier create & verify", async () => {
+    cy.intercept("GET", JWKSURI, { fixture: "example-JWKS" });
 
     const verifier = JwtRsaVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
-      jwksUri: JWKSURI
+      jwksUri: JWKSURI,
     });
 
     try {
@@ -27,6 +32,5 @@ describe('unit tests', () => {
 
       expect(ex).to.be.null;
     }
-
   });
 });
