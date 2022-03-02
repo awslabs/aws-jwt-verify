@@ -55,4 +55,8 @@ export const nodeWebCompat: NodeWebCompat = {
     createVerify(JwtSignatureAlgorithms[alg])
       .update(jwsSigningInput)
       .verify(keyObject as KeyObject, signature, "base64"),
+  defaultFetchTimeouts: {
+    socketIdle: 500,
+    response: 1500,
+  },
 };

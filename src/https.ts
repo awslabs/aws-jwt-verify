@@ -36,8 +36,8 @@ export class SimpleJsonFetcher implements JsonFetcher {
   defaultRequestOptions: FetchRequestOptions;
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
     this.defaultRequestOptions = {
-      timeout: 500, // socket idle timeout (Only of use in Node.js runtime)
-      responseTimeout: 1500, // total round trip timeout (Only of use in Node.js runtime)
+      timeout: nodeWebCompat.defaultFetchTimeouts.socketIdle,
+      responseTimeout: nodeWebCompat.defaultFetchTimeouts.response,
       ...props?.defaultRequestOptions,
     };
   }

@@ -5,6 +5,7 @@
 
 import { request } from "https";
 import { IncomingHttpHeaders, RequestOptions } from "http";
+import { validateHttpsJsonResponse } from "./node-web-compat";
 import { pipeline } from "stream";
 import { TextDecoder } from "util";
 import { safeJsonParse, Json } from "./safe-json-parse.js";
@@ -112,22 +113,7 @@ function getJsonDestination(
   headers: IncomingHttpHeaders
 ) {
   return async (responseIterable: AsyncIterableIterator<Buffer>) => {
-    if (statusCode === 429) {
-      throw new FetchError(uri, "Too many requests");
-    } else if (statusCode !== 200) {
-      throw new NonRetryableFetchError(
-        uri,
-        `Status code is ${statusCode}, expected 200`
-      );
-    }
-    if (
-      !headers["content-type"]?.toLowerCase().startsWith("application/json")
-    ) {
-      throw new NonRetryableFetchError(
-        uri,
-        `Content-type is "${headers["content-type"]}", expected "application/json"`
-      );
-    }
+    validateHttpsJsonResponse(uri, statusCode, headers["content-type"]);
     const collected = [] as Buffer[];
     for await (const chunk of responseIterable) {
       collected.push(chunk);
