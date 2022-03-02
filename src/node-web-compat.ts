@@ -11,7 +11,7 @@ import {
   JwsVerificationFunctionSync,
   JwsVerificationFunctionAsync,
 } from "./jwt-rsa";
-import { FetchError, NonRetryableFetchError } from "./error";
+import { FetchError, NonRetryableFetchError } from "./error.js";
 
 export interface NodeWebCompat {
   transformJwkToKeyObjectSync: JwkToKeyObjectTransformerSync;

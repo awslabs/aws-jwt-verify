@@ -171,7 +171,8 @@ export class SimplePenaltyBox implements PenaltyBox {
   registerFailedAttempt(jwksUri: string): void {
     const i = setTimeout(() => {
       this.waitingUris.delete(jwksUri);
-    }, this.waitSeconds * 1000).unref();
+    }, this.waitSeconds * 1000);
+    if (i.unref) i.unref();
     this.waitingUris.set(jwksUri, i);
   }
   registerSuccessfulAttempt(jwksUri: string): void {

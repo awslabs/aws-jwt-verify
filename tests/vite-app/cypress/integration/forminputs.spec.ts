@@ -75,11 +75,9 @@ describe("click Verify RSA", () => {
   it("invalid JWKS Uri", () => {
     typeInputsAndClick(VAILD_TOKEN, ISSUER, "", INVAILD_JWKSURI);
 
-    // npm run dev & http://localhost:3000/'
-    //   Unexpected token < in JSON at position 0
-    // npm run preview & http://localhost:4173/'
-    //   Unexpected end of JSON input
-    cy.get("#result").should("include.text", "Unexpected");
-    cy.get("#result").should("include.text", "JSON");
+    cy.get("#result").should(
+      "include.text",
+      "Failed to fetch /notexample-JWKS.json: Status code is 404, expected 200"
+    );
   });
 });

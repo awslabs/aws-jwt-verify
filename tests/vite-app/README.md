@@ -5,7 +5,7 @@ This is a Vite project allowing browser-based testing using Cypress.
 ## How to run the tests
 
 - Clone the repo: `git clone https://github.com/awslabs/aws-jwt-verify`
-- Install dev dependencies and create installable dist: `cd aws-jwt-verify && npm install && npm run dist`
+- Install dev dependencies and create installable archive: `cd aws-jwt-verify && npm install && npm run pack-for-tests`
 - Install Vite and Cypress dependencies: `cd tests/vite-app && npm install`
 - Start the Vite dev server: `npm run dev`
 - Run the Cypress tests: `npm run cypress:open`

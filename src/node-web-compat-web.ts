@@ -5,8 +5,8 @@
 
 import { Jwk } from "./jwk.js";
 import { FetchError, NotSupportedError } from "./error.js";
-import { NodeWebCompat, validateHttpsJsonResponse } from "./node-web-compat";
-import { Json, safeJsonParse } from "./safe-json-parse";
+import { NodeWebCompat, validateHttpsJsonResponse } from "./node-web-compat.js";
+import { Json, safeJsonParse } from "./safe-json-parse.js";
 
 /**
  * Enum to map supported JWT signature algorithms with WebCrypto message digest algorithm names
@@ -26,7 +26,7 @@ export const nodeWebCompat: NodeWebCompat = {
     const responseTimeout = Number(requestOptions?.["responseTimeout"]);
     if (responseTimeout) {
       const abort = new AbortController();
-      setTimeout(
+      const i = setTimeout(
         () =>
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (abort.abort as any)(
@@ -36,7 +36,8 @@ export const nodeWebCompat: NodeWebCompat = {
             )
           ),
         responseTimeout
-      ).unref();
+      );
+      if (i.unref) i.unref();
       requestOptions = { signal: abort.signal, ...requestOptions };
     }
     const response = await fetch(uri, { ...requestOptions, body: data });
