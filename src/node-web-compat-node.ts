@@ -7,7 +7,7 @@ import { createPublicKey, createVerify, KeyObject } from "crypto";
 import { Jwk } from "./jwk.js";
 import { constructPublicKeyInDerFormat } from "./asn1.js";
 import { fetchJson } from "./https-node.js";
-import { NodeWebCompat } from "./node-web-compat";
+import { NodeWebCompat } from "./node-web-compat.js";
 
 /**
  * Enum to map supported JWT signature algorithms with OpenSSL message digest algorithm names

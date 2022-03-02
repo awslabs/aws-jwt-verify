@@ -5,7 +5,7 @@
 
 import { request } from "https";
 import { IncomingHttpHeaders, RequestOptions } from "http";
-import { validateHttpsJsonResponse } from "./node-web-compat";
+import { validateHttpsJsonResponse } from "./node-web-compat.js";
 import { pipeline } from "stream";
 import { TextDecoder } from "util";
 import { safeJsonParse, Json } from "./safe-json-parse.js";
