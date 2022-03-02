@@ -4,8 +4,9 @@
 // Web implementations for the node-web-compatibility layer
 
 import { Jwk } from "./jwk.js";
-import { NotSupportedError } from "./error.js";
-import { NodeWebCompat } from "./node-web-compat";
+import { FetchError, NotSupportedError } from "./error.js";
+import { NodeWebCompat, validateHttpsJsonResponse } from "./node-web-compat";
+import { Json, safeJsonParse } from "./safe-json-parse";
 
 /**
  * Enum to map supported JWT signature algorithms with WebCrypto message digest algorithm names
@@ -17,8 +18,38 @@ enum JwtSignatureAlgorithmsWebCrypto {
 }
 
 export const nodeWebCompat: NodeWebCompat = {
-  fetchJson: (uri, requestOptions, data) =>
-    fetch(uri, { ...requestOptions, body: data }).then((res) => res.json()),
+  fetchJson: async <ResultType extends Json>(
+    uri: string,
+    requestOptions?: Record<string, unknown>,
+    data?: Uint8Array
+  ) => {
+    const responseTimeout = Number(requestOptions?.["responseTimeout"]);
+    if (responseTimeout) {
+      const abort = new AbortController();
+      setTimeout(
+        () =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (abort.abort as any)(
+            new FetchError(
+              uri,
+              `Response time-out (after ${responseTimeout} ms.)`
+            )
+          ),
+        responseTimeout
+      ).unref();
+      requestOptions = { signal: abort.signal, ...requestOptions };
+    }
+    const response = await fetch(uri, { ...requestOptions, body: data });
+    validateHttpsJsonResponse(
+      uri,
+      response.status,
+      response.headers.get("content-type") ?? undefined
+    );
+    return response.text().then((text) => safeJsonParse(text) as ResultType);
+  },
+  defaultFetchTimeouts: {
+    response: 3000,
+  },
   transformJwkToKeyObjectSync: () => {
     throw new NotSupportedError(
       "Synchronously transforming a JWK into a key object is not supported in the browser"
