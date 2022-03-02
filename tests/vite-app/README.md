@@ -11,6 +11,7 @@ This is a Vite project allowing browser-based testing using Cypress.
 - Run the Cypress tests: `npm run cypress:open`
 
 To test the Vite distribution build:
+
 - Start the Vite preview server: `npm run preview`
 - Run the Cypress tests: `npm run cypress:open:preview`
 

@@ -25,14 +25,14 @@ module.exports = (on, config) => {
   const options = webpackPreprocessor.defaultOptions;
   on("file:preprocessor", webpackPreprocessor(options));
 
-  on('dev-server:start', (options) => {
+  on("dev-server:start", (options) => {
     return startDevServer({
       options,
       viteConfig: {
-        configFile: path.resolve(__dirname, '..', '..', 'vite.config.ts'),
+        configFile: path.resolve(__dirname, "..", "..", "vite.config.ts"),
       },
     });
   });
 
   return config;
-}
+};

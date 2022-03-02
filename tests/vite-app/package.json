@@ -7,6 +7,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tokengen": "tsc util/generateExampleTokens.ts && node util/generateExampleTokens.js",
+    "cypress:run": "cypress run",
+    "cypress:run:preview": "cypress run --config baseUrl=http://localhost:4173/",
     "cypress:open": "cypress open",
     "cypress:open:webpack": "DEBUG=cypress:webpack cypress open",
     "cypress:open:preview": "cypress open --config baseUrl=http://localhost:4173/"
