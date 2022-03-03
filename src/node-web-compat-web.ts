@@ -38,7 +38,6 @@ export const nodeWebCompat: NodeWebCompat = {
           ),
         responseTimeout
       );
-      if (i.unref) i.unref();
       requestOptions = { signal: abort.signal, ...requestOptions };
     }
     const response = await fetch(uri, { ...requestOptions, body: data });
