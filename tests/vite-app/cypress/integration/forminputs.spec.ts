@@ -3,7 +3,7 @@ import {
   ISSUER,
   AUDIENCE,
   JWKSURI,
-  VAILD_TOKEN,
+  VALID_TOKEN,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
 } from "../fixtures/token-data.json";
@@ -49,7 +49,7 @@ describe("click Verify RSA", () => {
   };
 
   it("valid token", () => {
-    typeInputsAndClick(VAILD_TOKEN, ISSUER, AUDIENCE, JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, ISSUER, AUDIENCE, JWKSURI);
 
     cy.get("#result").should("have.text", "Verified");
   });
@@ -67,13 +67,13 @@ describe("click Verify RSA", () => {
   });
 
   it("invalid issuer", () => {
-    typeInputsAndClick(VAILD_TOKEN, INVAILD_ISSUER, "", JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, INVAILD_ISSUER, "", JWKSURI);
 
     cy.get("#result").should("include.text", "Issuer not allowed");
   });
 
   it("invalid JWKS Uri", () => {
-    typeInputsAndClick(VAILD_TOKEN, ISSUER, "", INVAILD_JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, ISSUER, "", INVAILD_JWKSURI);
 
     cy.get("#result").should(
       "include.text",
