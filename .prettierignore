@@ -8,6 +8,7 @@ asn1.d.ts
 assert.d.ts
 cognito-verifier.d.ts
 error.d.ts
+https-common.d.ts
 https-node.d.ts
 https.d.ts
 index.d.ts
