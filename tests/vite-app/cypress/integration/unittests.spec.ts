@@ -1,17 +1,13 @@
 /// <reference types="cypress" />
 import { JwtRsaVerifier } from "aws-jwt-verify";
 import {
-  VAILD_TOKEN,
+  VALID_TOKEN,
   ISSUER,
   AUDIENCE,
   JWKSURI,
 } from "../fixtures/token-data.json";
 
 describe("unit tests", () => {
-  it("expect true", () => {
-    expect(true).to.be.true;
-  });
-
   it("JwtRsaVerifier create & verify", async () => {
     cy.intercept("GET", JWKSURI, { fixture: "example-JWKS" });
 
@@ -22,7 +18,7 @@ describe("unit tests", () => {
     });
 
     try {
-      const payload = await verifier.verify(VAILD_TOKEN);
+      const payload = await verifier.verify(VALID_TOKEN);
       console.log("Token is valid. Payload:", payload);
 
       expect(payload).to.exist;

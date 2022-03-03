@@ -69,7 +69,7 @@ const tokendata = {
   ISSUER: "",
   AUDIENCE: "",
   JWKSURI: "",
-  VAILD_TOKEN: "",
+  VALID_TOKEN: "",
   EXPIRED_TOKEN: "",
   NOT_YET_VALID_TOKEN: "",
 };
@@ -84,7 +84,7 @@ const main = async () => {
   tokendata.AUDIENCE = AUDIENCE;
   tokendata.JWKSURI = JWKSURI;
 
-  tokendata.VAILD_TOKEN = await createSign(jwk, validTokenPayload);
+  tokendata.VALID_TOKEN = await createSign(jwk, validTokenPayload);
   tokendata.EXPIRED_TOKEN = await createSign(jwk, expiredTokenPayload);
   tokendata.NOT_YET_VALID_TOKEN = await createSign(
     jwk,
