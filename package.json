@@ -17,6 +17,7 @@
     "cognito-verifier.d.ts",
     "dist",
     "error.d.ts",
+    "https-common.d.ts",
     "https-node.d.ts",
     "https.d.ts",
     "index.d.ts",

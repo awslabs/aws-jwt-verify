@@ -5,7 +5,8 @@
 
 import { Jwk } from "./jwk.js";
 import { FetchError, NotSupportedError } from "./error.js";
-import { NodeWebCompat, validateHttpsJsonResponse } from "./node-web-compat.js";
+import { NodeWebCompat } from "./node-web-compat.js";
+import { validateHttpsJsonResponse } from "./https-common.js";
 import { Json, safeJsonParse } from "./safe-json-parse.js";
 
 /**
