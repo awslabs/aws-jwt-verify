@@ -3,9 +3,9 @@ import {
   signJwt,
   base64url,
 } from "../../installation-and-basic-usage/test-util";
-import { v4 } from "uuid";
+import { randomUUID } from "crypto";
 import { writeFileSync } from "fs";
-import {} from "aws-jwt-verify";
+import { join } from "path";
 
 const ISSUER = "https://example.com";
 const AUDIENCE = "aws-jwt-verify";
@@ -26,7 +26,7 @@ const validTokenPayload = {
   ...baseTokenPayload,
   nbf: NOW,
   exp: NOW + ONEYEAR,
-  jti: v4(),
+  jti: randomUUID(),
   testcase: "valid token",
 };
 
@@ -34,7 +34,7 @@ const expiredTokenPayload = {
   ...baseTokenPayload,
   nbf: NOW - ONEDAY,
   exp: NOW,
-  jti: v4(),
+  jti: randomUUID(),
   testcase: "expired token",
 };
 
@@ -42,14 +42,17 @@ const notYetValidTokenPayload = {
   ...baseTokenPayload,
   nbf: NOW + 366 * 24 * 60 * 60,
   exp: Math.floor(Date.now() / 1000) + 366 * 24 * 60 * 60,
-  jti: v4(),
+  jti: randomUUID(),
   testcase: "not yet valid token",
 };
 
-const saveFile = (filename, contents) => {
+const saveFile = (filename: string, contents: Record<string, unknown>) => {
   console.log(`writing ${filename}...`);
   // eslint-disable-next-line security/detect-non-literal-fs-filename
-  writeFileSync(filename, JSON.stringify(contents, null, 2) + "\n");
+  writeFileSync(
+    join(__dirname, "..", filename),
+    JSON.stringify(contents, null, 2) + "\n"
+  );
 };
 
 const tokendata = {
@@ -63,7 +66,7 @@ const tokendata = {
 
 const main = async () => {
   const { privateKey, jwk } = generateKeyPair();
-  jwk.kid = v4();
+  jwk.kid = randomUUID();
   const jwtHeader = { kid: jwk.kid, alg: "RS256" };
 
   // fix: The JWK "n" member contained a leading zero.
