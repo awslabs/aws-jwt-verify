@@ -1,4 +1,5 @@
 cypress/videos
+cypress/screenshots
 !cypress/plugins/index.js
 !cypress/support/commands.js
 !cypress/support/index.js
