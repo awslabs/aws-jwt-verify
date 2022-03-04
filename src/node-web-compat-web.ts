@@ -27,7 +27,7 @@ export const nodeWebCompat: NodeWebCompat = {
     const responseTimeout = Number(requestOptions?.["responseTimeout"]);
     if (responseTimeout) {
       const abort = new AbortController();
-      const i = setTimeout(
+      setTimeout(
         () =>
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (abort.abort as any)(

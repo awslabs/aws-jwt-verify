@@ -1,7 +1,6 @@
 import {
   generateKeyPair,
   signJwt,
-  base64url,
 } from "../../installation-and-basic-usage/test-util";
 import { randomUUID } from "crypto";
 import { writeFileSync } from "fs";
@@ -65,19 +64,9 @@ const tokendata = {
 };
 
 const main = async () => {
-  const { privateKey, jwk } = generateKeyPair();
+  const { privateKey, jwk, jwks } = generateKeyPair();
   jwk.kid = randomUUID();
   const jwtHeader = { kid: jwk.kid, alg: "RS256" };
-
-  // fix: The JWK "n" member contained a leading zero.
-  // https://bugs.chromium.org/p/chromium/issues/detail?id=383998#c6
-  let nBuffer = Buffer.from(jwk.n, "base64");
-  if (nBuffer[0] === 0x00) {
-    nBuffer = nBuffer.subarray(1);
-  }
-  // fix: The JWK member "n" could not be base64url decoded or contained padding
-  const jwkWeb = { ...jwk, n: base64url(nBuffer) };
-  const jwks = { keys: [jwkWeb] };
 
   saveFile("public" + JWKSURI, jwks);
   saveFile("cypress/fixtures" + JWKSURI, jwks);

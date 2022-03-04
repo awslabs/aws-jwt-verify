@@ -51,9 +51,15 @@ export function publicKeyToJwk(
   );
   return {
     ...jwkOptions,
-    n: n.toString("base64"),
-    e: e.toString("base64"),
+    n: base64url(removeLeadingZero(n)),
+    e: base64url(removeLeadingZero(e)),
   } as Jwk;
+}
+
+function removeLeadingZero(positiveInteger: Buffer) {
+  return positiveInteger[0] === 0
+    ? positiveInteger.subarray(1)
+    : positiveInteger;
 }
 
 enum JwtSignatureAlgorithms {
@@ -92,6 +98,8 @@ export function signJwt(
 }
 
 export function base64url(x: string | Buffer) {
+  // Note: since Node.js 14.18 you can just do Buffer.from(x).toString("base64url")
+  // That's pretty recent still, and CI environments might run older Node14, so we'll do it ourselves for a while longer
   if (typeof x === "string") {
     x = Buffer.from(x);
   }

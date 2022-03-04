@@ -31,9 +31,15 @@ export function publicKeyToJwk(publicKey: KeyObject) {
     alg: "RS256",
     kty: "RSA",
     use: "sig",
-    n: Buffer.from(n).toString("base64"),
-    e: Buffer.from(e).toString("base64"),
+    n: base64url(removeLeadingZero(n)),
+    e: base64url(removeLeadingZero(e)),
   } as Jwk;
+}
+
+function removeLeadingZero(positiveInteger: Buffer) {
+  return positiveInteger[0] === 0
+    ? positiveInteger.subarray(1)
+    : positiveInteger;
 }
 
 export function signJwt(
@@ -58,6 +64,8 @@ export function signJwt(
 }
 
 export function base64url(x: string | Buffer) {
+  // Note: since Node.js 14.18 you can just do Buffer.from(x).toString("base64url")
+  // That's pretty recent still, and CI environments might run older Node14, so we'll do it ourselves for a while longer
   if (typeof x === "string") {
     x = Buffer.from(x);
   }

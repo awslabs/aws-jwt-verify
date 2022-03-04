@@ -1,6 +1,5 @@
 /// <reference types="cypress" />
 import { JwtRsaVerifier } from "aws-jwt-verify";
-import { JwtPayload } from "aws-jwt-verify/jwt-model";
 import {
   ISSUER,
   AUDIENCE,
