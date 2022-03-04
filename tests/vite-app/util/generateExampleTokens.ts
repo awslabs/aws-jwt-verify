@@ -1,8 +1,12 @@
-import { JWK, JWS } from "node-jose"; // https://github.com/cisco/node-jose
+import {
+  generateKeyPair,
+  signJwt,
+  base64url,
+} from "../../installation-and-basic-usage/test-util";
 import { v4 } from "uuid";
 import { writeFileSync } from "fs";
+import {} from "aws-jwt-verify";
 
-const keystore = (JWK as any).createKeyStore();
 const ISSUER = "https://example.com";
 const AUDIENCE = "aws-jwt-verify";
 const JWKSURI = "/example-JWKS.json";
@@ -42,23 +46,6 @@ const notYetValidTokenPayload = {
   testcase: "not yet valid token",
 };
 
-const createSign = async (jwk, payload) => {
-  return await JWS.createSign(
-    {
-      alg: "RS256",
-      format: "compact",
-    },
-    jwk
-  )
-    .update(JSON.stringify(payload), "utf8")
-    .final();
-};
-
-const props = {
-  alg: "RS256",
-  use: "sig",
-};
-
 const saveFile = (filename, contents) => {
   console.log(`writing ${filename}...`);
   // eslint-disable-next-line security/detect-non-literal-fs-filename
@@ -75,20 +62,33 @@ const tokendata = {
 };
 
 const main = async () => {
-  const jwk = await keystore.generate("RSA", 2048, props);
+  const { privateKey, jwk } = generateKeyPair();
+  jwk.kid = v4();
+  const jwtHeader = { kid: jwk.kid, alg: "RS256" };
 
-  saveFile("public" + JWKSURI, keystore.toJSON());
-  saveFile("cypress/fixtures" + JWKSURI, keystore.toJSON());
+  // fix: The JWK "n" member contained a leading zero.
+  // https://bugs.chromium.org/p/chromium/issues/detail?id=383998#c6
+  let nBuffer = Buffer.from(jwk.n, "base64");
+  if (nBuffer[0] === 0x00) {
+    nBuffer = nBuffer.subarray(1);
+  }
+  // fix: The JWK member "n" could not be base64url decoded or contained padding
+  const jwkWeb = { ...jwk, n: base64url(nBuffer) };
+  const jwks = { keys: [jwkWeb] };
+
+  saveFile("public" + JWKSURI, jwks);
+  saveFile("cypress/fixtures" + JWKSURI, jwks);
 
   tokendata.ISSUER = ISSUER;
   tokendata.AUDIENCE = AUDIENCE;
   tokendata.JWKSURI = JWKSURI;
 
-  tokendata.VALID_TOKEN = await createSign(jwk, validTokenPayload);
-  tokendata.EXPIRED_TOKEN = await createSign(jwk, expiredTokenPayload);
-  tokendata.NOT_YET_VALID_TOKEN = await createSign(
-    jwk,
-    notYetValidTokenPayload
+  tokendata.VALID_TOKEN = signJwt(jwtHeader, validTokenPayload, privateKey);
+  tokendata.EXPIRED_TOKEN = signJwt(jwtHeader, expiredTokenPayload, privateKey);
+  tokendata.NOT_YET_VALID_TOKEN = signJwt(
+    jwtHeader,
+    notYetValidTokenPayload,
+    privateKey
   );
 
   saveFile("cypress/fixtures/token-data.json", tokendata);
