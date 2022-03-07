@@ -4,7 +4,7 @@
     "lib": ["DOM"],
     "baseUrl": "./src",
     "paths": {
-      "#node-web-compat": ["node-web-compat-node.ts"]
+      "#node-web-compat": ["node-web-compat-node.ts"] // https://github.com/microsoft/TypeScript/issues/44848
     }
   },
   "include": ["src/**/*"]
