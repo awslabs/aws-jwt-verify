@@ -70,9 +70,9 @@ const tokendata = {
 
 const main = async () => {
   const { privateKey, jwk, jwks } = generateKeyPair(
-    deconstructPublicKeyInDerFormat
+    deconstructPublicKeyInDerFormat,
+    { kid: randomUUID() }
   );
-  jwk.kid = randomUUID();
   const jwtHeader = { kid: jwk.kid, alg: "RS256" };
 
   saveFile("public", JWKSFILE, jwks);
