@@ -24,6 +24,7 @@ typing-util.d.ts
 # compiled js
 src/*.js
 tests/unit/*.js
+tests/util/*.js
 tests/installation-and-basic-usage/*.js
 tests/cognito/cdk.out/*
 tests/import-tests/typescript.js
