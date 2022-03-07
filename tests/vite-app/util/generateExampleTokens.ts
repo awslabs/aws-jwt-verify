@@ -1,7 +1,5 @@
-import {
-  generateKeyPair,
-  signJwt,
-} from "../../installation-and-basic-usage/test-util";
+import { generateKeyPair, signJwt } from "../../util/util";
+import { deconstructPublicKeyInDerFormat } from "aws-jwt-verify/asn1";
 import { randomUUID } from "crypto";
 import { writeFileSync } from "fs";
 import { join } from "path";
@@ -64,7 +62,9 @@ const tokendata = {
 };
 
 const main = async () => {
-  const { privateKey, jwk, jwks } = generateKeyPair();
+  const { privateKey, jwk, jwks } = generateKeyPair(
+    deconstructPublicKeyInDerFormat
+  );
   jwk.kid = randomUUID();
   const jwtHeader = { kid: jwk.kid, alg: "RS256" };
 
