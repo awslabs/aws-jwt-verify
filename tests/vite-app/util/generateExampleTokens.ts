@@ -1,12 +1,13 @@
 import { generateKeyPair, signJwt } from "../../util/util";
 import { deconstructPublicKeyInDerFormat } from "aws-jwt-verify/asn1";
 import { randomUUID } from "crypto";
-import { writeFileSync } from "fs";
+import { writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
 const ISSUER = "https://example.com";
 const AUDIENCE = "aws-jwt-verify";
-const JWKSURI = "/example-JWKS.json";
+const JWKSFILE = "example-JWKS.json";
+const JWKSURI = "/" + JWKSFILE;
 
 const NOW = Math.floor(Date.now() / 1000) - 30;
 const ONEDAY = 24 * 60 * 60;
@@ -43,13 +44,19 @@ const notYetValidTokenPayload = {
   testcase: "not yet valid token",
 };
 
-const saveFile = (filename: string, contents: Record<string, unknown>) => {
-  console.log(`writing ${filename}...`);
+const saveFile = (
+  directory: string,
+  filename: string,
+  contents: Record<string, unknown>
+) => {
+  const fullDir = join(__dirname, "..", directory);
+  if (!existsSync(fullDir)) {
+    mkdirSync(fullDir, { recursive: true });
+  }
+  const fullPath = join(fullDir, filename);
+  console.log(`writing ${fullPath}...`);
   // eslint-disable-next-line security/detect-non-literal-fs-filename
-  writeFileSync(
-    join(__dirname, "..", filename),
-    JSON.stringify(contents, null, 2) + "\n"
-  );
+  writeFileSync(fullPath, JSON.stringify(contents, null, 2) + "\n");
 };
 
 const tokendata = {
@@ -68,8 +75,8 @@ const main = async () => {
   jwk.kid = randomUUID();
   const jwtHeader = { kid: jwk.kid, alg: "RS256" };
 
-  saveFile("public" + JWKSURI, jwks);
-  saveFile("cypress/fixtures" + JWKSURI, jwks);
+  saveFile("public", JWKSFILE, jwks);
+  saveFile(join("cypress", "fixtures"), JWKSFILE, jwks);
 
   tokendata.ISSUER = ISSUER;
   tokendata.AUDIENCE = AUDIENCE;
@@ -83,7 +90,7 @@ const main = async () => {
     privateKey
   );
 
-  saveFile("cypress/fixtures/token-data.json", tokendata);
+  saveFile(join("cypress", "fixtures"), "token-data.json", tokendata);
 
   console.log("done");
 };
