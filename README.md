@@ -81,7 +81,7 @@ This library was specifically designed to be easy to use in:
 
 Many webdev toolchains (e.g. [CreateReactApp](https://github.com/facebook/create-react-app)) make including `npm` libraries in your web app easy, in which case using this library in your web app should just work.
 
-If you need to bundle this library yourself, be aware that this library uses [subpath imports](https://nodejs.org/api/packages.html#subpath-imports), to automatically select the Web crypto implementation when bundling for the browser. So, you'll need a bundler that supports subpath imports, such as [webpack](https://webpack.js.org/) or [esbuild](https://esbuild.github.io/)).
+If you need to bundle this library manually yourself, be aware that this library uses [subpath imports](https://nodejs.org/api/packages.html#subpath-imports), to automatically select the Web crypto implementation when bundling for the browser. This is supported out-of-the-box by [webpack](https://webpack.js.org/) and [esbuild](https://esbuild.github.io/). An example of using this library in a Vite web app, with Cypress tests, is included in this repository [here](tests/vite-app/).
 
 ## Table of Contents
 

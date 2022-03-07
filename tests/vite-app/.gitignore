@@ -1,0 +1,7 @@
+cypress/videos
+cypress/screenshots
+public/*.json
+cypress/fixtures/*.json
+!cypress/plugins/index.js
+!cypress/support/commands.js
+!cypress/support/index.js

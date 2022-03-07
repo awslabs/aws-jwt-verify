@@ -8,7 +8,7 @@ main() {
     cd $DIR
 
     # Install aws-jwt-verify
-    npm install --no-package-lock --force ../../aws-jwt-verify.tgz
+    npm remove aws-jwt-verify && npm i --no-package-lock ../../aws-jwt-verify.tgz
 
     # Compile test files
     npx tsc

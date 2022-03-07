@@ -26,3 +26,4 @@ jobs:
           npm run pack-for-tests
           npm run test:install
           npm run test:import
+          npm run test:browser

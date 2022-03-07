@@ -6,7 +6,7 @@
 // This file contains an interface that the specific Node.js and Web implementations must implement.
 //
 // At runtime, either the Node.js or Web implementation is actually loaded. This works because the
-// package.json specifies "#node-web-compat" as a subpath import, with conditions pointing to the right file (for Node.js or Web)
+// package.json specifies "#node-web-compat" as a subpath import, with conditions pointing to the right implementation (for Node.js or Web)
 
 import { Json } from "./safe-json-parse.js";
 import {
