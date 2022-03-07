@@ -43,4 +43,5 @@ main() {
     run_test "npm run preview" 4173 "npm run cypress:run:preview"
 }
 
+export TERM="${TERM:-xterm}" # Fix for GitHub actions
 main
