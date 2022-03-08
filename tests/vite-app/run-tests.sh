@@ -13,7 +13,7 @@ run_test() {
         echo "Waiting for server to come on-line ..."
         sleep 1
     done
-    if [ -z $CI ]; then
+    if [ ! -z $CI ]; then
         export CYPRESS_VIDEO=false
     fi
     echo "Running cypress tests ..."
