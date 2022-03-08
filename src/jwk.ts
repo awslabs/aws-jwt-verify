@@ -172,7 +172,8 @@ export class SimplePenaltyBox implements PenaltyBox {
     const i = setTimeout(() => {
       this.waitingUris.delete(jwksUri);
     }, this.waitSeconds * 1000);
-    if (i.unref) i.unref();
+    /* istanbul ignore else */
+    if (i.unref && typeof i.unref === "function") i.unref(); // Node.js only
     this.waitingUris.set(jwksUri, i);
   }
   registerSuccessfulAttempt(jwksUri: string): void {

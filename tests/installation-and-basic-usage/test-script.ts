@@ -1,14 +1,17 @@
 import { JwtRsaVerifier } from "aws-jwt-verify";
-import { generateKeyPair, signJwt } from "./test-util";
+import { generateKeyPair, signJwt } from "../util/util";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { SimpleJsonFetcher } from "aws-jwt-verify/https";
+import { deconstructPublicKeyInDerFormat } from "aws-jwt-verify/asn1";
 import { createServer } from "https";
 import { readFileSync } from "fs";
 import { join } from "path";
 
 const issuer = "https://example.com/idp";
 const audience = "myaudience";
-const { privateKey, jwk, jwks } = generateKeyPair();
+const { privateKey, jwk, jwks } = generateKeyPair(
+  deconstructPublicKeyInDerFormat
+);
 const jwtHeader = { kid: jwk.kid, alg: "RS256" };
 const jwtPayload = {
   hello: "world",

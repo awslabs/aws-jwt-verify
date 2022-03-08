@@ -11,5 +11,7 @@ How can we help you?
 
 **Versions**
 Which version of `aws-jwt-verify` are you using?
-Which version of Node.js are you using? (Should be at least 14)
+Are you using the library in Node.js or in the Web browser?
+If Node.js, which version of Node.js are you using? (Should be at least 14)
+If Web browser, which web browser and which version of it are you using?
 If using TypeScript, which version of TypeScript are you using? (Should be at least 4)

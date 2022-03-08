@@ -1,11 +1,13 @@
-import { JWK, JWS } from "node-jose"; // https://github.com/cisco/node-jose
-import { v4 } from "uuid";
-import { writeFileSync } from "fs";
+import { generateKeyPair, signJwt } from "../../util/util";
+import { deconstructPublicKeyInDerFormat } from "aws-jwt-verify/asn1";
+import { randomUUID } from "crypto";
+import { writeFileSync, existsSync, mkdirSync } from "fs";
+import { join } from "path";
 
-const keystore = (JWK as any).createKeyStore();
 const ISSUER = "https://example.com";
 const AUDIENCE = "aws-jwt-verify";
-const JWKSURI = "/example-JWKS.json";
+const JWKSFILE = "example-JWKS.json";
+const JWKSURI = "/" + JWKSFILE;
 
 const NOW = Math.floor(Date.now() / 1000) - 30;
 const ONEDAY = 24 * 60 * 60;
@@ -22,7 +24,7 @@ const validTokenPayload = {
   ...baseTokenPayload,
   nbf: NOW,
   exp: NOW + ONEYEAR,
-  jti: v4(),
+  jti: randomUUID(),
   testcase: "valid token",
 };
 
@@ -30,7 +32,7 @@ const expiredTokenPayload = {
   ...baseTokenPayload,
   nbf: NOW - ONEDAY,
   exp: NOW,
-  jti: v4(),
+  jti: randomUUID(),
   testcase: "expired token",
 };
 
@@ -38,60 +40,57 @@ const notYetValidTokenPayload = {
   ...baseTokenPayload,
   nbf: NOW + 366 * 24 * 60 * 60,
   exp: Math.floor(Date.now() / 1000) + 366 * 24 * 60 * 60,
-  jti: v4(),
+  jti: randomUUID(),
   testcase: "not yet valid token",
 };
 
-const createSign = async (jwk, payload) => {
-  return await JWS.createSign(
-    {
-      alg: "RS256",
-      format: "compact",
-    },
-    jwk
-  )
-    .update(JSON.stringify(payload), "utf8")
-    .final();
-};
-
-const props = {
-  alg: "RS256",
-  use: "sig",
-};
-
-const saveFile = (filename, contents) => {
-  console.log(`writing ${filename}...`);
+const saveFile = (
+  directory: string,
+  filename: string,
+  contents: Record<string, unknown>
+) => {
+  const fullDir = join(__dirname, "..", directory);
+  if (!existsSync(fullDir)) {
+    mkdirSync(fullDir, { recursive: true });
+  }
+  const fullPath = join(fullDir, filename);
+  console.log(`writing ${fullPath}...`);
   // eslint-disable-next-line security/detect-non-literal-fs-filename
-  writeFileSync(filename, JSON.stringify(contents, null, 2) + "\n");
+  writeFileSync(fullPath, JSON.stringify(contents, null, 2) + "\n");
 };
 
 const tokendata = {
   ISSUER: "",
   AUDIENCE: "",
   JWKSURI: "",
-  VAILD_TOKEN: "",
+  VALID_TOKEN: "",
   EXPIRED_TOKEN: "",
   NOT_YET_VALID_TOKEN: "",
 };
 
 const main = async () => {
-  const jwk = await keystore.generate("RSA", 2048, props);
+  const { privateKey, jwk, jwks } = generateKeyPair(
+    deconstructPublicKeyInDerFormat,
+    { kid: randomUUID() }
+  );
+  const jwtHeader = { kid: jwk.kid, alg: "RS256" };
 
-  saveFile("public" + JWKSURI, keystore.toJSON());
-  saveFile("cypress/fixtures" + JWKSURI, keystore.toJSON());
+  saveFile("public", JWKSFILE, jwks);
+  saveFile(join("cypress", "fixtures"), JWKSFILE, jwks);
 
   tokendata.ISSUER = ISSUER;
   tokendata.AUDIENCE = AUDIENCE;
   tokendata.JWKSURI = JWKSURI;
 
-  tokendata.VAILD_TOKEN = await createSign(jwk, validTokenPayload);
-  tokendata.EXPIRED_TOKEN = await createSign(jwk, expiredTokenPayload);
-  tokendata.NOT_YET_VALID_TOKEN = await createSign(
-    jwk,
-    notYetValidTokenPayload
+  tokendata.VALID_TOKEN = signJwt(jwtHeader, validTokenPayload, privateKey);
+  tokendata.EXPIRED_TOKEN = signJwt(jwtHeader, expiredTokenPayload, privateKey);
+  tokendata.NOT_YET_VALID_TOKEN = signJwt(
+    jwtHeader,
+    notYetValidTokenPayload,
+    privateKey
   );
 
-  saveFile("cypress/fixtures/token-data.json", tokendata);
+  saveFile(join("cypress", "fixtures"), "token-data.json", tokendata);
 
   console.log("done");
 };
