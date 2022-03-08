@@ -18,11 +18,14 @@ run_test() {
         echo "Cypress test failed :("
         TEST_FAILED=true
     fi
-    echo "Sending stop signal to Vite server (SIGINT) ..."
-    kill -s INT $VITE_PID
-    echo "Waiting for Vite server to actually stop ..."
-    wait
-    echo "Vite server stopped"
+    if [ -z $CI ]; then
+        # Only bother to kill the backgrounded server if we're not running in CI (e.g. on developer laptop)
+        echo "Sending stop signal to Vite server (SIGINT) ..."
+        kill -s INT $VITE_PID
+        echo "Waiting for Vite server to actually stop ..."
+        wait
+        echo "Vite server stopped"
+    fi
     if [ ! -z $TEST_FAILED ]; then
         return 1
     fi
@@ -32,7 +35,7 @@ main() {
     echo "Generating JWTs ..."
     npm run tokengen
 
-    # # Run against dev server, which uses esbuild bundler
+    # Run against dev server, which uses esbuild bundler
     echo "Starting Cypress tests against Vite dev server ..."
     run_test "npm run dev" 3000 "npm run cypress:run"
 
@@ -43,5 +46,7 @@ main() {
     run_test "npm run preview" 4173 "npm run cypress:run:preview"
 }
 
-export TERM="${TERM:-xterm}" # Fix for GitHub actions
+if [ -z $CI ]; then
+    export TERM="${TERM:-xterm}" # Fix for GitHub actions
+fi
 main

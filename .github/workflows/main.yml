@@ -27,3 +27,5 @@ jobs:
           npm run test:install
           npm run test:import
           npm run test:browser
+        env:
+          CI: "true"
