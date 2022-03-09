@@ -31,7 +31,6 @@
     "@aws-cdk/core": "1.145.0",
     "@aws-cdk/custom-resources": "1.145.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.52.0",
-    "aws-jwt-verify": "file:../../aws-jwt-verify.tgz",
     "source-map-support": "^0.5.21"
   }
 }

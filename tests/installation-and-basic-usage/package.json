@@ -1,20 +1,10 @@
 {
   "name": "installation-and-basic-usage",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "type": "commonjs",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "@types/node": "^16.10.2",
     "typescript": "^4.4.3"
-  },
-  "dependencies": {
-    "aws-jwt-verify": "file:../../aws-jwt-verify.tgz"
   }
 }

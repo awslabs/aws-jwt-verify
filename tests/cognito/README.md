@@ -6,7 +6,7 @@ This CDK project's automated tests check that the User Pool's JWTs can indeed be
 ## How to run the tests
 
 - Clone the repo: `git clone https://github.com/awslabs/aws-jwt-verify`
-- Install dev dependencies and create installable dist: `cd aws-jwt-verify && npm install && npm run dist`
+- Install dev dependencies and create installable dist: `cd aws-jwt-verify && npm install && npm run pack-for-tests`
 - Install CDK dependencies: `cd tests/cognito && npm install`
 - The stack uses a custom CDK bootstrap toolkit. Therefore, it's necessary to first deploy the bootstrap toolkit stack: `aws cloudformation create-stack --template-body file://bootstrap-template.yml --stack-name AwsJwtVerifyTest-toolkit --capabilities CAPABILITY_NAMED_IAM`
 - Deploy the stack to your default AWS account/region, saving outputs to `outputs.json`: `cdk deploy -O outputs.json --toolkit-stack-name AwsJwtVerifyTest-toolkit`
