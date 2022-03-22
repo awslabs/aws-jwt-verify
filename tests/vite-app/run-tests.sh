@@ -9,8 +9,14 @@ run_test() {
     $START_SERVER_CMD &
     VITE_PID=$!
     echo "Vite server launched as PID ${VITE_PID}"
+    WAITED=0
     while ! nc -z localhost $SERVER_PORT; do
-        echo "Waiting for server to come on-line ..."
+        WAITED=$((WAITED + 1))
+        if [ $WAITED -ge 30 ]; then
+            echo "Error: Vite server didn't come on-line within $WAITED seconds"
+            exit 1
+        fi
+        echo "Waiting for Vite server to come on-line ($WAITED) ..."
         sleep 1
     done
     if [ ! -z $CI ]; then
