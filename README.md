@@ -8,7 +8,7 @@
 
 This library can be used with Node.js 14 or higher. If used with TypeScript, TypeScript 4 or higher is required.
 
-This library can also be used in Web browsers (modern browsers that support e.g. `SubtleCrypto`).
+This library can also be used in Web browsers.
 
 ## Basic usage
 
