@@ -1,6 +1,13 @@
 /// <reference types="cypress" />
 import { JwtRsaVerifier } from "aws-jwt-verify";
 import {
+  JwtExpiredError,
+  JwtNotBeforeError,
+  JwtInvalidIssuerError,
+  JwtInvalidAudienceError,
+  JwtInvalidSignatureError,
+} from "aws-jwt-verify/error";
+import {
   ISSUER,
   AUDIENCE,
   JWKSURI,
@@ -41,6 +48,8 @@ describe("unit tests", () => {
 
       expect(payload).to.not.exist;
     } catch (ex) {
+      expect(ex).to.be.an.instanceof(JwtExpiredError);
+
       expect(ex.message).to.include("Token expired at ");
     }
   });
@@ -57,6 +66,8 @@ describe("unit tests", () => {
 
       expect(payload).to.not.exist;
     } catch (ex) {
+      expect(ex).to.be.an.instanceof(JwtNotBeforeError);
+
       expect(ex.message).to.include("Token can't be used before ");
     }
   });
@@ -73,6 +84,8 @@ describe("unit tests", () => {
 
       expect(payload).to.not.exist;
     } catch (ex) {
+      expect(ex).to.be.an.instanceof(JwtInvalidIssuerError);
+
       expect(ex.message).to.include("Issuer not allowed");
     }
   });
@@ -89,6 +102,8 @@ describe("unit tests", () => {
 
       expect(payload).to.not.exist;
     } catch (ex) {
+      expect(ex).to.be.an.instanceof(JwtInvalidAudienceError);
+
       expect(ex.message).to.include("Audience not allowed");
     }
   });
@@ -107,6 +122,8 @@ describe("unit tests", () => {
 
       expect(payload).to.not.exist;
     } catch (ex) {
+      expect(ex).to.be.an.instanceof(JwtInvalidSignatureError);
+
       expect(ex.message).to.include("Invalid signature");
     }
   });

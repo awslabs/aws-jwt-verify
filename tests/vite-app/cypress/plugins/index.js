@@ -14,6 +14,10 @@
 
 // https://github.com/cypress-io/cypress/tree/master/npm/webpack-preprocessor
 const webpackPreprocessor = require("@cypress/webpack-preprocessor");
+const webpackPreprocessorOptions = {
+  webpackOptions: require("./webpack.config"),
+  watchOptions: {},
+};
 
 /**
  * @type {Cypress.PluginConfig}
@@ -22,8 +26,7 @@ const webpackPreprocessor = require("@cypress/webpack-preprocessor");
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
-  const options = webpackPreprocessor.defaultOptions;
-  on("file:preprocessor", webpackPreprocessor(options));
+  on("file:preprocessor", webpackPreprocessor(webpackPreprocessorOptions));
 
   on("dev-server:start", (options) => {
     return startDevServer({
