@@ -15,7 +15,12 @@ import {
   assertStringArrayContainsString,
   assertStringEquals,
 } from "./assert.js";
-import { JwtHeader, JwtPayload } from "./jwt-model.js";
+import {
+  JwtHeader,
+  JwtPayload,
+  supportedSignatureAlgorithms,
+  SupportedSignatureAlgorithm,
+} from "./jwt-model.js";
 import { AsAsync, Properties } from "./typing-util.js";
 import { decomposeJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
 import {
@@ -154,7 +159,7 @@ export type JwtRsaVerifierMultiIssuer<
  */
 export type JwsVerificationFunctionSync = (props: {
   keyObject: GenericKeyObject;
-  alg: "RS256" | "RS384" | "RS512";
+  alg: SupportedSignatureAlgorithm;
   jwsSigningInput: string;
   signature: string;
 }) => boolean;
@@ -194,11 +199,11 @@ function validateJwtHeaderAndJwk(header: JwtHeader, jwk: Jwk) {
     );
   }
 
-  // Check JWT signature algorithm is one of RS256, RS384, RS512
+  // Check JWT signature algorithm is one of the supported signature algorithms
   assertStringArrayContainsString(
     "JWT signature algorithm",
     header.alg,
-    ["RS256", "RS384", "RS512"] as const,
+    supportedSignatureAlgorithms,
     JwtInvalidSignatureAlgorithmError
   );
 }
@@ -271,7 +276,7 @@ async function verifyDecomposedJwt(
   // Transform the JWK to native key format, that can be used with verifySignature
   const keyObject = await transformJwkToKeyObjectFn(
     jwk,
-    header.alg as "RS256" | "RS384" | "RS512",
+    header.alg as SupportedSignatureAlgorithm,
     payload.iss,
     header.kid
   );
@@ -280,7 +285,7 @@ async function verifyDecomposedJwt(
   const valid = await nodeWebCompat.verifySignatureAsync({
     jwsSigningInput: `${headerB64}.${payloadB64}`,
     signature: signatureB64,
-    alg: header.alg as "RS256" | "RS384" | "RS512",
+    alg: header.alg as SupportedSignatureAlgorithm,
     keyObject,
   });
   if (!valid) {
@@ -390,7 +395,7 @@ function verifyDecomposedJwtSync(
   // Transform the JWK to native key format, that can be used with verifySignature
   const keyObject = transformJwkToKeyObjectFn(
     jwk,
-    header.alg as "RS256" | "RS384" | "RS512",
+    header.alg as SupportedSignatureAlgorithm,
     payload.iss,
     header.kid
   );
@@ -399,7 +404,7 @@ function verifyDecomposedJwtSync(
   const valid = nodeWebCompat.verifySignatureSync({
     jwsSigningInput: `${headerB64}.${payloadB64}`,
     signature: signatureB64,
-    alg: header.alg as "RS256" | "RS384" | "RS512",
+    alg: header.alg as SupportedSignatureAlgorithm,
     keyObject,
   });
   if (!valid) {
@@ -733,7 +738,7 @@ type GenericKeyObject = Object;
  */
 export type JwkToKeyObjectTransformerSync = (
   jwk: Jwk,
-  alg?: "RS256" | "RS384" | "RS512",
+  alg?: SupportedSignatureAlgorithm,
   issuer?: string,
   kid?: string
 ) => GenericKeyObject;
