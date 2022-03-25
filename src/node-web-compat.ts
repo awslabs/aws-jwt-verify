@@ -25,6 +25,9 @@ export interface NodeWebCompat {
   verifySignatureSync: JwsVerificationFunctionSync;
   verifySignatureAsync: JwsVerificationFunctionAsync;
   parseB64UrlString: (b64: string) => string;
+  setTimeoutUnref: (
+    ...args: Parameters<typeof setTimeout>
+  ) => ReturnType<typeof setTimeout>;
   fetchJson: <ResultType extends Json>(
     uri: string,
     requestOptions?: Record<string, unknown>,

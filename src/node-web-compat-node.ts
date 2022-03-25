@@ -59,4 +59,6 @@ export const nodeWebCompat: NodeWebCompat = {
     socketIdle: 500,
     response: 1500,
   },
+  setTimeoutUnref: (...args: Parameters<typeof setTimeout>) =>
+    setTimeout(...args).unref(),
 };

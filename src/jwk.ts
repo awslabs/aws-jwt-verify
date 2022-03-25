@@ -12,6 +12,7 @@ import {
   WaitPeriodNotYetEndedJwkError,
   JwtWithoutValidKidError,
 } from "./error.js";
+import { nodeWebCompat } from "#node-web-compat";
 
 interface DecomposedJwt {
   header: JwtHeader;
@@ -148,7 +149,10 @@ type JwksUri = string;
 
 export class SimplePenaltyBox implements PenaltyBox {
   waitSeconds: number;
-  private waitingUris: Map<JwksUri, NodeJS.Timeout> = new Map();
+  private waitingUris: Map<
+    JwksUri,
+    ReturnType<typeof nodeWebCompat.setTimeoutUnref>
+  > = new Map();
   constructor(props?: { waitSeconds?: number }) {
     this.waitSeconds = props?.waitSeconds ?? 10;
   }
@@ -169,11 +173,9 @@ export class SimplePenaltyBox implements PenaltyBox {
     }
   }
   registerFailedAttempt(jwksUri: string): void {
-    const i = setTimeout(() => {
+    const i = nodeWebCompat.setTimeoutUnref(() => {
       this.waitingUris.delete(jwksUri);
     }, this.waitSeconds * 1000);
-    /* istanbul ignore else */
-    if (i.unref && typeof i.unref === "function") i.unref(); // Node.js only
     this.waitingUris.set(jwksUri, i);
   }
   registerSuccessfulAttempt(jwksUri: string): void {

@@ -88,6 +88,7 @@ export const nodeWebCompat: NodeWebCompat = {
     ),
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
+  setTimeoutUnref: setTimeout,
 };
 
 const bufferFromBase64url = (function () {
