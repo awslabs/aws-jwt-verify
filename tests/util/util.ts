@@ -21,15 +21,25 @@ export function generateKeyPair(
   });
 
   return {
+    /* The public key of the keypair, in native NodeJS key format */
     publicKey,
+    /* The public key of the keypair, in DER format */
     publicKeyDer: publicKey.export({ format: "der", type: "spki" }),
+    /* The public key of the keypair, in PEM format */
     publicKeyPem: publicKey.export({ format: "pem", type: "spki" }),
+    /* The private key of the keypair, in native NodeJS key format */
     privateKey,
+    /* The private key of the keypair, in DER format */
     privateKeyDer: privateKey.export({ format: "der", type: "pkcs8" }),
+    /* The private key of the keypair, in PEM format */
     privateKeyPem: privateKey.export({ format: "pem", type: "pkcs8" }),
+    /* The public key of the keypair, in JWK format, wrapped as a JWKS */
     jwks: { keys: [jwk] },
+    /* The public key of the keypair, in JWK format */
     jwk,
+    /* The modulus of the public key of the keypair, as NodeJS buffer */
     nBuffer: Buffer.from(jwk.n, "base64"),
+    /* The exponent of the public key of the keypair, as NodeJS buffer */
     eBuffer: Buffer.from(jwk.e, "base64"),
   };
 }
