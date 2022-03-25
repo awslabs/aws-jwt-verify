@@ -8,6 +8,7 @@ import {
 } from "../util/util";
 import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
 
+/** Generate an RSA keypair with its various manifestations as properties, for use in automated tests */
 export function generateKeyPair(options?: { kid?: string; alg?: string }) {
   return generateKeyPairImpl(deconstructPublicKeyInDerFormat, options);
 }

@@ -4,13 +4,37 @@
 
 import { createSign, generateKeyPairSync, KeyObject } from "crypto";
 
+/** RSA keypair with its various manifestations as properties, for use in automated tests */
+export interface KeyPair {
+  /** The public key of the keypair, in native NodeJS key format */
+  publicKey: KeyObject;
+  /** The public key of the keypair, in DER format */
+  publicKeyDer: Buffer;
+  /** The public key of the keypair, in PEM format */
+  publicKeyPem: string;
+  /** The private key of the keypair, in native NodeJS key format */
+  privateKey: KeyObject;
+  /** The private key of the keypair, in DER format */
+  privateKeyDer: Buffer;
+  /** The private key of the keypair, in PEM format */
+  privateKeyPem: string;
+  /** The public key of the keypair, in JWK format, wrapped as a JWKS */
+  jwks: { keys: [ReturnType<typeof publicKeyToJwk>] };
+  /** The public key of the keypair, in JWK format */
+  jwk: ReturnType<typeof publicKeyToJwk>;
+  /** The modulus of the public key of the keypair, as NodeJS buffer */
+  nBuffer: Buffer;
+  /** The exponent of the public key of the keypair, as NodeJS buffer */
+  eBuffer: Buffer;
+}
+
 export function generateKeyPair(
   deconstructPublicKeyInDerFormat: (publicKey: Buffer) => {
     n: Buffer;
     e: Buffer;
   },
   options?: { kid?: string; alg?: string }
-) {
+): KeyPair {
   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
     modulusLength: 4096,
     publicExponent: 0x10001,
@@ -21,25 +45,18 @@ export function generateKeyPair(
   });
 
   return {
-    /* The public key of the keypair, in native NodeJS key format */
     publicKey,
-    /* The public key of the keypair, in DER format */
     publicKeyDer: publicKey.export({ format: "der", type: "spki" }),
-    /* The public key of the keypair, in PEM format */
-    publicKeyPem: publicKey.export({ format: "pem", type: "spki" }),
-    /* The private key of the keypair, in native NodeJS key format */
+    publicKeyPem: publicKey.export({ format: "pem", type: "spki" }) as string,
     privateKey,
-    /* The private key of the keypair, in DER format */
     privateKeyDer: privateKey.export({ format: "der", type: "pkcs8" }),
-    /* The private key of the keypair, in PEM format */
-    privateKeyPem: privateKey.export({ format: "pem", type: "pkcs8" }),
-    /* The public key of the keypair, in JWK format, wrapped as a JWKS */
+    privateKeyPem: privateKey.export({
+      format: "pem",
+      type: "pkcs8",
+    }) as string,
     jwks: { keys: [jwk] },
-    /* The public key of the keypair, in JWK format */
     jwk,
-    /* The modulus of the public key of the keypair, as NodeJS buffer */
     nBuffer: Buffer.from(jwk.n, "base64"),
-    /* The exponent of the public key of the keypair, as NodeJS buffer */
     eBuffer: Buffer.from(jwk.e, "base64"),
   };
 }
