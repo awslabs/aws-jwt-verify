@@ -1,21 +1,26 @@
-import { RequestOptions } from "http";
 import { JwtRsaVerifier } from "aws-jwt-verify";
-import { generateKeyPair, signJwt } from "../unit/test-util";
+import { generateKeyPair, signJwt } from "../util/util";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { SimpleJsonFetcher } from "aws-jwt-verify/https";
+import { deconstructPublicKeyInDerFormat } from "aws-jwt-verify/asn1";
 import { createServer } from "https";
 import { readFileSync } from "fs";
 import { join } from "path";
 
 const issuer = "https://example.com/idp";
 const audience = "myaudience";
-const keypair = generateKeyPair();
-const validJwt = signJwt(
-  { kid: keypair.jwk.kid },
-  { hello: "world", iss: issuer, aud: audience },
-  keypair.privateKey
+const { privateKey, jwk, jwks } = generateKeyPair(
+  deconstructPublicKeyInDerFormat
 );
-const invalidJwt = signJwt({}, { hello: "world" }, keypair.privateKey, false);
+const jwtHeader = { kid: jwk.kid, alg: "RS256" };
+const jwtPayload = {
+  hello: "world",
+  iss: issuer,
+  aud: audience,
+  exp: Math.floor(Date.now() / 1000 + 1000),
+};
+const validJwt = signJwt(jwtHeader, jwtPayload, privateKey);
+const invalidJwt = signJwt(jwtHeader, jwtPayload, privateKey, false);
 const verifier = JwtRsaVerifier.create(
   {
     issuer: "https://example.com/idp",
@@ -27,7 +32,7 @@ const verifier = JwtRsaVerifier.create(
       fetcher: new SimpleJsonFetcher({
         defaultRequestOptions: {
           rejectUnauthorized: false, // ignore SSL errors because we use a self-signed cert for the test
-        } as RequestOptions, // explicit cast because the Node.js types don't recognize `rejectUnauthorized`
+        },
       }),
     }),
   }
@@ -44,7 +49,7 @@ function startJwksServer() {
       req.destroy();
     } else {
       res.setHeader("Content-Type", "application/json");
-      res.write(JSON.stringify(keypair.jwks));
+      res.write(JSON.stringify(jwks));
       res.end();
     }
     induceTcpError = !induceTcpError; // toggle value

@@ -14,7 +14,7 @@ export abstract class JwtBaseError extends Error {}
 interface AssertionError extends JwtBaseError {
   failedAssertion: {
     actual: unknown;
-    expected?: string | string[];
+    expected?: string | Readonly<string[]>;
   };
 }
 
@@ -25,7 +25,7 @@ export interface AssertionErrorConstructor {
   new (
     msg: string,
     actual: unknown,
-    expected?: string | string[]
+    expected?: string | Readonly<string[]>
   ): AssertionError;
 }
 
@@ -35,9 +35,13 @@ export interface AssertionErrorConstructor {
 export class FailedAssertionError extends JwtBaseError {
   failedAssertion: {
     actual: unknown;
-    expected?: string | string[];
+    expected?: string | Readonly<string[]>;
   };
-  constructor(msg: string, actual: unknown, expected?: string | string[]) {
+  constructor(
+    msg: string,
+    actual: unknown,
+    expected?: string | Readonly<string[]>
+  ) {
     super(msg);
     this.failedAssertion = {
       actual,
@@ -139,3 +143,9 @@ export class FetchError extends JwtBaseError {
 }
 
 export class NonRetryableFetchError extends FetchError {}
+
+/**
+ * Web compatibility errors
+ */
+
+export class NotSupportedError extends JwtBaseError {}

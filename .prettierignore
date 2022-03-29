@@ -8,12 +8,15 @@ asn1.d.ts
 assert.d.ts
 cognito-verifier.d.ts
 error.d.ts
+https-common.d.ts
+https-node.d.ts
 https.d.ts
 index.d.ts
 jwk.d.ts
 jwt-model.d.ts
 jwt-rsa.d.ts
 jwt.d.ts
+node-web-compat*.d.ts
 safe-json-parse.d.ts
 test-util.d.ts
 typing-util.d.ts
@@ -21,6 +24,9 @@ typing-util.d.ts
 # compiled js
 src/*.js
 tests/unit/*.js
+tests/util/*.js
 tests/installation-and-basic-usage/*.js
 tests/cognito/cdk.out/*
 tests/import-tests/typescript.js
+tests/import-tests/should-not-compile.js
+tests/vite-app/util/generateExampleTokens.js

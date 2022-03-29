@@ -14,12 +14,12 @@ import { AssertionErrorConstructor, FailedAssertionError } from "./error.js";
  * @param expected - The expected value
  * @param errorConstructor - Constructor for the concrete error to be thrown
  */
-export function assertStringEquals(
+export function assertStringEquals<T extends string>(
   name: string,
   actual: unknown,
-  expected: string,
+  expected: T,
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
-): void {
+): asserts actual is T {
   if (!actual) {
     throw new errorConstructor(
       `Missing ${name}. Expected: ${expected}`,
@@ -53,12 +53,14 @@ export function assertStringEquals(
  * @param errorConstructor - Constructor for the concrete error to be thrown
  * a string here as well, which will mean an array with just that string
  */
-export function assertStringArrayContainsString(
+export function assertStringArrayContainsString<
+  T extends string | Readonly<string[]>
+>(
   name: string,
   actual: unknown,
-  expected: string | string[],
+  expected: T,
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
-): void {
+): asserts actual is T extends Readonly<string[]> ? T[number] : T {
   if (!actual) {
     throw new errorConstructor(
       `Missing ${name}. ${expectationMessage(expected)}`,
@@ -92,9 +94,9 @@ export function assertStringArrayContainsString(
 export function assertStringArraysOverlap(
   name: string,
   actual: unknown,
-  expected: string | string[],
+  expected: string | Readonly<string[]>,
   errorConstructor: AssertionErrorConstructor = FailedAssertionError
-): void {
+): asserts actual is string | Readonly<string[]> {
   if (!actual) {
     throw new errorConstructor(
       `Missing ${name}. ${expectationMessage(expected)}`,
@@ -137,7 +139,7 @@ export function assertStringArraysOverlap(
  *
  * @param expected - The expected value.
  */
-function expectationMessage(expected: string | string[]) {
+function expectationMessage(expected: string | Readonly<string[]>) {
   if (Array.isArray(expected)) {
     if (expected.length > 1) {
       return `Expected one of: ${expected.join(", ")}`;

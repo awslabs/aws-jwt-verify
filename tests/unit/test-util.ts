@@ -1,11 +1,28 @@
-/* istanbul ignore file */
-
-import { createSign, generateKeyPairSync, KeyObject } from "crypto";
 import nock from "nock";
 import { URL } from "url";
+export { base64url, signJwt } from "../util/util";
+import { KeyObject } from "crypto";
+import {
+  generateKeyPair as generateKeyPairImpl,
+  publicKeyToJwk as publicKeyToJwkImpl,
+} from "../util/util";
 import { deconstructPublicKeyInDerFormat } from "../../src/asn1";
-import { Jwk, Jwks } from "../../src/jwk";
-import { JwtSignatureAlgorithms } from "../../src/jwt-rsa";
+
+/** Generate an RSA keypair with its various manifestations as properties, for use in automated tests */
+export function generateKeyPair(options?: { kid?: string; alg?: string }) {
+  return generateKeyPairImpl(deconstructPublicKeyInDerFormat, options);
+}
+
+export function publicKeyToJwk(
+  publicKey: KeyObject,
+  jwkOptions: { kid?: string; alg?: string; kty?: string; use?: string } = {}
+) {
+  return publicKeyToJwkImpl(
+    publicKey,
+    deconstructPublicKeyInDerFormat,
+    jwkOptions
+  );
+}
 
 export function disallowAllRealNetworkTraffic() {
   nock.disableNetConnect();
@@ -13,90 +30,6 @@ export function disallowAllRealNetworkTraffic() {
 
 export function allowAllRealNetworkTraffic() {
   nock.enableNetConnect();
-}
-
-export function generateKeyPair(options?: { kid?: string; alg?: string }) {
-  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
-    modulusLength: 4096,
-    publicExponent: 0x10001,
-  });
-  const jwk = publicKeyToJwk(publicKey, {
-    kid: options?.kid,
-    alg: options?.alg,
-  });
-
-  return {
-    publicKey,
-    publicKeyDer: publicKey.export({ format: "der", type: "spki" }),
-    publicKeyPem: publicKey.export({ format: "pem", type: "spki" }),
-    privateKey,
-    privateKeyDer: privateKey.export({ format: "der", type: "pkcs8" }),
-    privateKeyPem: privateKey.export({ format: "pem", type: "pkcs8" }),
-    jwks: { keys: [jwk] } as Jwks,
-    jwk,
-    nBuffer: Buffer.from(jwk.n, "base64"),
-    eBuffer: Buffer.from(jwk.e, "base64"),
-  };
-}
-
-export function publicKeyToJwk(
-  publicKey: KeyObject,
-  jwkOptions: { kid?: string; alg?: string; kty?: string; use?: string } = {}
-) {
-  jwkOptions = {
-    kid: jwkOptions.kid ?? "testkid",
-    alg: jwkOptions.alg ?? "RS256",
-    kty: jwkOptions.kty ?? "RSA",
-    use: jwkOptions.use ?? "sig",
-  };
-  const { n, e } = deconstructPublicKeyInDerFormat(
-    publicKey.export({ format: "der", type: "spki" })
-  );
-  return {
-    ...jwkOptions,
-    n: n.toString("base64"),
-    e: e.toString("base64"),
-  } as Jwk;
-}
-
-export function signJwt(
-  header: { kid?: string; alg?: string; [key: string]: any },
-  payload: { [key: string]: any },
-  privateKey: KeyObject,
-  produceValidSignature = true
-) {
-  header = {
-    ...header,
-    alg: Object.keys(header).includes("alg") ? header.alg : "RS256",
-  };
-  payload = { exp: Math.floor(Date.now() / 1000 + 100), ...payload };
-  const toSign = [
-    base64url(JSON.stringify(header)),
-    base64url(JSON.stringify(payload)),
-  ].join(".");
-  const sign = createSign(
-    JwtSignatureAlgorithms[header.alg as keyof typeof JwtSignatureAlgorithms] ??
-      "RSA-SHA256"
-  );
-  sign.write(toSign);
-  sign.end();
-  const signature = sign.sign(privateKey);
-  if (!produceValidSignature) {
-    signature[0] = ~signature[0]; // swap first byte
-  }
-  const signedJwt = [toSign, base64url(signature)].join(".");
-  return signedJwt;
-}
-
-export function base64url(x: string | Buffer) {
-  if (typeof x === "string") {
-    x = Buffer.from(x);
-  }
-  return x
-    .toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
 }
 
 export function throwOnUnusedMocks() {

@@ -1,7 +1,6 @@
 import * as outputs from "../outputs.json";
-import { CognitoJwtVerifier } from "../../../src/cognito-verifier";
-import { fetchJson } from "../../../src/https";
-import { JsonObject } from "../../../src/safe-json-parse";
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { fetchJson } from "aws-jwt-verify/https";
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
@@ -50,7 +49,7 @@ async function getJWTsForUser() {
 }
 
 async function getAccessTokenForClientCredentials() {
-  return fetchJson(
+  return fetchJson<{ access_token: string }>(
     `${hostedUIUrl}/oauth2/token`,
     {
       method: "POST",
@@ -64,7 +63,7 @@ async function getAccessTokenForClientCredentials() {
     Buffer.from(
       `grant_type=client_credentials&scope=${encodeURIComponent(scope)}`
     )
-  ).then((res) => ({ access: (res as JsonObject)["access_token"] as string }));
+  ).then((res) => ({ access: res["access_token"] }));
 }
 
 test("Verify ID token for user: happy flow", async () => {

@@ -1,0 +1,27 @@
+{
+  "name": "vite-app",
+  "private": true,
+  "version": "0.0.2",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "reinstall": "npm uninstall aws-jwt-verify && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz",
+    "tokengen": "cd util && ts-node generateExampleTokens.ts",
+    "cypress:run": "cypress run",
+    "cypress:run:preview": "cypress run --config baseUrl=http://localhost:4173/",
+    "cypress:open": "cypress open",
+    "cypress:open:webpack": "DEBUG=cypress:webpack cypress open",
+    "cypress:open:preview": "cypress open --config baseUrl=http://localhost:4173/",
+    "postinstall": "npm run reinstall"
+  },
+  "devDependencies": {
+    "@cypress/webpack-preprocessor": "^5.11.1",
+    "@rollup/plugin-node-resolve": "^13.1.3",
+    "cypress": "^9.5.2",
+    "ts-loader": "^9.2.8",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.2",
+    "vite": "^2.8.6"
+  }
+}

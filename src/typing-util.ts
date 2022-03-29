@@ -53,3 +53,8 @@ export type Properties<Base, Provided> = StillToProvideProperties<
   Provided
 > &
   Partial<Base>;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AsAsync<T extends (...args: any[]) => unknown> = (
+  ...args: Parameters<T>
+) => Promise<ReturnType<T>>;

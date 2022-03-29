@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aws-jwt-verify</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>aws-jwt-verify</h1>
+      <form autocomplete="off">
+        <p>
+          <label for="jwt">JWT:</label>
+          <input type="text" id="jwt" />
+        </p>
+        <p>
+          <label for="jwt">Issuer:</label>
+          <input type="text" id="issuer" />
+        </p>
+        <p>
+          <label for="jwt">Audience:</label>
+          <input type="text" id="audience" />
+        </p>
+        <p>
+          <label for="jwt">JWKS URI:</label>
+          <input type="text" id="jwksuri" />
+        </p>
+        <p>
+          <input
+            type="button"
+            id="verifyrsa"
+            value="Verify RSA"
+            disabled="true"
+          />
+          <input
+            type="button"
+            id="verifycognito"
+            value="Verify Cognito"
+            disabled="true"
+          />
+        </p>
+        <p>
+          <span id="result">Unverified</span>
+        </p>
+      </form>
+    </div>
+    <div id="prettyprint"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

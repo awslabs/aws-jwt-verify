@@ -1,12 +1,14 @@
 # AWS JWT Verify
 
-**Node.js** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512**.
+**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512**.
 
 ## Installation
 
 `npm install aws-jwt-verify`
 
-Note: this library can be used with Node.js 14 or higher. If used with TypeScript, TypeScript 4 or higher is required.
+This library can be used with Node.js 14 or higher. If used with TypeScript, TypeScript 4 or higher is required.
+
+This library can also be used in Web browsers.
 
 ## Basic usage
 
@@ -58,7 +60,7 @@ See all verify parameters for JWTs from any IDP [here](#jwtrsaverifier-verify-pa
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
-- Pure **TypeScript** library that can be used in **Node.js** v14 and above (both CommonJS and ESM supported).
+- Pure **TypeScript** library that can be used in **Node.js** v14 and above (both CommonJS and ESM supported), as well in the modern evergreen Web browser.
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
 - **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI, and it includes a simple **ASN.1** encoder to transform JWKs into **DER-encoded RSA public keys** (in order to verify JWTs with Node.js native crypto calls).
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://tools.ietf.org/id/draft-ietf-oauth-jwt-bcp-02.html#rfc.section.3).
@@ -74,6 +76,12 @@ This library was specifically designed to be easy to use in:
 - [AppSync Lambda authorizers](https://docs.aws.amazon.com/appsync/latest/devguide/security-authz.html#aws-lambda-authorization)
 - [CloudFront Lambda@Edge](https://docs.aws.amazon.com/lambda/latest/dg/lambda-edge.html)
 - Node.js APIs, e.g. running in AWS Fargate, that need to verify incoming JWTs
+
+## Usage in the Web browser
+
+Many webdev toolchains (e.g. [CreateReactApp](https://github.com/facebook/create-react-app)) make including `npm` libraries in your web app easy, in which case using this library in your web app should just work.
+
+If you need to bundle this library manually yourself, be aware that this library uses [subpath imports](https://nodejs.org/api/packages.html#subpath-imports), to automatically select the Web crypto implementation when bundling for the browser. This is supported out-of-the-box by [webpack](https://webpack.js.org/) and [esbuild](https://esbuild.github.io/). An example of using this library in a Vite web app, with Cypress tests, is included in this repository [here](tests/vite-app/).
 
 ## Table of Contents
 
