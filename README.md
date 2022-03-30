@@ -148,7 +148,7 @@ Supported parameters are:
 
 - `tokenUse` (mandatory): verify that the JWT's `token_use` claim matches your expectation. Set to either `id` or `access`. Set to `null` to skip checking `token_use`.
 - `clientId` (mandatory): verify that the JWT's `aud` (id token) or `client_id` (access token) claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these client ids must match the JWT). Set to `null` to skip checking client id (not recommended unless you know what you are doing).
-- `group` (optional): verify that the JWT's `cognito:groups` claim matches your expectation. Provide a string, or an array of strings to allow multiple groups (i.e. one of these groups must match the JWT).
+- `groups` (optional): verify that the JWT's `cognito:groups` claim matches your expectation. Provide a string, or an array of strings to allow multiple groups (i.e. one of these groups must match the JWT).
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#Checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT (and JWK) checks to execute (see also below).
@@ -161,7 +161,7 @@ const verifier = CognitoJwtVerifier.create({
   userPoolId: "<user_pool_id>", // mandatory, can't be overridden upon calling verify
   tokenUse: "id", // needs to be specified here or upon calling verify
   clientId: "<client_id>", // needs to be specified here or upon calling verify
-  group: "admins", // optional
+  groups: "admins", // optional
   graceSeconds: 0, // optional
   scope: "my-api/read", // optional
   customJwtCheck: (payload, header, jwk) => {}, // optional
@@ -169,7 +169,7 @@ const verifier = CognitoJwtVerifier.create({
 
 try {
   const payload = await verifier.verify("eyJraWQeyJhdF9oYXNoIjoidk...", {
-    group: "users", // Cognito group overridden: should be users (not admins)
+    groups: "users", // Cognito groups overridden: should be users (not admins)
   });
   console.log("Token is valid. Payload:", payload);
 } catch {
