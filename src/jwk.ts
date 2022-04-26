@@ -11,8 +11,14 @@ import {
   KidNotFoundInJwksError,
   WaitPeriodNotYetEndedJwkError,
   JwtWithoutValidKidError,
+  JwkInvalidUseError,
+  JwkInvalidKtyError,
+  JwkMissingExponentError,
+  JwkMissingModulusError,
+  JwkMissingKidError,
 } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
+import { assertStringEquals } from "./assert.js";
 
 interface DecomposedJwt {
   header: JwtHeader;
@@ -20,14 +26,14 @@ interface DecomposedJwt {
 }
 
 const optionalJwkFieldNames = [
+  "use", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.2
   "alg", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.4
+  "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5
+  "n", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
+  "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
 ] as const;
 const mandatoryJwkFieldNames = [
-  "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
-  "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5 NOTE: considered mandatory by this library
   "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
-  "n", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
-  "use", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.2 NOTE: considered mandatory by this library
 ] as const;
 
 type OptionalJwkFieldNames = typeof optionalJwkFieldNames[number];
@@ -40,6 +46,14 @@ type MandatoryJwkFields = {
 };
 
 export type Jwk = OptionalJwkFields & MandatoryJwkFields & JsonObject;
+
+export type RsaSignatureJwk = Jwk & {
+  use: "sig";
+  kty: "RSA";
+  kid: string;
+  n: string;
+  e: string;
+};
 
 interface JwksFields {
   keys: readonly Jwk[];
@@ -95,6 +109,25 @@ export function assertIsJwks(jwks: Json): asserts jwks is Jwks {
   for (const jwk of (jwks as { keys: Json[] }).keys) {
     assertIsJwk(jwk);
   }
+}
+
+export function assertIsRsaSignatureJwk(
+  jwk: Jwk
+): asserts jwk is RsaSignatureJwk {
+  // Check JWK use
+  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+
+  // Check JWK kty
+  assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);
+
+  // Check kid has a value
+  if (!jwk.kid) throw new JwkMissingKidError("Missing key id (kid)", jwk.kid);
+
+  // Check modulus (n) has a value
+  if (!jwk.n) throw new JwkMissingModulusError("Missing modulus (n)", jwk.n);
+
+  // Check exponent (e) has a value
+  if (!jwk.e) throw new JwkMissingExponentError("Missing exponent (e)", jwk.e);
 }
 
 export function assertIsJwk(jwk: Json): asserts jwk is Jwk {

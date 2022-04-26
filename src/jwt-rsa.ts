@@ -5,10 +5,12 @@ import {
   SimpleJwksCache,
   JwksCache,
   Jwk,
+  RsaSignatureJwk,
   Jwks,
   isJwk,
   isJwks,
   fetchJwk,
+  assertIsRsaSignatureJwk,
 } from "./jwk.js";
 import {
   assertIsNotPromise,
@@ -24,8 +26,6 @@ import {
 import { AsAsync, Properties } from "./typing-util.js";
 import { decomposeJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
 import {
-  JwkInvalidKtyError,
-  JwkInvalidUseError,
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
   JwtInvalidSignatureAlgorithmError,
@@ -182,12 +182,12 @@ export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
  * @param header: the JWT header (decoded and JSON parsed)
  * @param jwk: the JWK
  */
-function validateJwtHeaderAndJwk(header: JwtHeader, jwk: Jwk) {
-  // Check JWK use
-  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
-
-  // Check JWK kty
-  assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);
+function validateJwtHeaderAndJwk(
+  header: JwtHeader,
+  jwk: Jwk
+): asserts jwk is RsaSignatureJwk {
+  // Check that the JWK is in fact a JWK for RSA signatures
+  assertIsRsaSignatureJwk(jwk);
 
   // Check that JWT signature algorithm matches JWK
   if (jwk.alg) {
@@ -737,7 +737,7 @@ type GenericKeyObject = Object;
  * @returns the RSA public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerSync = (
-  jwk: Jwk,
+  jwk: RsaSignatureJwk,
   alg?: SupportedSignatureAlgorithm,
   issuer?: string,
   kid?: string
@@ -775,7 +775,10 @@ export class KeyObjectCache {
    * @param issuer: the issuer that uses the JWK for signing JWTs
    * @returns the RSA public key in native key object format
    */
-  transformJwkToKeyObjectSync(jwk: Jwk, issuer?: Issuer): GenericKeyObject {
+  transformJwkToKeyObjectSync(
+    jwk: RsaSignatureJwk,
+    issuer?: Issuer
+  ): GenericKeyObject {
     if (!issuer) {
       return this.transformJwkToKeyObjectSyncFn(jwk);
     }
@@ -787,7 +790,7 @@ export class KeyObjectCache {
   }
 
   async transformJwkToKeyObjectAsync(
-    jwk: Jwk,
+    jwk: RsaSignatureJwk,
     issuer?: Issuer
   ): Promise<GenericKeyObject> {
     if (!issuer) {
@@ -801,7 +804,7 @@ export class KeyObjectCache {
   }
 
   private putKeyObjectInCache(
-    jwk: Jwk,
+    jwk: RsaSignatureJwk,
     issuer: string,
     publicKey: GenericKeyObject
   ) {
