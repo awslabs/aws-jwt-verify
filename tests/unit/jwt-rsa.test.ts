@@ -101,6 +101,35 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwks, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
+      test("happy flow with mixed JWKS - JWKS that includes non-RSA keys", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          keypair.privateKey
+        );
+        const mixedJwks: Jwks = {
+          keys: [
+            {
+              kty: "EC",
+              alg: "ES256",
+              use: "sig",
+              kid: "somekid",
+            },
+            keypair.jwk,
+            {
+              kty: "EC",
+              alg: "ES256",
+              use: "sig",
+              hasNoKid: "test",
+            },
+          ],
+        };
+        expect(
+          verifyJwtSync(signedJwt, mixedJwks, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
       test("happy flow JWT with multiple audience values", () => {
         const issuer = "https://example.com";
         const audience = ["1234", "5678"];
