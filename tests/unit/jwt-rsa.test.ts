@@ -881,6 +881,18 @@ describe("unit tests jwt verifier", () => {
         );
         expect(statement).toThrow(JwkInvalidUseError);
       });
+      test("missing JWK use", () => {
+        const { jwk, privateKey } = generateKeyPair();
+        const signedJwt = signJwt({}, {}, privateKey);
+        delete (jwk as Jwk).use;
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing JWK use. Expected: sig");
+        expect(statement).toThrow(JwkInvalidUseError);
+      });
     });
     describe("includeJwtInErrors", () => {
       test("expired jwt with flag set", () => {
