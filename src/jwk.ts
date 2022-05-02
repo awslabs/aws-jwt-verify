@@ -13,9 +13,6 @@ import {
   JwtWithoutValidKidError,
   JwkInvalidUseError,
   JwkInvalidKtyError,
-  JwkMissingExponentError,
-  JwkMissingModulusError,
-  JwkMissingKidError,
 } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
 import { assertStringEquals } from "./assert.js";
@@ -120,14 +117,11 @@ export function assertIsRsaSignatureJwk(
   // Check JWK kty
   assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);
 
-  // Check kid has a value
-  if (!jwk.kid) throw new JwkMissingKidError("Missing key id (kid)", jwk.kid);
-
   // Check modulus (n) has a value
-  if (!jwk.n) throw new JwkMissingModulusError("Missing modulus (n)", jwk.n);
+  if (!jwk.n) throw new JwkValidationError("Missing modulus (n)");
 
   // Check exponent (e) has a value
-  if (!jwk.e) throw new JwkMissingExponentError("Missing exponent (e)", jwk.e);
+  if (!jwk.e) throw new JwkValidationError("Missing exponent (e)");
 }
 
 export function assertIsJwk(jwk: Json): asserts jwk is Jwk {

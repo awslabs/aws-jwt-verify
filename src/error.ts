@@ -132,12 +132,6 @@ export class JwkInvalidUseError extends FailedAssertionError {}
 
 export class JwkInvalidKtyError extends FailedAssertionError {}
 
-export class JwkMissingModulusError extends FailedAssertionError {}
-
-export class JwkMissingExponentError extends FailedAssertionError {}
-
-export class JwkMissingKidError extends FailedAssertionError {}
-
 /**
  * HTTPS fetch errors
  */

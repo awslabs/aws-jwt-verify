@@ -10,9 +10,7 @@ import {
 import { decomposeJwt } from "../../src/jwt";
 import {
   JwkInvalidUseError,
-  JwkMissingModulusError,
-  JwkMissingExponentError,
-  JwkMissingKidError,
+  JwkValidationError,
   JwtExpiredError,
   JwtInvalidAudienceError,
   JwtInvalidClaimError,
@@ -857,18 +855,6 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow("Missing JWK use. Expected: sig");
         expect(statement).toThrow(JwkInvalidUseError);
       });
-      test("missing kid on JWK", () => {
-        const { jwk, privateKey } = generateKeyPair();
-        const signedJwt = signJwt({}, {}, privateKey);
-        delete (jwk as Jwk).kid;
-        const statement = () =>
-          verifyJwtSync(signedJwt, jwk, {
-            audience: null,
-            issuer: null,
-          });
-        expect(statement).toThrow("Missing key id (kid)");
-        expect(statement).toThrow(JwkMissingKidError);
-      });
       test("missing modulus on JWK", () => {
         const { jwk, privateKey } = generateKeyPair();
         const signedJwt = signJwt({}, {}, privateKey);
@@ -879,7 +865,7 @@ describe("unit tests jwt verifier", () => {
             issuer: null,
           });
         expect(statement).toThrow("Missing modulus (n)");
-        expect(statement).toThrow(JwkMissingModulusError);
+        expect(statement).toThrow(JwkValidationError);
       });
       test("missing exponent on JWK", () => {
         const { jwk, privateKey } = generateKeyPair();
@@ -891,7 +877,7 @@ describe("unit tests jwt verifier", () => {
             issuer: null,
           });
         expect(statement).toThrow("Missing exponent (e)");
-        expect(statement).toThrow(JwkMissingExponentError);
+        expect(statement).toThrow(JwkValidationError);
       });
     });
     describe("includeJwtInErrors", () => {
