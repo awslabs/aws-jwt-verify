@@ -1575,19 +1575,49 @@ describe("unit tests jwt verifier", () => {
       pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "testissuer"); // Cache is empty, so must be regenerated
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(5);
     });
-    test("no issuer and kid", () => {
+    test("no issuer", () => {
+      const issuer = undefined;
       const pubkeyCache = new KeyObjectCache();
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
-        keypair.jwk as RsaSignatureJwk
+        keypair.jwk as RsaSignatureJwk,
+        issuer
       ) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );
     });
-    test("no issuer and kid - async", async () => {
+    test("no issuer - async", async () => {
+      const issuer = undefined;
       const pubkeyCache = new KeyObjectCache();
       const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
-        keypair.jwk as RsaSignatureJwk
+        keypair.jwk as RsaSignatureJwk,
+        issuer
+      )) as KeyObject;
+      expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
+        keypair.publicKeyDer
+      );
+    });
+    test("no kid", () => {
+      const issuer = "testissuer";
+      const pubkeyCache = new KeyObjectCache();
+      const jwk = { ...keypair.jwk } as RsaSignatureJwk;
+      delete jwk.kid;
+      const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
+        jwk,
+        issuer
+      ) as KeyObject;
+      expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
+        keypair.publicKeyDer
+      );
+    });
+    test("no kid - async", async () => {
+      const issuer = "testissuer";
+      const pubkeyCache = new KeyObjectCache();
+      const jwk = { ...keypair.jwk } as RsaSignatureJwk;
+      delete jwk.kid;
+      const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
+        jwk,
+        issuer
       )) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer

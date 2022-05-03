@@ -5,6 +5,7 @@ import {
   SimpleJwksCache,
   JwksCache,
   Jwk,
+  JwkWithKid,
   RsaSignatureJwk,
   Jwks,
   isJwk,
@@ -779,13 +780,17 @@ export class KeyObjectCache {
     jwk: RsaSignatureJwk,
     issuer?: Issuer
   ): GenericKeyObject {
-    if (!issuer) {
+    if (!issuer || !jwk.kid) {
       return this.transformJwkToKeyObjectSyncFn(jwk);
     }
     const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid);
     if (fromCache) return fromCache;
     const publicKey = this.transformJwkToKeyObjectSyncFn(jwk);
-    this.putKeyObjectInCache(jwk, issuer, publicKey);
+    this.putKeyObjectInCache(
+      jwk as RsaSignatureJwk & JwkWithKid,
+      issuer,
+      publicKey
+    );
     return publicKey;
   }
 
@@ -793,18 +798,22 @@ export class KeyObjectCache {
     jwk: RsaSignatureJwk,
     issuer?: Issuer
   ): Promise<GenericKeyObject> {
-    if (!issuer) {
+    if (!issuer || !jwk.kid) {
       return this.transformJwkToKeyObjectAsyncFn(jwk);
     }
     const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid);
     if (fromCache) return fromCache;
     const publicKey = await this.transformJwkToKeyObjectAsyncFn(jwk);
-    this.putKeyObjectInCache(jwk, issuer, publicKey);
+    this.putKeyObjectInCache(
+      jwk as RsaSignatureJwk & JwkWithKid,
+      issuer,
+      publicKey
+    );
     return publicKey;
   }
 
   private putKeyObjectInCache(
-    jwk: RsaSignatureJwk,
+    jwk: RsaSignatureJwk & JwkWithKid,
     issuer: string,
     publicKey: GenericKeyObject
   ) {
