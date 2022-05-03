@@ -12,6 +12,7 @@ import {
   isJwks,
   fetchJwk,
   assertIsRsaSignatureJwk,
+  findJwkInJwks,
 } from "./jwk.js";
 import {
   assertIsNotPromise,
@@ -264,7 +265,7 @@ async function verifyDecomposedJwt(
   jwkFetcher: (
     jwksUri: string,
     decomposedJwt: DecomposedJwt
-  ) => Promise<Jwk> = fetchJwk,
+  ) => Promise<JwkWithKid> = fetchJwk,
   transformJwkToKeyObjectFn: JwkToKeyObjectTransformerAsync = nodeWebCompat.transformJwkToKeyObjectAsync
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
@@ -375,7 +376,9 @@ function verifyDecomposedJwtSync(
   if (isJwk(jwkOrJwks)) {
     jwk = jwkOrJwks;
   } else if (isJwks(jwkOrJwks)) {
-    const locatedJwk = jwkOrJwks.keys.find((key) => key.kid === header.kid);
+    const locatedJwk = header.kid
+      ? findJwkInJwks(jwkOrJwks, header.kid)
+      : undefined;
     if (!locatedJwk) {
       throw new KidNotFoundInJwksError(
         `JWK for kid ${header.kid} not found in the JWKS`

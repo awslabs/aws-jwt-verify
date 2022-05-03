@@ -55,7 +55,7 @@ export type JwkWithKid = Jwk & {
   kid: string;
 };
 
-function findJwkInJwks(jwks: Jwks, kid: string): JwkWithKid | undefined {
+export function findJwkInJwks(jwks: Jwks, kid: string): JwkWithKid | undefined {
   return jwks.keys.find(
     (jwk) => jwk.kid != null && jwk.kid === kid
   ) as JwkWithKid;
