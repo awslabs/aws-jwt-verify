@@ -5,10 +5,14 @@ import {
   SimpleJwksCache,
   JwksCache,
   Jwk,
+  JwkWithKid,
+  RsaSignatureJwk,
   Jwks,
   isJwk,
   isJwks,
   fetchJwk,
+  assertIsRsaSignatureJwk,
+  findJwkInJwks,
 } from "./jwk.js";
 import {
   assertIsNotPromise,
@@ -24,8 +28,6 @@ import {
 import { AsAsync, Properties } from "./typing-util.js";
 import { decomposeJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
 import {
-  JwkInvalidKtyError,
-  JwkInvalidUseError,
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
   JwtInvalidSignatureAlgorithmError,
@@ -182,12 +184,12 @@ export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
  * @param header: the JWT header (decoded and JSON parsed)
  * @param jwk: the JWK
  */
-function validateJwtHeaderAndJwk(header: JwtHeader, jwk: Jwk) {
-  // Check JWK use
-  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
-
-  // Check JWK kty
-  assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);
+function validateJwtHeaderAndJwk(
+  header: JwtHeader,
+  jwk: Jwk
+): asserts jwk is RsaSignatureJwk {
+  // Check that the JWK is in fact a JWK for RSA signatures
+  assertIsRsaSignatureJwk(jwk);
 
   // Check that JWT signature algorithm matches JWK
   if (jwk.alg) {
@@ -263,7 +265,7 @@ async function verifyDecomposedJwt(
   jwkFetcher: (
     jwksUri: string,
     decomposedJwt: DecomposedJwt
-  ) => Promise<Jwk> = fetchJwk,
+  ) => Promise<JwkWithKid> = fetchJwk,
   transformJwkToKeyObjectFn: JwkToKeyObjectTransformerAsync = nodeWebCompat.transformJwkToKeyObjectAsync
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
@@ -374,7 +376,9 @@ function verifyDecomposedJwtSync(
   if (isJwk(jwkOrJwks)) {
     jwk = jwkOrJwks;
   } else if (isJwks(jwkOrJwks)) {
-    const locatedJwk = jwkOrJwks.keys.find((key) => key.kid === header.kid);
+    const locatedJwk = header.kid
+      ? findJwkInJwks(jwkOrJwks, header.kid)
+      : undefined;
     if (!locatedJwk) {
       throw new KidNotFoundInJwksError(
         `JWK for kid ${header.kid} not found in the JWKS`
@@ -737,7 +741,7 @@ type GenericKeyObject = Object;
  * @returns the RSA public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerSync = (
-  jwk: Jwk,
+  jwk: RsaSignatureJwk,
   alg?: SupportedSignatureAlgorithm,
   issuer?: string,
   kid?: string
@@ -775,33 +779,44 @@ export class KeyObjectCache {
    * @param issuer: the issuer that uses the JWK for signing JWTs
    * @returns the RSA public key in native key object format
    */
-  transformJwkToKeyObjectSync(jwk: Jwk, issuer?: Issuer): GenericKeyObject {
-    if (!issuer) {
+  transformJwkToKeyObjectSync(
+    jwk: RsaSignatureJwk,
+    issuer?: Issuer
+  ): GenericKeyObject {
+    if (!issuer || !jwk.kid) {
       return this.transformJwkToKeyObjectSyncFn(jwk);
     }
     const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid);
     if (fromCache) return fromCache;
     const publicKey = this.transformJwkToKeyObjectSyncFn(jwk);
-    this.putKeyObjectInCache(jwk, issuer, publicKey);
+    this.putKeyObjectInCache(
+      jwk as RsaSignatureJwk & JwkWithKid,
+      issuer,
+      publicKey
+    );
     return publicKey;
   }
 
   async transformJwkToKeyObjectAsync(
-    jwk: Jwk,
+    jwk: RsaSignatureJwk,
     issuer?: Issuer
   ): Promise<GenericKeyObject> {
-    if (!issuer) {
+    if (!issuer || !jwk.kid) {
       return this.transformJwkToKeyObjectAsyncFn(jwk);
     }
     const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid);
     if (fromCache) return fromCache;
     const publicKey = await this.transformJwkToKeyObjectAsyncFn(jwk);
-    this.putKeyObjectInCache(jwk, issuer, publicKey);
+    this.putKeyObjectInCache(
+      jwk as RsaSignatureJwk & JwkWithKid,
+      issuer,
+      publicKey
+    );
     return publicKey;
   }
 
   private putKeyObjectInCache(
-    jwk: Jwk,
+    jwk: RsaSignatureJwk & JwkWithKid,
     issuer: string,
     publicKey: GenericKeyObject
   ) {

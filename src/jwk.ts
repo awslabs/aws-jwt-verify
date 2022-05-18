@@ -11,8 +11,11 @@ import {
   KidNotFoundInJwksError,
   WaitPeriodNotYetEndedJwkError,
   JwtWithoutValidKidError,
+  JwkInvalidUseError,
+  JwkInvalidKtyError,
 } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
+import { assertStringEquals } from "./assert.js";
 
 interface DecomposedJwt {
   header: JwtHeader;
@@ -20,14 +23,14 @@ interface DecomposedJwt {
 }
 
 const optionalJwkFieldNames = [
+  "use", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.2
   "alg", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.4
+  "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5
+  "n", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
+  "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
 ] as const;
 const mandatoryJwkFieldNames = [
-  "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
-  "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5 NOTE: considered mandatory by this library
   "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
-  "n", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
-  "use", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.2 NOTE: considered mandatory by this library
 ] as const;
 
 type OptionalJwkFieldNames = typeof optionalJwkFieldNames[number];
@@ -41,14 +44,31 @@ type MandatoryJwkFields = {
 
 export type Jwk = OptionalJwkFields & MandatoryJwkFields & JsonObject;
 
+export type RsaSignatureJwk = Jwk & {
+  use: "sig";
+  kty: "RSA";
+  n: string;
+  e: string;
+};
+
+export type JwkWithKid = Jwk & {
+  kid: string;
+};
+
+export function findJwkInJwks(jwks: Jwks, kid: string): JwkWithKid | undefined {
+  return jwks.keys.find(
+    (jwk) => jwk.kid != null && jwk.kid === kid
+  ) as JwkWithKid;
+}
+
 interface JwksFields {
   keys: readonly Jwk[];
 }
 
 export type Jwks = JwksFields & JsonObject;
 export interface JwksCache {
-  getJwk(jwksUri: string, decomposedJwt: DecomposedJwt): Promise<Jwk>;
-  getCachedJwk(jwksUri: string, decomposedJwt: DecomposedJwt): Jwk;
+  getJwk(jwksUri: string, decomposedJwt: DecomposedJwt): Promise<JwkWithKid>;
+  getCachedJwk(jwksUri: string, decomposedJwt: DecomposedJwt): JwkWithKid;
   addJwks(jwksUri: string, jwks: Jwks): void;
   getJwks(jwksUri: string): Promise<Jwks>;
 }
@@ -62,15 +82,14 @@ export async function fetchJwks(jwksUri: string): Promise<Jwks> {
 export async function fetchJwk(
   jwksUri: string,
   decomposedJwt: DecomposedJwt
-): Promise<Jwk> {
+): Promise<JwkWithKid> {
   if (!decomposedJwt.header.kid) {
     throw new JwtWithoutValidKidError(
       "JWT header does not have valid kid claim"
     );
   }
-  const jwk = (await fetchJwks(jwksUri)).keys.find(
-    (key) => key.kid === decomposedJwt.header.kid
-  );
+  const jwks = await fetchJwks(jwksUri);
+  const jwk = findJwkInJwks(jwks, decomposedJwt.header.kid);
   if (!jwk) {
     throw new KidNotFoundInJwksError(
       `JWK for kid "${decomposedJwt.header.kid}" not found in the JWKS`
@@ -95,6 +114,22 @@ export function assertIsJwks(jwks: Json): asserts jwks is Jwks {
   for (const jwk of (jwks as { keys: Json[] }).keys) {
     assertIsJwk(jwk);
   }
+}
+
+export function assertIsRsaSignatureJwk(
+  jwk: Jwk
+): asserts jwk is RsaSignatureJwk {
+  // Check JWK use
+  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+
+  // Check JWK kty
+  assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);
+
+  // Check modulus (n) has a value
+  if (!jwk.n) throw new JwkValidationError("Missing modulus (n)");
+
+  // Check exponent (e) has a value
+  if (!jwk.e) throw new JwkValidationError("Missing exponent (e)");
 }
 
 export function assertIsJwk(jwk: Json): asserts jwk is Jwk {
@@ -218,7 +253,10 @@ export class SimpleJwksCache implements JwksCache {
     return jwks;
   }
 
-  public getCachedJwk(jwksUri: string, decomposedJwt: DecomposedJwt): Jwk {
+  public getCachedJwk(
+    jwksUri: string,
+    decomposedJwt: DecomposedJwt
+  ): JwkWithKid {
     if (typeof decomposedJwt.header.kid !== "string") {
       throw new JwtWithoutValidKidError(
         "JWT header does not have valid kid claim"
@@ -229,9 +267,10 @@ export class SimpleJwksCache implements JwksCache {
         `JWKS for uri ${jwksUri} not yet available in cache`
       );
     }
-    const jwk = this.jwksCache
-      .get(jwksUri)!
-      .keys.find((key) => key.kid === decomposedJwt.header.kid);
+    const jwk = findJwkInJwks(
+      this.jwksCache.get(jwksUri)!,
+      decomposedJwt.header.kid
+    );
     if (!jwk) {
       throw new KidNotFoundInJwksError(
         `JWK for kid ${decomposedJwt.header.kid} not found in the JWKS`
@@ -243,7 +282,7 @@ export class SimpleJwksCache implements JwksCache {
   public async getJwk(
     jwksUri: string,
     decomposedJwt: DecomposedJwt
-  ): Promise<Jwk> {
+  ): Promise<JwkWithKid> {
     if (typeof decomposedJwt.header.kid !== "string") {
       throw new JwtWithoutValidKidError(
         "JWT header does not have valid kid claim"
@@ -251,11 +290,12 @@ export class SimpleJwksCache implements JwksCache {
     }
 
     // Try to get JWK from cache:
-    let jwk = this.jwksCache
-      .get(jwksUri)
-      ?.keys.find((key) => key.kid === decomposedJwt.header.kid);
-    if (jwk) {
-      return jwk;
+    const cachedJwks = this.jwksCache.get(jwksUri);
+    if (cachedJwks) {
+      const cachedJwk = findJwkInJwks(cachedJwks, decomposedJwt.header.kid);
+      if (cachedJwk) {
+        return cachedJwk;
+      }
     }
 
     // Await any wait period that is currently in effect
@@ -264,7 +304,7 @@ export class SimpleJwksCache implements JwksCache {
 
     // Fetch the JWKS and (try to) locate the JWK
     const jwks = await this.getJwks(jwksUri);
-    jwk = jwks.keys.find((key) => key.kid === decomposedJwt.header.kid);
+    const jwk = findJwkInJwks(jwks, decomposedJwt.header.kid);
 
     // If the JWK could not be located, someone might be messing around with us
     // Register the failed attempt with the penaltyBox, so it can enforce a wait period

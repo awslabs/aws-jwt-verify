@@ -10,6 +10,7 @@ import {
 import { decomposeJwt } from "../../src/jwt";
 import {
   JwkInvalidUseError,
+  JwkValidationError,
   JwtExpiredError,
   JwtInvalidAudienceError,
   JwtInvalidClaimError,
@@ -30,7 +31,7 @@ import {
   KeyObjectCache,
 } from "../../src/jwt-rsa";
 import { nodeWebCompat } from "../../src/node-web-compat-node";
-import { JwksCache, Jwks } from "../../src/jwk";
+import { JwksCache, Jwks, Jwk, RsaSignatureJwk } from "../../src/jwk";
 import { performance } from "perf_hooks";
 import { KeyObject } from "crypto";
 
@@ -96,6 +97,35 @@ describe("unit tests jwt verifier", () => {
         );
         expect(
           verifyJwtSync(signedJwt, keypair.jwks, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with mixed JWKS - JWKS that includes non-RSA keys", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          keypair.privateKey
+        );
+        const mixedJwks: Jwks = {
+          keys: [
+            {
+              kty: "EC",
+              alg: "ES256",
+              use: "sig",
+              kid: "somekid",
+            },
+            keypair.jwk,
+            {
+              kty: "EC",
+              alg: "ES256",
+              use: "sig",
+              hasNoKid: "test",
+            },
+          ],
+        };
+        expect(
+          verifyJwtSync(signedJwt, mixedJwks, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
       test("happy flow JWT with multiple audience values", () => {
@@ -813,6 +843,42 @@ describe("unit tests jwt verifier", () => {
         );
         expect(statement).toThrow(JwkInvalidUseError);
       });
+      test("missing JWK use", () => {
+        const { jwk, privateKey } = generateKeyPair();
+        const signedJwt = signJwt({}, {}, privateKey);
+        delete (jwk as Jwk).use;
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing JWK use. Expected: sig");
+        expect(statement).toThrow(JwkInvalidUseError);
+      });
+      test("missing modulus on JWK", () => {
+        const { jwk, privateKey } = generateKeyPair();
+        const signedJwt = signJwt({}, {}, privateKey);
+        delete (jwk as Jwk).n;
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing modulus (n)");
+        expect(statement).toThrow(JwkValidationError);
+      });
+      test("missing exponent on JWK", () => {
+        const { jwk, privateKey } = generateKeyPair();
+        const signedJwt = signJwt({}, {}, privateKey);
+        delete (jwk as Jwk).e;
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing exponent (e)");
+        expect(statement).toThrow(JwkValidationError);
+      });
     });
     describe("includeJwtInErrors", () => {
       test("expired jwt with flag set", () => {
@@ -1487,42 +1553,71 @@ describe("unit tests jwt verifier", () => {
       );
       const pubkeyCache = new KeyObjectCache(jwkToKeyObjectTransformerSpy);
       const issuer = "testissuer";
+      const jwk = keypair.jwk as RsaSignatureJwk;
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
-        keypair.jwk,
+        jwk,
         issuer
       ) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );
-      pubkeyCache.transformJwkToKeyObjectSync(keypair.jwk, "testissuer"); // same JWK, same issuer, transform from cache
-      pubkeyCache.transformJwkToKeyObjectSync(keypair.jwk, "othertestissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(jwk, "testissuer"); // same JWK, same issuer, transform from cache
+      pubkeyCache.transformJwkToKeyObjectSync(jwk, "othertestissuer");
       // Using a different JWK (with other kid) forces the transformer to run
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(2);
       const otherKeyPair = generateKeyPair({ kid: "otherkid" });
-      pubkeyCache.transformJwkToKeyObjectSync(otherKeyPair.jwk, "testissuer");
-      pubkeyCache.transformJwkToKeyObjectSync(otherKeyPair.jwk, "testissuer"); // same JWK, same issuer, transform from cache
-      pubkeyCache.transformJwkToKeyObjectSync(
-        otherKeyPair.jwk,
-        "othertestissuer"
-      );
+      const otherJwk = otherKeyPair.jwk as RsaSignatureJwk;
+      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "testissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "testissuer"); // same JWK, same issuer, transform from cache
+      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "othertestissuer");
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(4);
       pubkeyCache.clearCache(issuer);
-      pubkeyCache.transformJwkToKeyObjectSync(otherKeyPair.jwk, "testissuer"); // Cache is empty, so must be regenerated
+      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "testissuer"); // Cache is empty, so must be regenerated
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(5);
     });
-    test("no issuer and kid", () => {
+    test("no issuer", () => {
+      const issuer = undefined;
       const pubkeyCache = new KeyObjectCache();
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
-        keypair.jwk
+        keypair.jwk as RsaSignatureJwk,
+        issuer
       ) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );
     });
-    test("no issuer and kid - async", async () => {
+    test("no issuer - async", async () => {
+      const issuer = undefined;
       const pubkeyCache = new KeyObjectCache();
       const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
-        keypair.jwk
+        keypair.jwk as RsaSignatureJwk,
+        issuer
+      )) as KeyObject;
+      expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
+        keypair.publicKeyDer
+      );
+    });
+    test("no kid", () => {
+      const issuer = "testissuer";
+      const pubkeyCache = new KeyObjectCache();
+      const jwk = { ...keypair.jwk } as RsaSignatureJwk;
+      delete jwk.kid;
+      const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
+        jwk,
+        issuer
+      ) as KeyObject;
+      expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
+        keypair.publicKeyDer
+      );
+    });
+    test("no kid - async", async () => {
+      const issuer = "testissuer";
+      const pubkeyCache = new KeyObjectCache();
+      const jwk = { ...keypair.jwk } as RsaSignatureJwk;
+      delete jwk.kid;
+      const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
+        jwk,
+        issuer
       )) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer

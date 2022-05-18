@@ -3,7 +3,7 @@
 //
 // Web implementations for the node-web-compatibility layer
 
-import { Jwk } from "./jwk.js";
+import { RsaSignatureJwk } from "./jwk.js";
 import { FetchError, NotSupportedError } from "./error.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 import { validateHttpsJsonResponse } from "./https-common.js";
@@ -56,7 +56,7 @@ export const nodeWebCompat: NodeWebCompat = {
       "Synchronously transforming a JWK into a key object is not supported in the browser"
     );
   },
-  transformJwkToKeyObjectAsync: (jwk: Jwk) =>
+  transformJwkToKeyObjectAsync: (jwk: RsaSignatureJwk) =>
     window.crypto.subtle.importKey(
       "jwk",
       jwk,
