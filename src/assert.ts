@@ -64,7 +64,6 @@ export function assertStringArrayContainsString<
   if (!actual) {
     throw new errorConstructor(
       `Missing ${name}. ${expectationMessage(expected)}`,
-
       actual,
       expected
     );
@@ -72,7 +71,6 @@ export function assertStringArrayContainsString<
   if (typeof actual !== "string") {
     throw new errorConstructor(
       `${name} is not of type string`,
-
       actual,
       expected
     );

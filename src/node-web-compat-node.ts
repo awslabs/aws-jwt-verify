@@ -4,7 +4,7 @@
 // Node.js implementations for the node-web-compatibility layer
 
 import { createPublicKey, createVerify, KeyObject } from "crypto";
-import { Jwk } from "./jwk.js";
+import { RsaSignatureJwk } from "./jwk.js";
 import { constructPublicKeyInDerFormat } from "./asn1.js";
 import { fetchJson } from "./https-node.js";
 import { NodeWebCompat } from "./node-web-compat.js";
@@ -20,7 +20,7 @@ enum JwtSignatureAlgorithms {
 
 export const nodeWebCompat: NodeWebCompat = {
   fetchJson,
-  transformJwkToKeyObjectSync: (jwk: Jwk) =>
+  transformJwkToKeyObjectSync: (jwk: RsaSignatureJwk) =>
     createPublicKey({
       key: constructPublicKeyInDerFormat(
         Buffer.from(jwk.n, "base64"),
@@ -29,7 +29,7 @@ export const nodeWebCompat: NodeWebCompat = {
       format: "der",
       type: "spki",
     }),
-  transformJwkToKeyObjectAsync: async (jwk: Jwk) =>
+  transformJwkToKeyObjectAsync: async (jwk: RsaSignatureJwk) =>
     createPublicKey({
       key: constructPublicKeyInDerFormat(
         Buffer.from(jwk.n, "base64"),
