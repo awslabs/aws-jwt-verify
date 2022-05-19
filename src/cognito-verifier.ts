@@ -146,7 +146,7 @@ type CognitoVerifyParameters<SpecificVerifyProperties> = {
  * @param options.clientId - The required clientId of the JWT. May be an array of string, of which at least one must match
  * @returns void
  */
-function validateCognitoJwtFields(
+export function validateCognitoJwtFields(
   payload: JwtPayload,
   options: {
     groups?: string | string[] | null;
