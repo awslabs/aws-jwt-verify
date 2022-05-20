@@ -293,19 +293,29 @@ try {
 
 ### Using the generic JWT RSA verifier for Cognito JWTs
 
-The generic `JwtRsaVerifier` (see [below](#verifying-jwts-from-any-oidc-compatible-idp)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP:
+The generic `JwtRsaVerifier` (see [below](#verifying-jwts-from-any-oidc-compatible-idp)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP.
+
+In this case, leave `audience` to `null`, but rather manually add `validateCognitoJwtFields` in the `customJwtChecks`.
+(Only Cognito ID tokens have an `audience` claim, Cognito Access token have a `client_id` claim instead. The `validateCognitoJwtFields` function handles this difference automatically for you)
 
 ```typescript
 import { JwtRsaVerifier } from "aws-jwt-verify";
+import { validateCognitoJwtFields } from "aws-jwt-verify/cognito-verifier";
 
 const verifier = JwtRsaVerifier.create([
   {
     issuer: "https://cognito-idp.eu-west-1.amazonaws.com/<user_pool_id>",
-    audience: "<client_id>",
+    audience: null, // audience (~clientId) is checked instead, by the Cognito specific checks below
+    customJwtChecks: ({ payload }) =>
+      validateCognitoJwtFields(payload, {
+        tokenUse: "access", // set to "id" or "access" (or null if both are fine)
+        clientId: "<client_id>", // provide the client id, or an array of client ids (or null if you do not want to check client id)
+        groups: ["admin", "others"], // optional, provide a group name, or array of group names
+      }),
   },
   {
     issuer: "https://example.com/my/other/idp",
-    audience: "myaudience",
+    audience: "myaudience", // do specify audience for other IDPs
   },
 ]);
 ```

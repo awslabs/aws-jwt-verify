@@ -34,6 +34,7 @@ import { nodeWebCompat } from "../../src/node-web-compat-node";
 import { JwksCache, Jwks, Jwk, RsaSignatureJwk } from "../../src/jwk";
 import { performance } from "perf_hooks";
 import { KeyObject } from "crypto";
+import { validateCognitoJwtFields } from "../../src/cognito-verifier";
 
 describe("unit tests jwt verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
@@ -1543,6 +1544,122 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(`issuer ${issuer} supplied multiple times`);
         expect(statement).toThrow(ParameterValidationError);
       });
+    });
+  });
+
+  describe("JwtVerifier used for Cognito tokens", () => {
+    test("verify access token", () => {
+      const poolId = "eu-west-1_poolid";
+      const issuer = `https://cognito-idp.eu-west-1.amazonaws.com/${poolId}`;
+      const clientId = "<client_id>";
+      const verifier = JwtRsaVerifier.create({
+        issuer: "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid",
+        audience: null,
+        customJwtCheck: ({ payload }) =>
+          validateCognitoJwtFields(payload, {
+            groups: ["admin", "others"],
+            tokenUse: "access",
+            clientId,
+          }),
+      });
+      const payload = {
+        client_id: clientId,
+        token_use: "access",
+        "cognito:groups": ["others"],
+        iss: issuer,
+      };
+      const jwt = signJwt(
+        { kid: keypair.jwk.kid, alg: "RS256" },
+        payload,
+        keypair.privateKey
+      );
+      mockHttpsUri(
+        "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid/.well-known/jwks.json",
+        {
+          responseStatus: 200,
+          responseHeaders: {
+            "Content-Type": "application/json",
+          },
+          responsePayload: JSON.stringify(keypair.jwks),
+        }
+      );
+      return expect(verifier.verify(jwt)).resolves.toMatchObject(payload);
+    });
+    test("verify id token", () => {
+      const poolId = "eu-west-1_poolid";
+      const issuer = `https://cognito-idp.eu-west-1.amazonaws.com/${poolId}`;
+      const clientId = "<client_id>";
+      const verifier = JwtRsaVerifier.create({
+        issuer: "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid",
+        audience: null,
+        customJwtCheck: ({ payload }) =>
+          validateCognitoJwtFields(payload, {
+            groups: ["admin", "others"],
+            tokenUse: "id",
+            clientId,
+          }),
+      });
+      const payload = {
+        aud: clientId,
+        token_use: "id",
+        "cognito:groups": ["admin"],
+        iss: issuer,
+      };
+      const jwt = signJwt(
+        { kid: keypair.jwk.kid, alg: "RS256" },
+        payload,
+        keypair.privateKey
+      );
+      mockHttpsUri(
+        "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid/.well-known/jwks.json",
+        {
+          responseStatus: 200,
+          responseHeaders: {
+            "Content-Type": "application/json",
+          },
+          responsePayload: JSON.stringify(keypair.jwks),
+        }
+      );
+      return expect(verifier.verify(jwt)).resolves.toMatchObject(payload);
+    });
+    test("error flow: receive access token but id token expected", () => {
+      const poolId = "eu-west-1_poolid";
+      const issuer = `https://cognito-idp.eu-west-1.amazonaws.com/${poolId}`;
+      const clientId = "<client_id>";
+      const verifier = JwtRsaVerifier.create({
+        issuer: "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid",
+        audience: null,
+        customJwtCheck: ({ payload }) =>
+          validateCognitoJwtFields(payload, {
+            groups: ["admin", "others"],
+            tokenUse: "id",
+            clientId,
+          }),
+      });
+      const payload = {
+        client_id: clientId,
+        token_use: "access",
+        "cognito:groups": ["others"],
+        iss: issuer,
+      };
+      const jwt = signJwt(
+        { kid: keypair.jwk.kid, alg: "RS256" },
+        payload,
+        keypair.privateKey
+      );
+      mockHttpsUri(
+        "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid/.well-known/jwks.json",
+        {
+          responseStatus: 200,
+          responseHeaders: {
+            "Content-Type": "application/json",
+          },
+          responsePayload: JSON.stringify(keypair.jwks),
+        }
+      );
+      return expect(verifier.verify(jwt)).rejects.toThrow(
+        "Token use not allowed: access. Expected: id"
+      );
     });
   });
 
