@@ -296,7 +296,7 @@ try {
 The generic `JwtRsaVerifier` (see [below](#verifying-jwts-from-any-oidc-compatible-idp)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP.
 
 In this case, leave `audience` to `null`, but rather manually add `validateCognitoJwtFields` in the `customJwtChecks`.
-(Only Cognito ID tokens have an `audience` claim, Cognito Access token have a `clientId` claim instead. The `validateCognitoJwtFields` function handles this difference automatically for you)
+(Only Cognito ID tokens have an `audience` claim, Cognito Access token have a `client_id` claim instead. The `validateCognitoJwtFields` function handles this difference automatically for you)
 
 ```typescript
 import { JwtRsaVerifier } from "aws-jwt-verify";
