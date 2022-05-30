@@ -103,6 +103,7 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Customizing the JWKS cache](#customizing-the-jwks-cache)
   - [Sharing the JWKS cache amongst different verifiers](#sharing-the-jwks-cache-amongst-different-verifiers)
   - [Using a different `JsonFetcher` with `SimpleJwksCache`](#using-a-different-jsonfetcher-with-simplejwkscache)
+  - [Configuring the JWKS response timeout and other HTTP options with `JsonFetcher`](#configuring-the-jwks-response-timeout-and-other-http-options-with-jsonfetcher)
   - [Using a different `penaltyBox` with `SimpleJwksCache`](#using-a-different-penaltybox-with-simplejwkscache)
 - [Usage examples](#Usage-examples)
   - [CloudFront Lambda@Edge](#cloudfront-lambdaedge)
@@ -666,6 +667,51 @@ const verifier = JwtRsaVerifier.create(
   {
     jwksCache: new SimpleJwksCache({
       fetcher: new CustomFetcher(),
+    }),
+  }
+);
+```
+
+### Configuring the JWKS response timeout and other HTTP options with `JsonFetcher`
+
+The following configurations are equivalent, use the latter one to set a custom fetch timeout and other HTTP options.
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+
+// No jwksCache configured explicitly,
+// so the default `SimpleJwksCache` with `SimpleJsonFetcher` will be used,
+// with a default response timeout of 1500 ms.:
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: "<user_pool_id>",
+  tokenUse: "access", // or "id"
+  clientId: "<client_id>",
+});
+```
+
+Equivalent explicit configuration:
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { SimpleJwksCache } from "aws-jwt-verify/jwk";
+import { SimpleJsonFetcher } from "aws-jwt-verify/https";
+
+const verifier = CognitoJwtVerifier.create(
+  {
+    userPoolId: "<your user pool id>",
+    tokenUse: "access", // or "id",
+    clientId: "<your client id>",
+  },
+  {
+    jwksCache: new SimpleJwksCache({
+      fetcher: new SimpleJsonFetcher({
+        defaultRequestOptions: {
+          responseTimeout: 1500,
+          // You can add additional request options:
+          // For NodeJS: https://nodejs.org/api/http.html#httprequestoptions-callback
+          // For Web (init object): https://developer.mozilla.org/en-US/docs/Web/API/fetch#syntax
+        },
+      }),
     }),
   }
 );
