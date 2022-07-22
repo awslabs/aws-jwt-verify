@@ -62,11 +62,9 @@ export const nodeWebCompat: NodeWebCompat = {
       jwk,
       {
         name: "RSASSA-PKCS1-v1_5",
-        hash: {
-          name: JwtSignatureAlgorithmsWebCrypto[
-            jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto
-          ],
-        },
+        hash: JwtSignatureAlgorithmsWebCrypto[
+          (jwk.alg || "RS256") as keyof typeof JwtSignatureAlgorithmsWebCrypto
+        ],
       },
       false,
       ["verify"]
@@ -88,7 +86,7 @@ export const nodeWebCompat: NodeWebCompat = {
     ),
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
-  setTimeoutUnref: setTimeout,
+  setTimeoutUnref: window.setTimeout.bind(window),
 };
 
 const bufferFromBase64url = (function () {

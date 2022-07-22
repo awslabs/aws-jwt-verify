@@ -14,7 +14,8 @@ import {
   VALID_TOKEN,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
-} from "../fixtures/token-data.json";
+} from "../fixtures/example-token-data.json";
+import { MS_ISSUER, MS_AUDIENCE, MS_JWKSURI, MS_INVALID_KID_TOKEN } from "../fixtures/ms-token-data.json";
 
 describe("unit tests", () => {
   const INVAILD_ISSUER = "https://example.org";
@@ -142,6 +143,25 @@ describe("unit tests", () => {
     } catch (ex) {
       expect(ex.message).to.include(
         "Failed to fetch /notexample-JWKS.json: Status code is 404, expected 200"
+      );
+    }
+  });
+
+  it("invalid JWK kid", async () => {
+    // example token from https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens
+    const verifier = JwtRsaVerifier.create({
+      issuer: MS_ISSUER,
+      audience: MS_AUDIENCE,
+      jwksUri: MS_JWKSURI,
+    });
+
+    try {
+      const payload = await verifier.verify(MS_INVALID_KID_TOKEN);
+
+      expect(payload).to.not.exist;
+    } catch (ex) {
+      expect(ex.message).to.include(
+        "JWK for kid \"i6lGk3FZzxRcUb2C3nEQ7syHJlY\" not found in the JWKS"
       );
     }
   });
