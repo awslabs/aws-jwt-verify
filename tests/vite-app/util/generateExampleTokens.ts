@@ -90,7 +90,7 @@ const main = async () => {
     privateKey
   );
 
-  saveFile(join("cypress", "fixtures"), "token-data.json", tokendata);
+  saveFile(join("cypress", "fixtures"), "example-token-data.json", tokendata);
 
   console.log("done");
 };
