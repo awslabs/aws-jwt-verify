@@ -7,7 +7,12 @@ import {
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
 } from "../fixtures/example-token-data.json";
-import { MS_ISSUER, MS_AUDIENCE, MS_JWKSURI, MS_INVALID_KID_TOKEN } from "../fixtures/ms-token-data.json";
+import {
+  MS_ISSUER,
+  MS_AUDIENCE,
+  MS_JWKSURI,
+  MS_INVALID_KID_TOKEN,
+} from "../fixtures/ms-token-data.json";
 describe("enable Verify RSA", () => {
   it('enables the "Verify RSA" button', () => {
     cy.visit("/");
@@ -101,11 +106,16 @@ describe("click Verify RSA", () => {
 
   it("invalid JWK kid", () => {
     // example token from https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens
-    typeInputsAndClick(MS_INVALID_KID_TOKEN, MS_ISSUER, MS_AUDIENCE, MS_JWKSURI);
+    typeInputsAndClick(
+      MS_INVALID_KID_TOKEN,
+      MS_ISSUER,
+      MS_AUDIENCE,
+      MS_JWKSURI
+    );
 
     cy.get("#result").should(
       "include.text",
-      "JWK for kid \"i6lGk3FZzxRcUb2C3nEQ7syHJlY\" not found in the JWKS"
+      'JWK for kid "i6lGk3FZzxRcUb2C3nEQ7syHJlY" not found in the JWKS'
     );
   });
 });

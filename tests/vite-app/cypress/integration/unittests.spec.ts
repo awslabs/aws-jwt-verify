@@ -15,7 +15,12 @@ import {
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
 } from "../fixtures/example-token-data.json";
-import { MS_ISSUER, MS_AUDIENCE, MS_JWKSURI, MS_INVALID_KID_TOKEN } from "../fixtures/ms-token-data.json";
+import {
+  MS_ISSUER,
+  MS_AUDIENCE,
+  MS_JWKSURI,
+  MS_INVALID_KID_TOKEN,
+} from "../fixtures/ms-token-data.json";
 
 describe("unit tests", () => {
   const INVAILD_ISSUER = "https://example.org";
@@ -161,7 +166,7 @@ describe("unit tests", () => {
       expect(payload).to.not.exist;
     } catch (ex) {
       expect(ex.message).to.include(
-        "JWK for kid \"i6lGk3FZzxRcUb2C3nEQ7syHJlY\" not found in the JWKS"
+        'JWK for kid "i6lGk3FZzxRcUb2C3nEQ7syHJlY" not found in the JWKS'
       );
     }
   });
