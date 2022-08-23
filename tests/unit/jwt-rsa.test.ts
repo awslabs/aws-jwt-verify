@@ -467,6 +467,21 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
         expect(statement).toThrow("JWT payload scope claim is not a string");
       });
+      test("JWT with scope that is not an array of strings", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid, alg: "RS512" },
+          { aud: audience, iss: issuer, scope: [12345, "read"] },
+          keypair.privateKey
+        );
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience });
+        expect(statement).toThrow(JwtParseError);
+        expect(statement).toThrow(
+          "JWT payload scope claim is not an array of strings"
+        );
+      });
       test("JWT with jti that is not a string", () => {
         const issuer = "https://example.com";
         const audience = "1234";

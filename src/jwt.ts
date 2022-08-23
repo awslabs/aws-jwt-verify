@@ -74,8 +74,16 @@ function assertJwtPayload(
   if (payload.iat !== undefined && !Number.isFinite(payload.iat)) {
     throw new JwtParseError("JWT payload iat claim is not a number");
   }
-  if (payload.scope !== undefined && typeof payload.scope !== "string") {
-    throw new JwtParseError("JWT payload scope claim is not a string");
+  if (payload.scope !== undefined) {
+    if (Array.isArray(payload.scope)) {
+      if (!payload.scope.every((scope) => typeof scope === "string")) {
+        throw new JwtParseError(
+          "JWT payload scope claim is not an array of strings"
+        );
+      }
+    } else if (typeof payload.scope !== "string") {
+      throw new JwtParseError("JWT payload scope claim is not a string");
+    }
   }
   if (payload.jti !== undefined && typeof payload.jti !== "string") {
     throw new JwtParseError("JWT payload jti claim is not a string");
