@@ -667,6 +667,20 @@ describe("unit tests jwt verifier", () => {
           })
         ).toMatchObject({ "this is a": "scope test" });
       });
+      test("happy flow allowing array type scope", () => {
+        const scopedJwt = signJwt(
+          {},
+          { "this is a": "scope test", scope: ["blah1", "blah2"] },
+          keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(scopedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+            scope: "blah2",
+          })
+        ).toMatchObject({ "this is a": "scope test" });
+      });
       test("happy flow not requiring any scope", () => {
         expect(
           verifyJwtSync(signedJwt, keypair.jwk, {

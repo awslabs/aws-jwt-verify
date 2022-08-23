@@ -232,7 +232,7 @@ export function validateJwtFields(
   if (options.scope != null) {
     assertStringArraysOverlap(
       "Scope",
-      payload.scope?.split(" "),
+      Array.isArray(payload.scope) ? payload.scope : payload.scope?.split(" "),
       options.scope,
       JwtInvalidScopeError
     );
