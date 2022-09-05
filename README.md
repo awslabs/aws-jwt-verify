@@ -794,7 +794,8 @@ const jwtVerifier = CognitoJwtVerifier.create({
 });
 
 exports.handler = async (event) => {
-  const accessToken = event.Records[0].cf.request.headers["authorization"];
+  const { request } = event.Records[0].cf;
+  const accessToken = request.headers["authorization"][0].value;
   try {
     await jwtVerifier.verify(accessToken);
   } catch {
