@@ -7,6 +7,7 @@ import {
   FetchError,
   NotSupportedError,
   JwtInvalidSignatureAlgorithmError,
+  JwtInvalidSignatureError,
 } from "./error.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 import { validateHttpsJsonResponse } from "./https-common.js";
@@ -82,40 +83,33 @@ export const nodeWebCompat: NodeWebCompat = {
       "Synchronously verifying a JWT signature is not supported in the browser"
     );
   },
-  verifySignatureAsync: ({ jwsSigningInput, keyObject, signature }) =>
-    window.crypto.subtle.verify(
+  verifySignatureAsync: ({ jwsSigningInput, keyObject, signature }) => {
+    let signatureAsBuffer: BufferSource;
+    try {
+      signatureAsBuffer = bufferFromBase64url(signature);
+    } catch {
+      throw new JwtInvalidSignatureError("Invalid signature");
+    }
+    return window.crypto.subtle.verify(
       // eslint-disable-next-line security/detect-object-injection
       {
         name: "RSASSA-PKCS1-v1_5",
       },
       keyObject as CryptoKey,
-      bufferFromBase64url(signature),
+      signatureAsBuffer,
       new TextEncoder().encode(jwsSigningInput)
-    ),
+    );
+  },
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
   setTimeoutUnref: window.setTimeout.bind(window),
 };
 
-const bufferFromBase64url = (function () {
-  const map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-    .split("")
-    .reduce(
-      (acc, char, index) => Object.assign(acc, { [char.charCodeAt(0)]: index }),
-      {} as { [key: number]: number }
-    );
-  return function (base64url: string) {
-    const paddingLength = base64url.match(/^.+?(=?=?)$/)![1].length;
-    let first: number, second: number, third: number, fourth: number;
-    return base64url.match(/.{1,4}/g)!.reduce((acc, chunk, index) => {
-      first = map[chunk.charCodeAt(0)];
-      second = map[chunk.charCodeAt(1)];
-      third = map[chunk.charCodeAt(2)];
-      fourth = map[chunk.charCodeAt(3)];
-      acc[3 * index] = (first << 2) | (second >> 4);
-      acc[3 * index + 1] = ((second & 0b1111) << 4) | (third >> 2);
-      acc[3 * index + 2] = ((third & 0b11) << 6) | fourth;
-      return acc;
-    }, new Uint8Array((base64url.length * 3) / 4 - paddingLength));
-  };
-})();
+function bufferFromBase64url(base64url: string) {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  return new Uint8Array(
+    atob(base64)
+      .split("")
+      .map((c) => c.charCodeAt(0))
+  );
+}
