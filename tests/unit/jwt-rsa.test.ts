@@ -1673,24 +1673,88 @@ describe("unit tests jwt verifier", () => {
       const jwk = keypair.jwk as RsaSignatureJwk;
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
         jwk,
+        "RS256",
         issuer
       ) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
         keypair.publicKeyDer
       );
-      pubkeyCache.transformJwkToKeyObjectSync(jwk, "testissuer"); // same JWK, same issuer, transform from cache
-      pubkeyCache.transformJwkToKeyObjectSync(jwk, "othertestissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(jwk, "RS256", "testissuer"); // same JWK, same issuer, transform from cache
+      pubkeyCache.transformJwkToKeyObjectSync(jwk, "RS256", "othertestissuer");
       // Using a different JWK (with other kid) forces the transformer to run
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(2);
       const otherKeyPair = generateKeyPair({ kid: "otherkid" });
       const otherJwk = otherKeyPair.jwk as RsaSignatureJwk;
-      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "testissuer");
-      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "testissuer"); // same JWK, same issuer, transform from cache
-      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "othertestissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "RS256", "testissuer");
+      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "RS256", "testissuer"); // same JWK, same issuer, transform from cache
+      pubkeyCache.transformJwkToKeyObjectSync(
+        otherJwk,
+        "RS256",
+        "othertestissuer"
+      );
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(4);
       pubkeyCache.clearCache(issuer);
-      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "testissuer"); // Cache is empty, so must be regenerated
+      pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "RS256", "testissuer"); // Cache is empty, so must be regenerated
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(5);
+    });
+    test("jwk without alg", () => {
+      const issuer = "testissuer";
+      const jwkToKeyObjectTransformerSpy = jest.fn(
+        nodeWebCompat.transformJwkToKeyObjectSync
+      );
+      const pubkeyCache = new KeyObjectCache(jwkToKeyObjectTransformerSpy);
+      const copiedJwk = { ...(keypair.jwk as RsaSignatureJwk) };
+      delete copiedJwk.alg;
+      const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
+        copiedJwk,
+        "RS512",
+        issuer
+      ) as KeyObject;
+      expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
+        keypair.publicKeyDer
+      );
+      expect(jwkToKeyObjectTransformerSpy).toBeCalledTimes(1);
+      // Call again - should use cache
+      pubkeyCache.transformJwkToKeyObjectSync(copiedJwk, "RS512", issuer);
+      expect(jwkToKeyObjectTransformerSpy).toBeCalledTimes(1);
+      // Call again with different alg, should not use cache
+      pubkeyCache.transformJwkToKeyObjectSync(copiedJwk, "RS384", issuer);
+      expect(jwkToKeyObjectTransformerSpy).toBeCalledTimes(2);
+    });
+    test("jwk without alg - async", async () => {
+      const issuer = "testissuer";
+      const jwkToKeyObjectTransformerSpy = jest.fn(
+        nodeWebCompat.transformJwkToKeyObjectAsync
+      );
+      const pubkeyCache = new KeyObjectCache(
+        undefined,
+        jwkToKeyObjectTransformerSpy
+      );
+      const copiedJwk = { ...(keypair.jwk as RsaSignatureJwk) };
+      delete copiedJwk.alg;
+      const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
+        copiedJwk,
+        "RS512",
+        issuer
+      )) as KeyObject;
+      expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
+        keypair.publicKeyDer
+      );
+      expect(jwkToKeyObjectTransformerSpy).toBeCalledTimes(1);
+      // Call again - should use cache
+      await pubkeyCache.transformJwkToKeyObjectAsync(
+        copiedJwk,
+        "RS512",
+        issuer
+      );
+      expect(jwkToKeyObjectTransformerSpy).toBeCalledTimes(1);
+      // Call again with different alg, should not use cache
+      await pubkeyCache.transformJwkToKeyObjectAsync(
+        copiedJwk,
+        "RS384",
+        issuer
+      );
+      expect(jwkToKeyObjectTransformerSpy).toBeCalledTimes(2);
     });
     test("no issuer", () => {
       const issuer = undefined;
@@ -1721,6 +1785,7 @@ describe("unit tests jwt verifier", () => {
       delete jwk.kid;
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
         jwk,
+        "RS256",
         issuer
       ) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
@@ -1734,6 +1799,7 @@ describe("unit tests jwt verifier", () => {
       delete jwk.kid;
       const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
         jwk,
+        "RS256",
         issuer
       )) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(

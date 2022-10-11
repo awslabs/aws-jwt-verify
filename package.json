@@ -101,7 +101,7 @@
     "prepack": "npm run dist",
     "prettier:check": "prettier --check .",
     "prettier": "prettier -w .",
-    "test:all": "npm run prettier:check && npm run test:unit && npm run test:install && npm run test:import && npm run test:browser && npm run test:cognito && npm run test:speed",
+    "test:all": "npm run prettier:check && npm run lint && npm run test:unit && npm run test:install && npm run test:import && npm run test:browser && npm run test:cognito && npm run test:speed",
     "test:cognito": "cd tests/cognito && npm remove aws-jwt-verify.tgz && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz && npm run test",
     "test:import": "cd tests/import-tests && npm remove aws-jwt-verify.tgz && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz && node esm.mjs && node commonjs.cjs && tsc && node typescript.js && COMPILE_ERRORS=$(2>&1 tsc -p tsconfig-should-not-compile.json || true) && ([ \"$COMPILE_ERRORS\" != \"\" ] || (echo \"Ooops I did compile successfully :(\"; false))",
     "test:install": "./tests/installation-and-basic-usage/run-tests.sh",

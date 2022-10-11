@@ -3,8 +3,11 @@
 //
 // Web implementations for the node-web-compatibility layer
 
-import { RsaSignatureJwk } from "./jwk.js";
-import { FetchError, NotSupportedError } from "./error.js";
+import {
+  FetchError,
+  NotSupportedError,
+  JwtInvalidSignatureAlgorithmError,
+} from "./error.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 import { validateHttpsJsonResponse } from "./https-common.js";
 import { Json, safeJsonParse } from "./safe-json-parse.js";
@@ -56,19 +59,24 @@ export const nodeWebCompat: NodeWebCompat = {
       "Synchronously transforming a JWK into a key object is not supported in the browser"
     );
   },
-  transformJwkToKeyObjectAsync: (jwk: RsaSignatureJwk) =>
-    window.crypto.subtle.importKey(
+  transformJwkToKeyObjectAsync: (jwk, alg) => {
+    alg = (jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto) ?? alg;
+    if (!alg) {
+      throw new JwtInvalidSignatureAlgorithmError("Missing alg", alg);
+    }
+    return window.crypto.subtle.importKey(
       "jwk",
       jwk,
       {
         name: "RSASSA-PKCS1-v1_5",
         hash: JwtSignatureAlgorithmsWebCrypto[
-          (jwk.alg || "RS256") as keyof typeof JwtSignatureAlgorithmsWebCrypto
+          alg as keyof typeof JwtSignatureAlgorithmsWebCrypto
         ],
       },
       false,
       ["verify"]
-    ),
+    );
+  },
   verifySignatureSync: () => {
     throw new NotSupportedError(
       "Synchronously verifying a JWT signature is not supported in the browser"
