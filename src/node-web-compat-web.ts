@@ -91,7 +91,6 @@ export const nodeWebCompat: NodeWebCompat = {
       throw new JwtInvalidSignatureError("Invalid signature");
     }
     return window.crypto.subtle.verify(
-      // eslint-disable-next-line security/detect-object-injection
       {
         name: "RSASSA-PKCS1-v1_5",
       },
