@@ -60,10 +60,14 @@ export const nodeWebCompat: NodeWebCompat = {
       "Synchronously transforming a JWK into a key object is not supported in the browser"
     );
   },
-  transformJwkToKeyObjectAsync: (jwk, alg) => {
-    alg = (jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto) ?? alg;
+  transformJwkToKeyObjectAsync: (jwk, jwtHeaderAlg) => {
+    const alg =
+      (jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto) ?? jwtHeaderAlg;
     if (!alg) {
-      throw new JwtInvalidSignatureAlgorithmError("Missing alg", alg);
+      throw new JwtInvalidSignatureAlgorithmError(
+        "Missing alg on both JWK and JWT header",
+        alg
+      );
     }
     return window.crypto.subtle.importKey(
       "jwk",

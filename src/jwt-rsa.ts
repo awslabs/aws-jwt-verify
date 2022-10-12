@@ -736,13 +736,13 @@ type GenericKeyObject = Object;
  * Transform (synchronously) the JWK into an RSA public key in crypto native key object format
  *
  * @param jwk: the JWK
- * @param alg: the alg from the JWT header
- * @param issuer: the issuer that uses the JWK for signing JWTs
+ * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+ * @param issuer: the issuer that uses the JWK for signing JWTs (may be used for caching the transformation)
  * @returns the RSA public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerSync = (
   jwk: RsaSignatureJwk,
-  alg?: SupportedSignatureAlgorithm,
+  jwtHeaderAlg?: SupportedSignatureAlgorithm,
   issuer?: string
 ) => GenericKeyObject;
 
@@ -750,8 +750,8 @@ export type JwkToKeyObjectTransformerSync = (
  * Transform (asynchronously) the JWK into an RSA public key in crypto native key object format
  *
  * @param jwk: the JWK
- * @param alg: the alg from the JWT header
- * @param issuer: the issuer that uses the JWK for signing JWTs
+ * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+ * @param issuer: the issuer that uses the JWK for signing JWTs (may be used for caching the transformation)
  * @returns Promise that will resolve with the RSA public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerAsync =
@@ -779,30 +779,23 @@ export class KeyObjectCache {
    * If the transformed JWK is already in the cache, it is returned from the cache instead.
    *
    * @param jwk: the JWK
-   * @param alg: the alg from the JWT header
-   * @param issuer: the issuer that uses the JWK for signing JWTs
+   * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+   * @param issuer: the issuer that uses the JWK for signing JWTs (used for caching the transformation)
    * @returns the RSA public key in native key object format
    */
   transformJwkToKeyObjectSync(
     jwk: RsaSignatureJwk,
-    alg?: SupportedSignatureAlgorithm,
+    jwtHeaderAlg?: SupportedSignatureAlgorithm,
     issuer?: string
   ): GenericKeyObject {
-    const keyObjectAlg = (jwk.alg as SupportedSignatureAlgorithm) ?? alg;
-    if (!issuer || !jwk.kid || !keyObjectAlg) {
-      return this.transformJwkToKeyObjectSyncFn(jwk, keyObjectAlg, issuer);
+    const alg = (jwk.alg as SupportedSignatureAlgorithm) ?? jwtHeaderAlg;
+    if (!issuer || !jwk.kid || !alg) {
+      return this.transformJwkToKeyObjectSyncFn(jwk, alg, issuer);
     }
-    const fromCache = this.publicKeys
-      .get(issuer)
-      ?.get(jwk.kid)
-      ?.get(keyObjectAlg);
+    const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid)?.get(alg);
     if (fromCache) return fromCache;
-    const publicKey = this.transformJwkToKeyObjectSyncFn(
-      jwk,
-      keyObjectAlg,
-      issuer
-    );
-    this.putKeyObjectInCache(jwk.kid, issuer, keyObjectAlg, publicKey);
+    const publicKey = this.transformJwkToKeyObjectSyncFn(jwk, alg, issuer);
+    this.putKeyObjectInCache(issuer, jwk.kid, alg, publicKey);
     return publicKey;
   }
 
@@ -811,36 +804,33 @@ export class KeyObjectCache {
    * If the transformed JWK is already in the cache, it is returned from the cache instead.
    *
    * @param jwk: the JWK
-   * @param alg: the alg from the JWT header
-   * @param issuer: the issuer that uses the JWK for signing JWTs
+   * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+   * @param issuer: the issuer that uses the JWK for signing JWTs (used for caching the transformation)
    * @returns the RSA public key in native key object format
    */
   async transformJwkToKeyObjectAsync(
     jwk: RsaSignatureJwk,
-    alg?: SupportedSignatureAlgorithm,
+    jwtHeaderAlg?: SupportedSignatureAlgorithm,
     issuer?: string
   ): Promise<GenericKeyObject> {
-    const keyObjectAlg = (jwk.alg as SupportedSignatureAlgorithm) ?? alg;
-    if (!issuer || !jwk.kid || !keyObjectAlg) {
-      return this.transformJwkToKeyObjectAsyncFn(jwk, keyObjectAlg, issuer);
+    const alg = (jwk.alg as SupportedSignatureAlgorithm) ?? jwtHeaderAlg;
+    if (!issuer || !jwk.kid || !alg) {
+      return this.transformJwkToKeyObjectAsyncFn(jwk, alg, issuer);
     }
-    const fromCache = this.publicKeys
-      .get(issuer)
-      ?.get(jwk.kid)
-      ?.get(keyObjectAlg);
+    const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid)?.get(alg);
     if (fromCache) return fromCache;
     const publicKey = await this.transformJwkToKeyObjectAsyncFn(
       jwk,
-      keyObjectAlg,
+      alg,
       issuer
     );
-    this.putKeyObjectInCache(jwk.kid, issuer, keyObjectAlg, publicKey);
+    this.putKeyObjectInCache(issuer, jwk.kid, alg, publicKey);
     return publicKey;
   }
 
   private putKeyObjectInCache(
-    kid: string,
     issuer: string,
+    kid: string,
     alg: SupportedSignatureAlgorithm,
     publicKey: GenericKeyObject
   ) {
