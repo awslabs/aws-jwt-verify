@@ -12,6 +12,7 @@ import {
   AUDIENCE,
   JWKSURI,
   VALID_TOKEN,
+  VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
 } from "../fixtures/example-token-data.json";
@@ -38,6 +39,17 @@ describe("unit tests", () => {
       jwksUri: JWKSURI,
     });
     const payload = await verifier.verify(VALID_TOKEN);
+
+    expect(payload).to.exist;
+  });
+
+  it("valid token for JWK without alg", async () => {
+    const verifier = JwtRsaVerifier.create({
+      issuer: ISSUER,
+      audience: AUDIENCE,
+      jwksUri: JWKSURI,
+    });
+    const payload = await verifier.verify(VALID_TOKEN_FOR_JWK_WITHOUT_ALG);
 
     expect(payload).to.exist;
   });

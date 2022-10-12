@@ -4,6 +4,7 @@ import {
   AUDIENCE,
   JWKSURI,
   VALID_TOKEN,
+  VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
 } from "../fixtures/example-token-data.json";
@@ -56,6 +57,17 @@ describe("click Verify RSA", () => {
 
   it("valid token", () => {
     typeInputsAndClick(VALID_TOKEN, ISSUER, AUDIENCE, JWKSURI);
+
+    cy.get("#result").should("have.text", "Verified");
+  });
+
+  it("valid token for JWK without alg", () => {
+    typeInputsAndClick(
+      VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
+      ISSUER,
+      AUDIENCE,
+      JWKSURI
+    );
 
     cy.get("#result").should("have.text", "Verified");
   });
