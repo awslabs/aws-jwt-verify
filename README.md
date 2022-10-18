@@ -63,7 +63,7 @@ See all verify parameters for JWTs from any IDP [here](#jwtrsaverifier-verify-pa
 - Pure **TypeScript** library that can be used in **Node.js** v14 and above (both CommonJS and ESM supported), as well in the modern evergreen Web browser.
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
 - **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI, and it includes a simple **ASN.1** encoder to transform JWKs into **DER-encoded RSA public keys** (in order to verify JWTs with Node.js native crypto calls).
-- Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://tools.ietf.org/id/draft-ietf-oauth-jwt-bcp-02.html#rfc.section.3).
+- Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp-02#section-3).
 - Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above).
 
 Currently, only signature algorithms **RS256** , **RS384** and **RS512** are supported.
