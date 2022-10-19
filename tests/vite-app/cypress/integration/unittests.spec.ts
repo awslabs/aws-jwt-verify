@@ -24,9 +24,9 @@ import {
 } from "../fixtures/ms-token-data.json";
 
 describe("unit tests", () => {
-  const INVAILD_ISSUER = "https://example.org";
-  const INVAILD_JWKSURI = "/notexample-JWKS.json";
-  const INVAILD_AUDIENCE = "notaudience";
+  const INVALID_ISSUER = "https://example.org";
+  const INVALID_JWKSURI = "/notexample-JWKS.json";
+  const INVALID_AUDIENCE = "notaudience";
 
   beforeEach(() => {
     cy.intercept("GET", JWKSURI, { fixture: "example-JWKS" });
@@ -92,7 +92,7 @@ describe("unit tests", () => {
 
   it("invalid issuer", async () => {
     const verifier = JwtRsaVerifier.create({
-      issuer: INVAILD_ISSUER,
+      issuer: INVALID_ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
     });
@@ -111,7 +111,7 @@ describe("unit tests", () => {
   it("invalid audience", async () => {
     const verifier = JwtRsaVerifier.create({
       issuer: ISSUER,
-      audience: INVAILD_AUDIENCE,
+      audience: INVALID_AUDIENCE,
       jwksUri: JWKSURI,
     });
 
@@ -150,7 +150,7 @@ describe("unit tests", () => {
     const verifier = JwtRsaVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
-      jwksUri: INVAILD_JWKSURI,
+      jwksUri: INVALID_JWKSURI,
     });
 
     try {

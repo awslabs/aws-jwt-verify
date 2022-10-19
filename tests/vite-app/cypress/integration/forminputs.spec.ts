@@ -27,9 +27,9 @@ describe("enable Verify RSA", () => {
 });
 
 describe("click Verify RSA", () => {
-  const INVAILD_ISSUER = "https://example.org";
-  const INVAILD_JWKSURI = "/notexample-JWKS.json";
-  const INVAILD_AUDIENCE = "notaudience";
+  const INVALID_ISSUER = "https://example.org";
+  const INVALID_JWKSURI = "/notexample-JWKS.json";
+  const INVALID_AUDIENCE = "notaudience";
 
   beforeEach(() => {
     cy.visit("/");
@@ -85,13 +85,13 @@ describe("click Verify RSA", () => {
   });
 
   it("invalid issuer", () => {
-    typeInputsAndClick(VALID_TOKEN, INVAILD_ISSUER, "", JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, INVALID_ISSUER, "", JWKSURI);
 
     cy.get("#result").should("include.text", "Issuer not allowed");
   });
 
   it("invalid audience", () => {
-    typeInputsAndClick(VALID_TOKEN, ISSUER, INVAILD_AUDIENCE, JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, ISSUER, INVALID_AUDIENCE, JWKSURI);
 
     cy.get("#result").should("include.text", "Audience not allowed");
   });
@@ -108,7 +108,7 @@ describe("click Verify RSA", () => {
   });
 
   it("invalid JWKS Uri", () => {
-    typeInputsAndClick(VALID_TOKEN, ISSUER, "", INVAILD_JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, ISSUER, "", INVALID_JWKSURI);
 
     cy.get("#result").should(
       "include.text",
