@@ -156,6 +156,18 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience: "1234" })
         ).toMatchObject({ hello: "world" });
       });
+      test("happy flow with unicode characters in JWT", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hēłłœ: "wørłd" },
+          keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hēłłœ: "wørłd" });
+      });
       test("error flow with wrong algorithm", () => {
         const issuer = "https://example.com";
         const audience = "1234";

@@ -26,6 +26,7 @@ const validTokenPayload = {
   exp: NOW + ONEYEAR,
   jti: randomUUID(),
   testcase: "valid token",
+  hēłłœ: "wørłd",
 };
 
 const expiredTokenPayload = {
