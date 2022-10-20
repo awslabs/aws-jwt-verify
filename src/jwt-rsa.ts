@@ -279,8 +279,7 @@ async function verifyDecomposedJwt(
   const keyObject = await transformJwkToKeyObjectFn(
     jwk,
     header.alg as SupportedSignatureAlgorithm,
-    payload.iss,
-    header.kid
+    payload.iss
   );
 
   // Verify the JWT signature
@@ -400,8 +399,7 @@ function verifyDecomposedJwtSync(
   const keyObject = transformJwkToKeyObjectFn(
     jwk,
     header.alg as SupportedSignatureAlgorithm,
-    payload.iss,
-    header.kid
+    payload.iss
   );
 
   // Verify the JWT signature (JWS)
@@ -455,7 +453,7 @@ type Kid = string;
  * @param MultiIssuer Verify multiple issuers (true) or just a single one (false)
  */
 export abstract class JwtRsaVerifierBase<
-  SpecificVerifyProperties,
+  SpecificVerifyProperties extends Record<string | number, unknown>,
   IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties>,
   MultiIssuer extends boolean
 > {
@@ -738,19 +736,22 @@ type GenericKeyObject = Object;
  * Transform (synchronously) the JWK into an RSA public key in crypto native key object format
  *
  * @param jwk: the JWK
+ * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+ * @param issuer: the issuer that uses the JWK for signing JWTs (may be used for caching the transformation)
  * @returns the RSA public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerSync = (
   jwk: RsaSignatureJwk,
-  alg?: SupportedSignatureAlgorithm,
-  issuer?: string,
-  kid?: string
+  jwtHeaderAlg?: SupportedSignatureAlgorithm,
+  issuer?: string
 ) => GenericKeyObject;
 
 /**
  * Transform (asynchronously) the JWK into an RSA public key in crypto native key object format
  *
  * @param jwk: the JWK
+ * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+ * @param issuer: the issuer that uses the JWK for signing JWTs (may be used for caching the transformation)
  * @returns Promise that will resolve with the RSA public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerAsync =
@@ -763,7 +764,10 @@ export type JwkToKeyObjectTransformerAsync =
  * we want to cache this computation.
  */
 export class KeyObjectCache {
-  private publicKeys: Map<Issuer, Map<Kid, GenericKeyObject>> = new Map();
+  private publicKeys: Map<
+    Issuer,
+    Map<Kid, Map<SupportedSignatureAlgorithm, GenericKeyObject>>
+  > = new Map();
 
   constructor(
     public transformJwkToKeyObjectSyncFn: JwkToKeyObjectTransformerSync = nodeWebCompat.transformJwkToKeyObjectSync,
@@ -773,58 +777,74 @@ export class KeyObjectCache {
   /**
    * Transform the JWK into an RSA public key in native key object format.
    * If the transformed JWK is already in the cache, it is returned from the cache instead.
-   * The cache keys are: issuer, JWK kid (key id)
    *
    * @param jwk: the JWK
-   * @param issuer: the issuer that uses the JWK for signing JWTs
+   * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+   * @param issuer: the issuer that uses the JWK for signing JWTs (used for caching the transformation)
    * @returns the RSA public key in native key object format
    */
   transformJwkToKeyObjectSync(
     jwk: RsaSignatureJwk,
-    issuer?: Issuer
+    jwtHeaderAlg?: SupportedSignatureAlgorithm,
+    issuer?: string
   ): GenericKeyObject {
-    if (!issuer || !jwk.kid) {
-      return this.transformJwkToKeyObjectSyncFn(jwk);
+    const alg = (jwk.alg as SupportedSignatureAlgorithm) ?? jwtHeaderAlg;
+    if (!issuer || !jwk.kid || !alg) {
+      return this.transformJwkToKeyObjectSyncFn(jwk, alg, issuer);
     }
-    const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid);
+    const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid)?.get(alg);
     if (fromCache) return fromCache;
-    const publicKey = this.transformJwkToKeyObjectSyncFn(jwk);
-    this.putKeyObjectInCache(
-      jwk as RsaSignatureJwk & JwkWithKid,
-      issuer,
-      publicKey
-    );
+    const publicKey = this.transformJwkToKeyObjectSyncFn(jwk, alg, issuer);
+    this.putKeyObjectInCache(issuer, jwk.kid, alg, publicKey);
     return publicKey;
   }
 
+  /**
+   * Transform the JWK into an RSA public key in native key object format (async).
+   * If the transformed JWK is already in the cache, it is returned from the cache instead.
+   *
+   * @param jwk: the JWK
+   * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
+   * @param issuer: the issuer that uses the JWK for signing JWTs (used for caching the transformation)
+   * @returns the RSA public key in native key object format
+   */
   async transformJwkToKeyObjectAsync(
     jwk: RsaSignatureJwk,
-    issuer?: Issuer
+    jwtHeaderAlg?: SupportedSignatureAlgorithm,
+    issuer?: string
   ): Promise<GenericKeyObject> {
-    if (!issuer || !jwk.kid) {
-      return this.transformJwkToKeyObjectAsyncFn(jwk);
+    const alg = (jwk.alg as SupportedSignatureAlgorithm) ?? jwtHeaderAlg;
+    if (!issuer || !jwk.kid || !alg) {
+      return this.transformJwkToKeyObjectAsyncFn(jwk, alg, issuer);
     }
-    const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid);
+    const fromCache = this.publicKeys.get(issuer)?.get(jwk.kid)?.get(alg);
     if (fromCache) return fromCache;
-    const publicKey = await this.transformJwkToKeyObjectAsyncFn(jwk);
-    this.putKeyObjectInCache(
-      jwk as RsaSignatureJwk & JwkWithKid,
-      issuer,
-      publicKey
+    const publicKey = await this.transformJwkToKeyObjectAsyncFn(
+      jwk,
+      alg,
+      issuer
     );
+    this.putKeyObjectInCache(issuer, jwk.kid, alg, publicKey);
     return publicKey;
   }
 
   private putKeyObjectInCache(
-    jwk: RsaSignatureJwk & JwkWithKid,
     issuer: string,
+    kid: string,
+    alg: SupportedSignatureAlgorithm,
     publicKey: GenericKeyObject
   ) {
     const cachedIssuer = this.publicKeys.get(issuer);
-    if (cachedIssuer) {
-      cachedIssuer.set(jwk.kid, publicKey);
+    const cachedIssuerKid = cachedIssuer?.get(kid);
+    if (cachedIssuerKid) {
+      cachedIssuerKid.set(alg, publicKey);
+    } else if (cachedIssuer) {
+      cachedIssuer.set(kid, new Map([[alg, publicKey]]));
     } else {
-      this.publicKeys.set(issuer, new Map([[jwk.kid, publicKey]]));
+      this.publicKeys.set(
+        issuer,
+        new Map([[kid, new Map([[alg, publicKey]])]])
+      );
     }
   }
 

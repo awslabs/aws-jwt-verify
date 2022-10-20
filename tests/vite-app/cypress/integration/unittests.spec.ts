@@ -12,14 +12,21 @@ import {
   AUDIENCE,
   JWKSURI,
   VALID_TOKEN,
+  VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
-} from "../fixtures/token-data.json";
+} from "../fixtures/example-token-data.json";
+import {
+  MS_ISSUER,
+  MS_AUDIENCE,
+  MS_JWKSURI,
+  MS_INVALID_KID_TOKEN,
+} from "../fixtures/ms-token-data.json";
 
 describe("unit tests", () => {
-  const INVAILD_ISSUER = "https://example.org";
-  const INVAILD_JWKSURI = "/notexample-JWKS.json";
-  const INVAILD_AUDIENCE = "notaudience";
+  const INVALID_ISSUER = "https://example.org";
+  const INVALID_JWKSURI = "/notexample-JWKS.json";
+  const INVALID_AUDIENCE = "notaudience";
 
   beforeEach(() => {
     cy.intercept("GET", JWKSURI, { fixture: "example-JWKS" });
@@ -32,6 +39,17 @@ describe("unit tests", () => {
       jwksUri: JWKSURI,
     });
     const payload = await verifier.verify(VALID_TOKEN);
+
+    expect(payload).to.exist;
+  });
+
+  it("valid token for JWK without alg", async () => {
+    const verifier = JwtRsaVerifier.create({
+      issuer: ISSUER,
+      audience: AUDIENCE,
+      jwksUri: JWKSURI,
+    });
+    const payload = await verifier.verify(VALID_TOKEN_FOR_JWK_WITHOUT_ALG);
 
     expect(payload).to.exist;
   });
@@ -74,7 +92,7 @@ describe("unit tests", () => {
 
   it("invalid issuer", async () => {
     const verifier = JwtRsaVerifier.create({
-      issuer: INVAILD_ISSUER,
+      issuer: INVALID_ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
     });
@@ -93,7 +111,7 @@ describe("unit tests", () => {
   it("invalid audience", async () => {
     const verifier = JwtRsaVerifier.create({
       issuer: ISSUER,
-      audience: INVAILD_AUDIENCE,
+      audience: INVALID_AUDIENCE,
       jwksUri: JWKSURI,
     });
 
@@ -132,7 +150,7 @@ describe("unit tests", () => {
     const verifier = JwtRsaVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
-      jwksUri: INVAILD_JWKSURI,
+      jwksUri: INVALID_JWKSURI,
     });
 
     try {
@@ -142,6 +160,25 @@ describe("unit tests", () => {
     } catch (ex) {
       expect(ex.message).to.include(
         "Failed to fetch /notexample-JWKS.json: Status code is 404, expected 200"
+      );
+    }
+  });
+
+  it("invalid JWK kid", async () => {
+    // example token from https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens
+    const verifier = JwtRsaVerifier.create({
+      issuer: MS_ISSUER,
+      audience: MS_AUDIENCE,
+      jwksUri: MS_JWKSURI,
+    });
+
+    try {
+      const payload = await verifier.verify(MS_INVALID_KID_TOKEN);
+
+      expect(payload).to.not.exist;
+    } catch (ex) {
+      expect(ex.message).to.include(
+        'JWK for kid "i6lGk3FZzxRcUb2C3nEQ7syHJlY" not found in the JWKS'
       );
     }
   });

@@ -3,8 +3,11 @@
 //
 // Web implementations for the node-web-compatibility layer
 
-import { RsaSignatureJwk } from "./jwk.js";
-import { FetchError, NotSupportedError } from "./error.js";
+import {
+  FetchError,
+  NotSupportedError,
+  JwtInvalidSignatureAlgorithmError,
+} from "./error.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 import { validateHttpsJsonResponse } from "./https-common.js";
 import { Json, safeJsonParse } from "./safe-json-parse.js";
@@ -56,21 +59,28 @@ export const nodeWebCompat: NodeWebCompat = {
       "Synchronously transforming a JWK into a key object is not supported in the browser"
     );
   },
-  transformJwkToKeyObjectAsync: (jwk: RsaSignatureJwk) =>
-    window.crypto.subtle.importKey(
+  transformJwkToKeyObjectAsync: (jwk, jwtHeaderAlg) => {
+    const alg =
+      (jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto) ?? jwtHeaderAlg;
+    if (!alg) {
+      throw new JwtInvalidSignatureAlgorithmError(
+        "Missing alg on both JWK and JWT header",
+        alg
+      );
+    }
+    return window.crypto.subtle.importKey(
       "jwk",
       jwk,
       {
         name: "RSASSA-PKCS1-v1_5",
-        hash: {
-          name: JwtSignatureAlgorithmsWebCrypto[
-            jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto
-          ],
-        },
+        hash: JwtSignatureAlgorithmsWebCrypto[
+          alg as keyof typeof JwtSignatureAlgorithmsWebCrypto
+        ],
       },
       false,
       ["verify"]
-    ),
+    );
+  },
   verifySignatureSync: () => {
     throw new NotSupportedError(
       "Synchronously verifying a JWT signature is not supported in the browser"
@@ -78,7 +88,6 @@ export const nodeWebCompat: NodeWebCompat = {
   },
   verifySignatureAsync: ({ jwsSigningInput, keyObject, signature }) =>
     window.crypto.subtle.verify(
-      // eslint-disable-next-line security/detect-object-injection
       {
         name: "RSASSA-PKCS1-v1_5",
       },
@@ -88,7 +97,7 @@ export const nodeWebCompat: NodeWebCompat = {
     ),
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
-  setTimeoutUnref: setTimeout,
+  setTimeoutUnref: window.setTimeout.bind(window),
 };
 
 const bufferFromBase64url = (function () {

@@ -29,7 +29,7 @@ run_test() {
     fi
     if [ -z $CI ]; then
         # Only bother to kill the backgrounded server if we're not running in CI (but e.g. on a developer laptop)
-        echo "Sending stop signal to Vite server (SIGINT) ..."
+        echo "Sending stop signal to Vite server (PID $VITE_PID) ..."
         kill -INT $VITE_PID
         echo "Waiting for Vite server to actually stop ..."
         wait

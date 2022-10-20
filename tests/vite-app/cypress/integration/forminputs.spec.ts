@@ -4,10 +4,16 @@ import {
   AUDIENCE,
   JWKSURI,
   VALID_TOKEN,
+  VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
-} from "../fixtures/token-data.json";
-
+} from "../fixtures/example-token-data.json";
+import {
+  MS_ISSUER,
+  MS_AUDIENCE,
+  MS_JWKSURI,
+  MS_INVALID_KID_TOKEN,
+} from "../fixtures/ms-token-data.json";
 describe("enable Verify RSA", () => {
   it('enables the "Verify RSA" button', () => {
     cy.visit("/");
@@ -21,9 +27,9 @@ describe("enable Verify RSA", () => {
 });
 
 describe("click Verify RSA", () => {
-  const INVAILD_ISSUER = "https://example.org";
-  const INVAILD_JWKSURI = "/notexample-JWKS.json";
-  const INVAILD_AUDIENCE = "notaudience";
+  const INVALID_ISSUER = "https://example.org";
+  const INVALID_JWKSURI = "/notexample-JWKS.json";
+  const INVALID_AUDIENCE = "notaudience";
 
   beforeEach(() => {
     cy.visit("/");
@@ -55,6 +61,17 @@ describe("click Verify RSA", () => {
     cy.get("#result").should("have.text", "Verified");
   });
 
+  it("valid token for JWK without alg", () => {
+    typeInputsAndClick(
+      VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
+      ISSUER,
+      AUDIENCE,
+      JWKSURI
+    );
+
+    cy.get("#result").should("have.text", "Verified");
+  });
+
   it("expired token", () => {
     typeInputsAndClick(EXPIRED_TOKEN, ISSUER, AUDIENCE, JWKSURI);
 
@@ -68,13 +85,13 @@ describe("click Verify RSA", () => {
   });
 
   it("invalid issuer", () => {
-    typeInputsAndClick(VALID_TOKEN, INVAILD_ISSUER, "", JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, INVALID_ISSUER, "", JWKSURI);
 
     cy.get("#result").should("include.text", "Issuer not allowed");
   });
 
   it("invalid audience", () => {
-    typeInputsAndClick(VALID_TOKEN, ISSUER, INVAILD_AUDIENCE, JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, ISSUER, INVALID_AUDIENCE, JWKSURI);
 
     cy.get("#result").should("include.text", "Audience not allowed");
   });
@@ -91,11 +108,26 @@ describe("click Verify RSA", () => {
   });
 
   it("invalid JWKS Uri", () => {
-    typeInputsAndClick(VALID_TOKEN, ISSUER, "", INVAILD_JWKSURI);
+    typeInputsAndClick(VALID_TOKEN, ISSUER, "", INVALID_JWKSURI);
 
     cy.get("#result").should(
       "include.text",
       "Failed to fetch /notexample-JWKS.json: Status code is 404, expected 200"
+    );
+  });
+
+  it("invalid JWK kid", () => {
+    // example token from https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens
+    typeInputsAndClick(
+      MS_INVALID_KID_TOKEN,
+      MS_ISSUER,
+      MS_AUDIENCE,
+      MS_JWKSURI
+    );
+
+    cy.get("#result").should(
+      "include.text",
+      'JWK for kid "i6lGk3FZzxRcUb2C3nEQ7syHJlY" not found in the JWKS'
     );
   });
 });

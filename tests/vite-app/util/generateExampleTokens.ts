@@ -26,6 +26,7 @@ const validTokenPayload = {
   exp: NOW + ONEYEAR,
   jti: randomUUID(),
   testcase: "valid token",
+  hēłłœ: "wørłd",
 };
 
 const expiredTokenPayload = {
@@ -66,14 +67,20 @@ const tokendata = {
   VALID_TOKEN: "",
   EXPIRED_TOKEN: "",
   NOT_YET_VALID_TOKEN: "",
+  VALID_TOKEN_FOR_JWK_WITHOUT_ALG: "",
 };
 
 const main = async () => {
-  const { privateKey, jwk, jwks } = generateKeyPair(
-    deconstructPublicKeyInDerFormat,
-    { kid: randomUUID() }
-  );
+  const { privateKey, jwk } = generateKeyPair(deconstructPublicKeyInDerFormat, {
+    kid: randomUUID(),
+  });
+  const { privateKey: privateKeyForJwkWithoutAlg, jwk: jwkWithoutAlg } =
+    generateKeyPair(deconstructPublicKeyInDerFormat, { kid: randomUUID() });
+  delete jwkWithoutAlg.alg;
+  const jwks = { keys: [jwk, jwkWithoutAlg] };
+
   const jwtHeader = { kid: jwk.kid, alg: "RS256" };
+  const jwtHeaderForJwkWithoutAlg = { kid: jwkWithoutAlg.kid, alg: "RS256" };
 
   saveFile("public", JWKSFILE, jwks);
   saveFile(join("cypress", "fixtures"), JWKSFILE, jwks);
@@ -83,6 +90,11 @@ const main = async () => {
   tokendata.JWKSURI = JWKSURI;
 
   tokendata.VALID_TOKEN = signJwt(jwtHeader, validTokenPayload, privateKey);
+  tokendata.VALID_TOKEN_FOR_JWK_WITHOUT_ALG = signJwt(
+    jwtHeaderForJwkWithoutAlg,
+    validTokenPayload,
+    privateKeyForJwkWithoutAlg
+  );
   tokendata.EXPIRED_TOKEN = signJwt(jwtHeader, expiredTokenPayload, privateKey);
   tokendata.NOT_YET_VALID_TOKEN = signJwt(
     jwtHeader,
@@ -90,7 +102,7 @@ const main = async () => {
     privateKey
   );
 
-  saveFile(join("cypress", "fixtures"), "token-data.json", tokendata);
+  saveFile(join("cypress", "fixtures"), "example-token-data.json", tokendata);
 
   console.log("done");
 };
