@@ -31,47 +31,58 @@
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+      "require": "./dist/cjs/index.js",
+      "types": "./index.d.ts"
     },
     "./asn1": {
       "import": "./dist/esm/asn1.js",
-      "require": "./dist/cjs/asn1.js"
+      "require": "./dist/cjs/asn1.js",
+      "types": "./asn1.d.ts"
     },
     "./assert": {
       "import": "./dist/esm/assert.js",
-      "require": "./dist/cjs/assert.js"
+      "require": "./dist/cjs/assert.js",
+      "types": "./assert.d.ts"
     },
     "./cognito-verifier": {
       "import": "./dist/esm/cognito-verifier.js",
-      "require": "./dist/cjs/cognito-verifier.js"
+      "require": "./dist/cjs/cognito-verifier.js",
+      "types": "./cognito-verifier.d.ts"
     },
     "./error": {
       "import": "./dist/esm/error.js",
-      "require": "./dist/cjs/error.js"
+      "require": "./dist/cjs/error.js",
+      "types": "./error.d.ts"
     },
     "./https": {
       "import": "./dist/esm/https.js",
-      "require": "./dist/cjs/https.js"
+      "require": "./dist/cjs/https.js",
+      "types": "./https.d.ts"
     },
     "./jwk": {
       "import": "./dist/esm/jwk.js",
-      "require": "./dist/cjs/jwk.js"
+      "require": "./dist/cjs/jwk.js",
+      "types": "./jwk.d.ts"
     },
     "./jwt": {
       "import": "./dist/esm/jwt.js",
-      "require": "./dist/cjs/jwt.js"
+      "require": "./dist/cjs/jwt.js",
+      "types": "./jwt.d.ts"
     },
     "./jwt-model": {
       "import": "./dist/esm/jwt-model.js",
-      "require": "./dist/cjs/jwt-model.js"
+      "require": "./dist/cjs/jwt-model.js",
+      "types": "./jwt-model.d.ts"
     },
     "./jwt-rsa": {
       "import": "./dist/esm/jwt-rsa.js",
-      "require": "./dist/cjs/jwt-rsa.js"
+      "require": "./dist/cjs/jwt-rsa.js",
+      "types": "./jwt-rsa.d.ts"
     },
     "./safe-json-parse": {
       "import": "./dist/esm/safe-json-parse.js",
-      "require": "./dist/cjs/safe-json-parse.js"
+      "require": "./dist/cjs/safe-json-parse.js",
+      "types": "./safe-json-parse.d.ts"
     }
   },
   "devDependencies": {
@@ -103,7 +114,7 @@
     "prettier": "prettier -w .",
     "test:all": "npm run prettier:check && npm run lint && npm run test:unit && npm run test:install && npm run test:import && npm run test:browser && npm run test:cognito && npm run test:speed",
     "test:cognito": "cd tests/cognito && npm remove aws-jwt-verify.tgz && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz && npm run test",
-    "test:import": "cd tests/import-tests && npm remove aws-jwt-verify.tgz && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz && node esm.mjs && node commonjs.cjs && tsc && node typescript.js && COMPILE_ERRORS=$(2>&1 tsc -p tsconfig-should-not-compile.json || true) && ([ \"$COMPILE_ERRORS\" != \"\" ] || (echo \"Ooops I did compile successfully :(\"; false))",
+    "test:import": "cd tests/import-tests && npm remove aws-jwt-verify.tgz && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz && node esm.mjs && node commonjs.cjs && tsc && node typescript.js && tsc -p tsconfig-nodenext.json && node typescript.js && COMPILE_ERRORS=$(2>&1 tsc -p tsconfig-should-not-compile.json || true) && ([ \"$COMPILE_ERRORS\" != \"\" ] || (echo \"Ooops I did compile successfully :(\"; false))",
     "test:install": "./tests/installation-and-basic-usage/run-tests.sh",
     "test:browser": "cd tests/vite-app && npm remove aws-jwt-verify.tgz && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz && ./run-tests.sh",
     "test:speed": "jest -t \"speed\"",
