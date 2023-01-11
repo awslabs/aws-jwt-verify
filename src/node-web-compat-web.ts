@@ -73,9 +73,8 @@ export const nodeWebCompat: NodeWebCompat = {
       jwk,
       {
         name: "RSASSA-PKCS1-v1_5",
-        hash: JwtSignatureAlgorithmsWebCrypto[
-          alg as keyof typeof JwtSignatureAlgorithmsWebCrypto
-        ],
+        // eslint-disable-next-line security/detect-object-injection
+        hash: JwtSignatureAlgorithmsWebCrypto[alg],
       },
       false,
       ["verify"]

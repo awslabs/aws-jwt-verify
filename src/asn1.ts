@@ -256,7 +256,7 @@ function decodeLengthValue(blockOfLengthValues: Buffer) {
   }
   const nrLengthOctets = blockOfLengthValues[0] & 0b01111111;
   const length = Buffer.from(
-    blockOfLengthValues.slice(1, 1 + 1 + nrLengthOctets)
+    blockOfLengthValues.subarray(1, 1 + 1 + nrLengthOctets)
   ).readUIntBE(0, nrLengthOctets);
   return {
     length,
@@ -287,9 +287,9 @@ function decodeSequence(sequence: Buffer) {
     );
   }
   const { firstByteOffset, lastByteOffset } = decodeLengthValue(
-    sequence.slice(1)
+    sequence.subarray(1)
   );
-  const sequenceValue = sequence.slice(
+  const sequenceValue = sequence.subarray(
     1 + firstByteOffset,
     1 + 1 + lastByteOffset
   );
@@ -300,8 +300,8 @@ function decodeSequence(sequence: Buffer) {
     // is to be done with index operator: [index]
     // eslint-disable-next-line security/detect-object-injection
     const identifier = decodeIdentifier(sequenceValue[offset]);
-    const next = decodeLengthValue(sequenceValue.slice(offset + 1));
-    const value = sequenceValue.slice(
+    const next = decodeLengthValue(sequenceValue.subarray(offset + 1));
+    const value = sequenceValue.subarray(
       offset + 1 + next.firstByteOffset,
       offset + 1 + next.lastByteOffset
     );
@@ -320,7 +320,7 @@ function decodeSequence(sequence: Buffer) {
  * @returns Array of identifier-length-value triplets
  */
 function decodeBitStringWrappedSequenceValue(bitStringValue: Buffer) {
-  const wrappedSequence = bitStringValue.slice(1);
+  const wrappedSequence = bitStringValue.subarray(1);
   return decodeSequence(wrappedSequence);
 }
 
