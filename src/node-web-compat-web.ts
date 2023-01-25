@@ -68,7 +68,7 @@ export const nodeWebCompat: NodeWebCompat = {
         alg
       );
     }
-    return window.crypto.subtle.importKey(
+    return crypto.subtle.importKey(
       "jwk",
       jwk,
       {
@@ -86,7 +86,7 @@ export const nodeWebCompat: NodeWebCompat = {
     );
   },
   verifySignatureAsync: ({ jwsSigningInput, keyObject, signature }) =>
-    window.crypto.subtle.verify(
+    crypto.subtle.verify(
       {
         name: "RSASSA-PKCS1-v1_5",
       },
@@ -96,7 +96,7 @@ export const nodeWebCompat: NodeWebCompat = {
     ),
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
-  setTimeoutUnref: window.setTimeout.bind(window),
+  setTimeoutUnref: setTimeout.bind(undefined),
 };
 
 const bufferFromBase64url = (function () {
