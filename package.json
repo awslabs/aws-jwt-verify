@@ -101,8 +101,8 @@
     "typescript": "^4.9.4"
   },
   "scripts": {
-    "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && echo '{\"type\":\"commonjs\",\"imports\":{\"#node-web-compat\":{\"browser\":\"./node-web-compat-web.js\",\"default\":\"./node-web-compat-node.js\"}}}' > dist/cjs/package.json",
-    "dist:esm": "tsc --module ES2020 --outDir dist/esm && echo '{\"type\":\"module\",\"imports\":{\"#node-web-compat\":{\"browser\":\"./node-web-compat-web.js\",\"default\":\"./node-web-compat-node.js\"}}}' > dist/esm/package.json",
+    "dist:cjs": "tsc --module CommonJS --outDir dist/cjs && node dist-create-package.cjs cjs",
+    "dist:esm": "tsc --module ES2020 --outDir dist/esm && node dist-create-package.cjs esm",
     "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly",
     "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:types",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
