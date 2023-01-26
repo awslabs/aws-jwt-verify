@@ -23,5 +23,13 @@ module.exports = {
       "warn",
       { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
     ],
+    "no-restricted-globals": [
+      "error",
+      {
+        name: "window",
+        message:
+          "Don't use the window global, as you don't need to use it and it's not a defined global in the Next.js Edge Runtime",
+      },
+    ],
   },
 };
