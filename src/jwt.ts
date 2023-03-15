@@ -83,21 +83,20 @@ function assertJwtPayload(
 }
 
 /**
- * Sanity check, decompose and JSON parse a JWT string into its constituent parts:
+ * Sanity check, decompose and JSON parse a JWT string into its constituent, and yet unverified, parts:
  * - header object
  * - payload object
  * - signature string
  *
+ * This function does NOT verify a JWT, do not trust the returned payload and header!
+ *
+ * For most use cases, you would not want to call this function directly yourself, rather you
+ * would call verify() with the JWT, which would call this function (and others) for you.
+ *
  * @param jwt The JWT (as string)
- * @returns the decomposed JWT
+ * @returns the decomposed, and yet unverified, JWT
  */
-export function decomposeJwt(jwt: unknown): {
-  header: JwtHeader;
-  headerB64: string;
-  payload: JwtPayload;
-  payloadB64: string;
-  signatureB64: string;
-} {
+export function decomposeJwt(jwt: unknown): DecomposedJwt {
   // Sanity checks on JWT
   if (!jwt) {
     throw new JwtParseError("Empty JWT");
@@ -150,7 +149,28 @@ export function decomposeJwt(jwt: unknown): {
   };
 }
 
-export type DecomposedJwt = ReturnType<typeof decomposeJwt>;
+export interface DecomposedJwt {
+  /**
+   * The yet unverified (!) header of the JWT
+   */
+  header: JwtHeader;
+  /**
+   * The yet unverified (!) header of the JWT, as base64url-encoded string
+   */
+  headerB64: string;
+  /**
+   * The yet unverified (!) payload of the JWT
+   */
+  payload: JwtPayload;
+  /**
+   * The yet unverified (!) payload of the JWT, as base64url-encoded string
+   */
+  payloadB64: string;
+  /**
+   * The yet unverified (!) signature of the JWT, as base64url-encoded string
+   */
+  signatureB64: string;
+}
 
 /**
  * Validate JWT payload fields. Throws an error in case there's any validation issue.
