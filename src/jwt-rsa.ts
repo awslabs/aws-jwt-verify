@@ -26,7 +26,11 @@ import {
   SupportedSignatureAlgorithm,
 } from "./jwt-model.js";
 import { AsAsync, Properties } from "./typing-util.js";
-import { decomposeUnverifiedJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
+import {
+  decomposeUnverifiedJwt,
+  DecomposedJwt,
+  validateJwtFields,
+} from "./jwt.js";
 import {
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
