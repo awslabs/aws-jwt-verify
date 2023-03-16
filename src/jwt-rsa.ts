@@ -26,7 +26,7 @@ import {
   SupportedSignatureAlgorithm,
 } from "./jwt-model.js";
 import { AsAsync, Properties } from "./typing-util.js";
-import { decomposeJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
+import { decomposeUnverifiedJwt, DecomposedJwt, validateJwtFields } from "./jwt.js";
 import {
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
@@ -234,11 +234,11 @@ export async function verifyJwt(
     includeRawJwtInErrors?: boolean;
   }
 ): Promise<JwtPayload> {
-  return verifyDecomposedJwt(decomposeJwt(jwt), jwksUri, options);
+  return verifyDecomposedJwt(decomposeUnverifiedJwt(jwt), jwksUri, options);
 }
 
 /**
- * Verify (asynchronously) a JWT that is already decomposed (by function `decomposeJwt`)
+ * Verify (asynchronously) a JWT that is already decomposed (by function `decomposeUnverifiedJwt`)
  *
  * @param decomposedJwt The decomposed JWT
  * @param jwksUri The JWKS URI, where the JWKS can be fetched from
@@ -335,7 +335,7 @@ export function verifyJwtSync(
   transformJwkToKeyObjectFn: JwkToKeyObjectTransformerSync = nodeWebCompat.transformJwkToKeyObjectSync
 ): JwtPayload {
   return verifyDecomposedJwtSync(
-    decomposeJwt(jwt),
+    decomposeUnverifiedJwt(jwt),
     jwkOrJwks,
     options,
     transformJwkToKeyObjectFn
@@ -343,7 +343,7 @@ export function verifyJwtSync(
 }
 
 /**
- * Verify (synchronously) a JWT that is already decomposed (by function `decomposeJwt`)
+ * Verify (synchronously) a JWT that is already decomposed (by function `decomposeUnverifiedJwt`)
  *
  * @param decomposedJwt The decomposed JWT
  * @param jwkOrJwks The JWKS that includes the right JWK (indexed by kid). Alternatively, provide the right JWK directly
@@ -637,7 +637,7 @@ export abstract class JwtRsaVerifierBase<
     jwksUri: string;
     verifyProperties: SpecificVerifyProperties;
   } {
-    const decomposedJwt = decomposeJwt(jwt);
+    const decomposedJwt = decomposeUnverifiedJwt(jwt);
     assertStringArrayContainsString(
       "Issuer",
       decomposedJwt.payload.iss,

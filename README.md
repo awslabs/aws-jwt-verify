@@ -385,10 +385,10 @@ You can peek into the payload of an unverified JWT as follows.
 Note: this does NOT verify a JWT, do not trust the returned payload and header! For most use cases, you would not want to call this function directly yourself, rather you would call `verify()` with the JWT, which would call this function (and others) for you.
 
 ```typescript
-import { decomposeJwt } from "aws-jwt-verify/jwt";
+import { decomposeUnverifiedJwt } from "aws-jwt-verify/jwt";
 
 // danger! payload is sanity checked and JSON-parsed, but otherwise unverified, trust nothing in it!
-const { payload } = decomposeJwt(
+const { payload } = decomposeUnverifiedJwt(
   "eyJraWQeyJhdF9oYXNoIjoidk..." // the JWT as string
 );
 ```

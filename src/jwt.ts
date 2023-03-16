@@ -96,7 +96,7 @@ function assertJwtPayload(
  * @param jwt The JWT (as string)
  * @returns the decomposed, and yet unverified, JWT
  */
-export function decomposeJwt(jwt: unknown): DecomposedJwt {
+export function decomposeUnverifiedJwt(jwt: unknown): DecomposedJwt {
   // Sanity checks on JWT
   if (!jwt) {
     throw new JwtParseError("Empty JWT");
