@@ -93,6 +93,7 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Using the generic JWT RSA verifier for Cognito JWTs](#using-the-generic-jwt-rsa-verifier-for-cognito-jwts)
 - [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
   - [Verify parameters](#jwtrsaverifier-verify-parameters)
+- [Peeking inside unverified JWTs](#peeking-inside-unverified-jwts)
 - [Verification errors](#verification-errors)
   - [Peek inside invalid JWTs](#peek-inside-invalid-jwts)
 - [The JWKS cache](#the-jwks-cache)
@@ -376,6 +377,21 @@ Supported parameters are:
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
 - `includeRawJwtInErrors` (optional, default `false`): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+
+## Peeking inside unverified JWTs
+
+You can peek into the payload of an unverified JWT as follows.
+
+Note: this does NOT verify a JWT, do not trust the returned payload and header! For most use cases, you would not want to call this function directly yourself, rather you would call `verify()` with the JWT, which would call this function (and others) for you.
+
+```typescript
+import { decomposeUnverifiedJwt } from "aws-jwt-verify/jwt";
+
+// danger! payload is sanity checked and JSON-parsed, but otherwise unverified, trust nothing in it!
+const { payload } = decomposeUnverifiedJwt(
+  "eyJraWQeyJhdF9oYXNoIjoidk..." // the JWT as string
+);
+```
 
 ## Verification errors
 

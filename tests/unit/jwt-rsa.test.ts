@@ -7,7 +7,7 @@ import {
   publicKeyToJwk,
   base64url,
 } from "./test-util";
-import { decomposeJwt } from "../../src/jwt";
+import { decomposeUnverifiedJwt } from "../../src/jwt";
 import {
   JwkInvalidUseError,
   JwkValidationError,
@@ -1177,7 +1177,7 @@ describe("unit tests jwt verifier", () => {
           { aud: "1234", iss: issuer, hello: "world" },
           keypair.privateKey
         );
-        const decomposedJwt = decomposeJwt(signedJwt);
+        const decomposedJwt = decomposeUnverifiedJwt(signedJwt);
         verifier.verify(signedJwt, { audience: "1234" }).catch(() => {
           // This is intentional
         }); // The sync portion of this async function should call getJwk
@@ -1308,7 +1308,7 @@ describe("unit tests jwt verifier", () => {
           { aud: audience, iss: issuer, hello: "world" },
           keypair.privateKey
         );
-        const decomposedJwt = decomposeJwt(signedJwt);
+        const decomposedJwt = decomposeUnverifiedJwt(signedJwt);
         const customJwtCheck = jest.fn();
         const verifier = JwtRsaVerifier.create({
           issuer,
@@ -1388,7 +1388,7 @@ describe("unit tests jwt verifier", () => {
           { aud: audience, iss: issuer, hello: "world" },
           keypair.privateKey
         );
-        const decomposedJwt = decomposeJwt(signedJwt);
+        const decomposedJwt = decomposeUnverifiedJwt(signedJwt);
         const customJwtCheck = jest.fn().mockImplementation((jwt) => {
           if (jwt.header.typ !== "Expected JWT typ") {
             throw new Error("Oops my custom check failed");

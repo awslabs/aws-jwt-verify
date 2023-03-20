@@ -4,7 +4,7 @@ import {
   allowAllRealNetworkTraffic,
   disallowAllRealNetworkTraffic,
 } from "./test-util";
-import { decomposeJwt } from "../../src/jwt";
+import { decomposeUnverifiedJwt } from "../../src/jwt";
 import { JwksCache, Jwks } from "../../src/jwk";
 import { CognitoJwtVerifier } from "../../src/cognito-verifier";
 import {
@@ -38,7 +38,7 @@ describe("unit tests cognito verifier", () => {
           },
           keypair.privateKey
         );
-        const decomposedJwt = decomposeJwt(signedJwt);
+        const decomposedJwt = decomposeUnverifiedJwt(signedJwt);
         const customJwtCheck = jest.fn();
         const cognitoVerifier = CognitoJwtVerifier.create({
           userPoolId,
