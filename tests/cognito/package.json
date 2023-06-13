@@ -30,7 +30,7 @@
     "@aws-cdk/aws-lambda": "1.157.0",
     "@aws-cdk/core": "1.157.0",
     "@aws-cdk/custom-resources": "1.157.0",
-    "@aws-sdk/client-cognito-identity-provider": "^3.52.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.350.0",
     "source-map-support": "^0.5.21"
   }
 }
