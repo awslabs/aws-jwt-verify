@@ -19,12 +19,7 @@ import {
   assertStringArrayContainsString,
   assertStringEquals,
 } from "./assert.js";
-import {
-  JwtHeader,
-  JwtPayload,
-  supportedSignatureAlgorithms,
-  SupportedSignatureAlgorithm,
-} from "./jwt-model.js";
+import { JwtHeader, JwtPayload } from "./jwt-model.js";
 import { AsAsync, Properties } from "./typing-util.js";
 import {
   decomposeUnverifiedJwt,
@@ -41,6 +36,14 @@ import {
 } from "./error.js";
 import { JsonObject } from "./safe-json-parse.js";
 import { nodeWebCompat } from "#node-web-compat";
+
+export const supportedSignatureAlgorithms = [
+  "RS256",
+  "RS384",
+  "RS512",
+] as const;
+export type SupportedSignatureAlgorithm =
+  typeof supportedSignatureAlgorithms[number];
 
 /** Interface for JWT verification properties */
 export interface VerifyProperties {
