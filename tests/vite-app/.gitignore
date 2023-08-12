@@ -4,4 +4,4 @@ public/*.json
 cypress/fixtures/example-*.json
 !cypress/plugins/index.js
 !cypress/support/commands.js
-!cypress/support/index.js
+!cypress/support/e2e.js
