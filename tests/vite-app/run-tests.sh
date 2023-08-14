@@ -27,14 +27,6 @@ run_test() {
         echo "Cypress test failed :("
         TEST_FAILED=true
     fi
-    if [ -z $CI ]; then
-        # Only bother to kill the backgrounded server if we're not running in CI (but e.g. on a developer laptop)
-        echo "Sending stop signal to Vite server (PID $VITE_PID) ..."
-        kill -INT $VITE_PID
-        echo "Waiting for Vite server to actually stop ..."
-        wait
-        echo "Vite server stopped"
-    fi
     if [ ! -z $TEST_FAILED ]; then
         return 1
     fi
@@ -46,7 +38,7 @@ main() {
 
     # Run against dev server, which uses esbuild bundler
     echo "Starting Cypress tests against Vite dev server ..."
-    run_test "npm run dev" 3000 "npm run cypress:run"
+    run_test "npm run dev" 5173 "npm run cypress:run"
 
     # Run against preview server too, which uses rollup bundler
     echo "Building Vite app for preview ..."
@@ -56,3 +48,9 @@ main() {
 }
 
 main
+if [ -z $CI ]; then
+    # kill the backgrounded servers if we're not running in CI (e.g. on a developer laptop)
+    # note: might not run if the test fails - run "ps j" to find the PGID if you need to run pkill yourself
+    echo "Sending kill signal to (PGID $$) ..."
+    pkill -2 -g $$
+fi
