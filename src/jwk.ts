@@ -28,6 +28,9 @@ const optionalJwkFieldNames = [
   "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5
   "n", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
   "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
+  "x", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.2
+  "y", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.3
+  "crv", //https:// datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.1
 ] as const;
 const mandatoryJwkFieldNames = [
   "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
@@ -45,10 +48,18 @@ type MandatoryJwkFields = {
 export type Jwk = OptionalJwkFields & MandatoryJwkFields & JsonObject;
 
 export type RsaSignatureJwk = Jwk & {
-  use: "sig";
+  use?: "sig";
   kty: "RSA";
   n: string;
   e: string;
+};
+
+export type EsSignatureJwk = Jwk & {
+  use?: "sig";
+  kty: "EC";
+  crv: "P-256" | "P-384" | "P-521";
+  x: string;
+  y: string;
 };
 
 export type JwkWithKid = Jwk & {
@@ -114,6 +125,25 @@ export function assertIsJwks(jwks: Json): asserts jwks is Jwks {
   for (const jwk of (jwks as { keys: Json[] }).keys) {
     assertIsJwk(jwk);
   }
+}
+
+export function assertIsEsSignatureJwk(
+  jwk: Jwk
+): asserts jwk is EsSignatureJwk {
+  // Check JWK use
+  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+
+  // Check JWK kty
+  assertStringEquals("JWK kty", jwk.kty, "EC", JwkInvalidKtyError);
+
+  // Check Curve (crv) has a value
+  if (!jwk.crv) throw new JwkValidationError("Missing Curve (crv)");
+
+  // Check X Coordinate (x) has a value
+  if (!jwk.x) throw new JwkValidationError("Missing X Coordinate (x)");
+
+  // Check Y Coordinate (y) has a value
+  if (!jwk.y) throw new JwkValidationError("Missing Y Coordinate (y)");
 }
 
 export function assertIsRsaSignatureJwk(

@@ -17,6 +17,42 @@ import {
   ParameterValidationError,
 } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
+import { AsAsync } from "./typing-util.js";
+
+/**
+ * Type for a generic key object, at runtime either the Node.js or WebCrypto concrete key object is used
+ */
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type GenericKeyObject = Object;
+
+/**
+ * Verify (synchronously) the JSON Web Signature (JWS) of a JWT
+ * https://datatracker.ietf.org/doc/html/rfc7515
+ *
+ * @param keyObject: the keyobject (representing the public key) in native crypto format
+ * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
+ * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
+ * @param signature: the JSON Web Signature (JWS)
+ * @returns boolean: true if the JWS is valid, or false otherwise
+ */
+export type JwsVerificationFunctionSync<T extends string> = (props: {
+  keyObject: GenericKeyObject;
+  alg: T;
+  jwsSigningInput: string;
+  signature: string;
+}) => boolean;
+
+/**
+ * Verify (asynchronously) the JSON Web Signature (JWS) of a JWT
+ * https://datatracker.ietf.org/doc/html/rfc7515
+ *
+ * @param keyObject: the keyobject (representing the public key) in native crypto format
+ * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
+ * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
+ * @param signature: the JSON Web Signature (JWS)
+ * @returns Promise that resolves to a boolean: true if the JWS is valid, or false otherwise
+ */
+export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
 
 /**
  * Assert that the argument is a valid JWT header object.

@@ -25,6 +25,7 @@ import {
   decomposeUnverifiedJwt,
   DecomposedJwt,
   validateJwtFields,
+  GenericKeyObject,
 } from "./jwt.js";
 import {
   JwtInvalidClaimError,
@@ -155,35 +156,6 @@ export type JwtRsaVerifierMultiIssuer<
   T & JwtRsaVerifierProperties<VerifyProperties>,
   true
 >;
-
-/**
- * Verify (synchronously) the JSON Web Signature (JWS) of a JWT
- * https://datatracker.ietf.org/doc/html/rfc7515
- *
- * @param keyObject: the keyobject (representing the public key) in native crypto format
- * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
- * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
- * @param signature: the JSON Web Signature (JWS)
- * @returns boolean: true if the JWS is valid, or false otherwise
- */
-export type JwsVerificationFunctionSync = (props: {
-  keyObject: GenericKeyObject;
-  alg: SupportedSignatureAlgorithm;
-  jwsSigningInput: string;
-  signature: string;
-}) => boolean;
-
-/**
- * Verify (asynchronously) the JSON Web Signature (JWS) of a JWT
- * https://datatracker.ietf.org/doc/html/rfc7515
- *
- * @param keyObject: the keyobject (representing the public key) in native crypto format
- * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
- * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
- * @param signature: the JSON Web Signature (JWS)
- * @returns Promise that resolves to a boolean: true if the JWS is valid, or false otherwise
- */
-export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
 
 /**
  * Sanity check the JWT header and the selected JWK
@@ -732,12 +704,6 @@ export class JwtRsaVerifier<
     return new this(verifyProperties, additionalProperties?.jwksCache);
   }
 }
-
-/**
- * Type for a generic key object, at runtime either the Node.js or WebCrypto concrete key object is used
- */
-// eslint-disable-next-line @typescript-eslint/ban-types
-type GenericKeyObject = Object;
 
 /**
  * Transform (synchronously) the JWK into an RSA public key in crypto native key object format

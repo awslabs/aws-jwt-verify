@@ -4,7 +4,7 @@ import {
   allowAllRealNetworkTraffic,
   disallowAllRealNetworkTraffic,
 } from "./test-util";
-import { verifyJwtSync } from "../../src/jwt-rsa";
+import { verifyJwtSync } from "../../src/jwt-es";
 
 describe("unit tests jwt verifier ES", () => {
   let keypair: ReturnType<typeof generateKeyPair>;

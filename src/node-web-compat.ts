@@ -9,20 +9,28 @@
 // package.json specifies "#node-web-compat" as a subpath import, with conditions pointing to the right implementation (for Node.js or Web)
 
 import { Json } from "./safe-json-parse.js";
+import { EsSignatureJwk, RsaSignatureJwk } from "./jwk.js";
 import {
-  JwkToKeyObjectTransformerSync,
-  JwkToKeyObjectTransformerAsync,
-  JwsVerificationFunctionSync,
   JwsVerificationFunctionAsync,
-} from "./jwt-rsa";
+  JwsVerificationFunctionSync,
+  GenericKeyObject,
+} from "./jwt.js";
+import { SupportedSignatureAlgorithm as SupportedSignatureAlgorithmEs } from "./jwt-es.js";
+import { SupportedSignatureAlgorithm as SupportedSignatureAlgorithmRsa } from "./jwt-rsa.js";
 
 /**
  * Interface that the specific Node.js and Web implementations must implement
  */
 export interface NodeWebCompat {
-  transformJwkToKeyObjectSync: JwkToKeyObjectTransformerSync;
-  transformJwkToKeyObjectAsync: JwkToKeyObjectTransformerAsync;
-  verifySignatureSync: JwsVerificationFunctionSync;
+  transformJwkToKeyObjectSync: (
+    jwk: RsaSignatureJwk | EsSignatureJwk
+  ) => GenericKeyObject;
+  transformJwkToKeyObjectAsync: (
+    jwk: RsaSignatureJwk | EsSignatureJwk
+  ) => GenericKeyObject;
+  verifySignatureSync: JwsVerificationFunctionSync<
+    SupportedSignatureAlgorithmEs | SupportedSignatureAlgorithmRsa
+  >;
   verifySignatureAsync: JwsVerificationFunctionAsync;
   parseB64UrlString: (b64: string) => string;
   setTimeoutUnref: (

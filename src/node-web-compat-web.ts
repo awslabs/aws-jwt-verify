@@ -21,6 +21,18 @@ enum JwtSignatureAlgorithmsWebCrypto {
   RS512 = "SHA-512",
 }
 
+/**
+ *
+ *
+ *
+ *
+ * https://developer.mozilla.org/en-US/docs/Web/API/EcKeyGenParams
+ *
+ *
+ *
+ *
+ */
+
 export const nodeWebCompat: NodeWebCompat = {
   fetchJson: async <ResultType extends Json>(
     uri: string,
