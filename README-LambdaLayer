@@ -1,7 +1,7 @@
 This is note for users who want to use this library as a lambda layer for another lambda function.
 If we want to keep the node_modules/aws-jwt-verify in a separated lambda layer, and reference that layer in our lambda function, then we need the following environment:
 - Our lambda function runtime must be NODEJS_18_X
-- Our lambda function need to be in written in "module" mode (import { CognitoJwtVerifier } from "aws-jwt-verify";)
-- The runtime of layer that contains "node_modules/aws-jwt-verify" must be NODEJS_18_X
+- Our lambda function need to be written in "module" mode (import { CognitoJwtVerifier } from "aws-jwt-verify";)
+- The runtime of layer that contains "node_modules/aws-jwt-verify" must be NODEJS_18_X.
 
-Another ways, we need to upload both lambda function code and node_modules/aws-jwt-verify into the same lambda function.
+Another ways, we need to upload both lambda function code and node_modules/aws-jwt-verify into the same lambda function. It works with code in "commonjs" or "module".
