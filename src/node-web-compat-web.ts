@@ -15,23 +15,20 @@ import { Json, safeJsonParse } from "./safe-json-parse.js";
 /**
  * Enum to map supported JWT signature algorithms with WebCrypto message digest algorithm names
  */
-enum JwtSignatureAlgorithmsWebCrypto {
+enum DigestFunctionsWebCrypto {
   RS256 = "SHA-256",
   RS384 = "SHA-384",
   RS512 = "SHA-512",
 }
 
 /**
- *
- *
- *
- *
- * https://developer.mozilla.org/en-US/docs/Web/API/EcKeyGenParams
- *
- *
- *
- *
+ * Enum to map supported JWT signature algorithms with WebCrypto curve names
  */
+enum NamedCurvesWebCrypto {
+  ES256 = "P-256",
+  ES384 = "P-384",
+  ES512 = "P-521", // yes, 521
+}
 
 export const nodeWebCompat: NodeWebCompat = {
   fetchJson: async <ResultType extends Json>(
@@ -72,8 +69,7 @@ export const nodeWebCompat: NodeWebCompat = {
     );
   },
   transformJwkToKeyObjectAsync: (jwk, jwtHeaderAlg) => {
-    const alg =
-      (jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto) ?? jwtHeaderAlg;
+    const alg = (jwk.alg as typeof jwtHeaderAlg) ?? jwtHeaderAlg;
     if (!alg) {
       throw new JwtInvalidSignatureAlgorithmError(
         "Missing alg on both JWK and JWT header",
@@ -83,11 +79,20 @@ export const nodeWebCompat: NodeWebCompat = {
     return crypto.subtle.importKey(
       "jwk",
       jwk,
-      {
-        name: "RSASSA-PKCS1-v1_5",
-        // eslint-disable-next-line security/detect-object-injection
-        hash: JwtSignatureAlgorithmsWebCrypto[alg],
-      },
+      alg.startsWith("RS")
+        ? {
+            name: "RSASSA-PKCS1-v1_5",
+            // eslint-disable-next-line security/detect-object-injection
+            hash: DigestFunctionsWebCrypto[
+              alg as keyof typeof DigestFunctionsWebCrypto
+            ],
+          }
+        : {
+            name: "ECDSA",
+            // eslint-disable-next-line security/detect-object-injection
+            namedCurve:
+              NamedCurvesWebCrypto[alg as keyof typeof NamedCurvesWebCrypto],
+          },
       false,
       ["verify"]
     );

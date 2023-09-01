@@ -23,15 +23,23 @@ import { SupportedSignatureAlgorithm as SupportedSignatureAlgorithmRsa } from ".
  */
 export interface NodeWebCompat {
   transformJwkToKeyObjectSync: (
-    jwk: RsaSignatureJwk | EsSignatureJwk
+    jwk: RsaSignatureJwk | EsSignatureJwk,
+    jwtHeaderAlg?:
+      | SupportedSignatureAlgorithmEs
+      | SupportedSignatureAlgorithmRsa
   ) => GenericKeyObject;
   transformJwkToKeyObjectAsync: (
-    jwk: RsaSignatureJwk | EsSignatureJwk
-  ) => GenericKeyObject;
+    jwk: RsaSignatureJwk | EsSignatureJwk,
+    jwtHeaderAlg?:
+      | SupportedSignatureAlgorithmEs
+      | SupportedSignatureAlgorithmRsa
+  ) => Promise<GenericKeyObject>;
   verifySignatureSync: JwsVerificationFunctionSync<
     SupportedSignatureAlgorithmEs | SupportedSignatureAlgorithmRsa
   >;
-  verifySignatureAsync: JwsVerificationFunctionAsync;
+  verifySignatureAsync: JwsVerificationFunctionAsync<
+    SupportedSignatureAlgorithmEs | SupportedSignatureAlgorithmRsa
+  >;
   parseB64UrlString: (b64: string) => string;
   setTimeoutUnref: (
     ...args: Parameters<typeof setTimeout>

@@ -52,7 +52,9 @@ export type JwsVerificationFunctionSync<T extends string> = (props: {
  * @param signature: the JSON Web Signature (JWS)
  * @returns Promise that resolves to a boolean: true if the JWS is valid, or false otherwise
  */
-export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
+export type JwsVerificationFunctionAsync<T extends string> = AsAsync<
+  JwsVerificationFunctionSync<T>
+>;
 
 /**
  * Assert that the argument is a valid JWT header object.
