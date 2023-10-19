@@ -16,7 +16,7 @@ jobs:
           node-version: "14"
       - name: install
         run: |
-          npm install -g npm
+          npm install -g npm@9
           npm install
       - name: test
         run: |
