@@ -21,6 +21,7 @@ export type JwtHeader = JwtHeaderStandardFields & JsonObject;
 interface JwtPayloadStandardFields {
   exp?: number; // expires: https://tools.ietf.org/html/rfc7519#section-4.1.4
   iss?: string; // issuer: https://tools.ietf.org/html/rfc7519#section-4.1.1
+  sub?: string; // subject: https://tools.ietf.org/html/rfc7519#section-4.1.2
   aud?: string | string[]; // audience: https://tools.ietf.org/html/rfc7519#section-4.1.3
   nbf?: number; // not before: https://tools.ietf.org/html/rfc7519#section-4.1.5
   iat?: number; // issued at: https://tools.ietf.org/html/rfc7519#section-4.1.6

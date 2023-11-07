@@ -430,6 +430,18 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow("JWT payload iss claim is not a string");
         expect(statement).toThrow(JwtParseError);
       });
+      test("JWT with sub that is not a string", () => {
+        const header = base64url('{"alg":"RS256"}');
+        const payload = base64url('{"sub":12345}');
+        const signedJwt = `${header}.${payload}.signature`;
+        const statement = () =>
+          verifyJwtSync(signedJwt, keypair.jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("JWT payload sub claim is not a string");
+        expect(statement).toThrow(JwtParseError);
+      });
       test("JWT with aud that is not a string", () => {
         const header = base64url('{"alg":"RS256"}');
         const payload = base64url('{"aud":12345}');
