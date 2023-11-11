@@ -58,6 +58,9 @@ function assertJwtPayload(
   if (payload.iss !== undefined && typeof payload.iss !== "string") {
     throw new JwtParseError("JWT payload iss claim is not a string");
   }
+  if (payload.sub !== undefined && typeof payload.sub !== "string") {
+    throw new JwtParseError("JWT payload sub claim is not a string");
+  }
   if (
     payload.aud !== undefined &&
     typeof payload.aud !== "string" &&
