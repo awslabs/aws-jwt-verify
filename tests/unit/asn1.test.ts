@@ -30,6 +30,45 @@ describe("unit tests asn1", () => {
     expect(publicKey).toEqual(priorGeneratedPublicKey);
   });
 
+  test("Prepends 0 byte only if MSB is 1", () => {
+    const n = Buffer.from([0b10000000]); // MSB 1
+    const e = Buffer.from([0b01000000]); // MSB 0
+    const publicKeyDer = constructPublicKeyInDerFormat(n, e);
+    expect(publicKeyDer).toEqual(
+      Buffer.from([
+        48,
+        27,
+        48,
+        13,
+        6,
+        9,
+        42,
+        134,
+        72,
+        134,
+        247,
+        13,
+        1,
+        1,
+        1,
+        5,
+        0,
+        3,
+        10,
+        0,
+        48,
+        7,
+        2,
+        2,
+        0, // here is the leading 0
+        128, // prepended with leading 0
+        2,
+        1,
+        64, // not prepended with leading 0
+      ])
+    );
+  });
+
   test("Deconstructing public key works", () => {
     const priorGeneratedPublicKey = readFileSync(
       join(__dirname, "pubkey-test.der")

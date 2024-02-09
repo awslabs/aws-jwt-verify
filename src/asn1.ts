@@ -68,10 +68,10 @@ function encodeLength(length: number) {
 }
 
 /**
- * Encode a buffer (that represent a positive integer) as integer per ASN.1 spec (DER-encoding)
+ * Encode a buffer (that represents a positive integer) as integer per ASN.1 spec (DER-encoding)
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.3
  *
- * @param buffer - The buffer that represent an integer to encode
+ * @param buffer - The buffer that represents a positive integer
  * @returns The buffer
  */
 function encodeBufferAsPositiveInteger(buffer: Buffer) {
