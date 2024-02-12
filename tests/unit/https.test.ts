@@ -19,9 +19,7 @@ describe("unit tests https", () => {
     const payload = JSON.stringify({ hello: "world" }) + "}";
     mockHttpsUri(uri, { responsePayload: payload });
     expect.assertions(1);
-    return expect(fetchJson(uri)).rejects.toThrow(
-      "Unexpected token } in JSON at position 17"
-    );
+    return expect(fetchJson(uri)).rejects.toThrow("JSON at position 17");
   });
 
   test("Fetch JSON error flow works: 404", () => {

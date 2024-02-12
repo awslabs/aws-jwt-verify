@@ -68,13 +68,17 @@ function encodeLength(length: number) {
 }
 
 /**
- * Encode a buffer (that represent an integer) as integer per ASN.1 spec (DER-encoding)
+ * Encode a buffer (that represents a positive integer) as integer per ASN.1 spec (DER-encoding)
  * See https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf chapter 8.3
  *
- * @param buffer - The buffer that represent an integer to encode
+ * @param buffer - The buffer that represents a positive integer
  * @returns The buffer
  */
-function encodeBufferAsInteger(buffer: Buffer) {
+function encodeBufferAsPositiveInteger(buffer: Buffer) {
+  if (buffer[0] >> 7) {
+    // MSB is 1, add leading zero to indicate positive number
+    buffer = Buffer.concat([Buffer.from([0]), buffer]);
+  }
   return Buffer.concat([
     encodeIdentifier({
       class: Asn1Class.Universal,
@@ -213,7 +217,10 @@ export function constructPublicKeyInDerFormat(n: Buffer, e: Buffer): Buffer {
   return encodeSequence([
     ALGORITHM_RSA_ENCRYPTION,
     encodeBufferAsBitString(
-      encodeSequence([encodeBufferAsInteger(n), encodeBufferAsInteger(e)])
+      encodeSequence([
+        encodeBufferAsPositiveInteger(n),
+        encodeBufferAsPositiveInteger(e),
+      ])
     ),
   ]);
 }
