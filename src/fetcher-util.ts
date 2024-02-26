@@ -59,7 +59,7 @@ export class AwsAlbJwksCache implements JwksCache {
         "kid not found in URI"
       );
     }
-    return jwksUri.replace(KID_URI_VARIABLE,kid);
+    return jwksUri.replace(KID_URI_VARIABLE,encodeURIComponent(kid));
   }
 
   private getKid(decomposedJwt: DecomposedJwt):string{
