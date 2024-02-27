@@ -1,8 +1,13 @@
 import { JwtBaseError, JwtWithoutValidKidError, KidNotFoundInJwksError } from "./error";
 import { JsonFetcher, SimpleJsonFetcher } from "./https";
 import { JwkWithKid, Jwks, JwksCache, PenaltyBox, SimpleJwksCache } from "./jwk";
-import { DecomposedJwt } from "./jwt";
 import crypto from "crypto";
+import { JwtHeader, JwtPayload } from "./jwt-model";
+
+interface DecomposedJwt {
+  header: JwtHeader;
+  payload: JwtPayload;
+}
 
 type AwsAlbJwks = string;
 
@@ -11,24 +16,29 @@ const albRegex = /https:\/\/public-keys.auth.elb.(?<region>[a-z0-9-]+).amazonaws
 
 export class AlbUriError extends JwtBaseError {}
 
+type FetchRequestOptions = Record<string, unknown>;
+
 export class AwsAlbJwksFetcher implements JsonFetcher {
 
-  private fetcher = new SimpleJsonFetcher();
+  private fetcher:SimpleJsonFetcher;
 
-  public async fetch(...params: Parameters<JsonFetcher["fetch"]>) {
-    const uri = params[0];
-    const match = uri.match(albRegex);
-    if(!match){
-      throw new AlbUriError(
-        "Wrong URI for ALB public key"
-      );
-    }
-    return this.fetcher.fetch(...params).then((response) => {
+  constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
+    this.fetcher = new SimpleJsonFetcher(props);
+  }
+
+  public async fetch(uri: string, requestOptions?: FetchRequestOptions, data?: Buffer) {
+    return this.fetcher.fetch(uri,requestOptions,data).then((response) => {
+      const match = uri.match(albRegex);
+      if(!match){
+        throw new AlbUriError(
+          "Wrong URI for ALB public key"
+        );
+      }
+
       return {
         keys: [
           {
             kid: match.groups?.kid!,
-            kty: "RSA",
             use: "sig",
             ...crypto.createPublicKey(response as AwsAlbJwks).export({
               format: "jwk",
