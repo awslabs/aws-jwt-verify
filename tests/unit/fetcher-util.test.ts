@@ -198,7 +198,7 @@ describe("unit tests https", () => {
       error = err as Error;
     }
     expect(error).toBeInstanceOf(KidNotFoundInJwksError);
-    expect(fetcher.fetch).toHaveBeenCalledTimes(2);
+    expect(fetcher.fetch).toHaveBeenCalledTimes(3);
     penaltyBox.release(jwksUri);
   });
 });
