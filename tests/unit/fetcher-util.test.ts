@@ -6,12 +6,14 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("unit tests https", () => {
+  const kid = "abcdefgh-1234-ijkl-5678-mnopqrstuvwx";
   const jwksUri = "https://public-keys.auth.elb.eu-west-1.amazonaws.com/{kid}";
+  const jwksUriExpanded = `https://public-keys.auth.elb.eu-west-1.amazonaws.com/${kid}`;
   const publicKeyAlbResponse = readFileSync(
     join(__dirname, "albresponse-test.pem")
   );
   const jwk = {
-    kid: "abcdefgh-1234-ijkl-5678-mnopqrstuvwx",
+    kid: kid,
     use: "sig",
     kty: 'EC',
     x: 'GBJCbjNusVteS__606LS3fgYrhQyvfAh-GbOfy2n7rU',
@@ -21,10 +23,10 @@ describe("unit tests https", () => {
   const jwks = {
     keys: [jwk]
   };
-  const getDecomposedJwt = (kid?:string ) => ({
+  const getDecomposedJwt = (kidParam?:string ) => ({
     header: {
       alg: "EC256",
-      kid: kid ?? jwk.kid,
+      kid: kidParam ?? kid,
     },
     payload: {},
   });
@@ -34,9 +36,9 @@ describe("unit tests https", () => {
   });
 
   test("ALB JSON fetcher works", () => {
-    mockHttpsUri(jwksUri, { responsePayload: publicKeyAlbResponse });
+    mockHttpsUri(jwksUriExpanded, { responsePayload: publicKeyAlbResponse });
     expect.assertions(1);
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUri)).resolves.toEqual(jwks);
+    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).resolves.toEqual(jwks);
   });
 
   test("ALB JSON fetcher does not validate alb public key URI", () => {
@@ -49,46 +51,46 @@ describe("unit tests https", () => {
   test("ALB JSON fetcher does retry once", () => {
     class TcpError extends Error {}
     expect.assertions(1);
-    mockHttpsUri(jwksUri, new TcpError("Some TCP error occured"));
-    mockHttpsUri(jwksUri, { responsePayload: publicKeyAlbResponse });
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUri)).resolves.toEqual(jwks);
+    mockHttpsUri(jwksUriExpanded, new TcpError("Some TCP error occured"));
+    mockHttpsUri(jwksUriExpanded, { responsePayload: publicKeyAlbResponse });
+    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).resolves.toEqual(jwks);
   });
 
   test("ALB JSON fetcher does retry HTTP 429", () => {
     expect.assertions(1);
-    mockHttpsUri(jwksUri, {
+    mockHttpsUri(jwksUriExpanded, {
       responseStatus: 429,
       responsePayload: "WE'RE BUSY RIGHT NOW",
     });
-    mockHttpsUri(jwksUri, { responsePayload: publicKeyAlbResponse });
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUri)).resolves.toEqual(jwks);
+    mockHttpsUri(jwksUriExpanded, { responsePayload: publicKeyAlbResponse });
+    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).resolves.toEqual(jwks);
   });
 
   test("ALB JSON fetcher does not retry twice", () => {
     class TcpError extends Error {}
     expect.assertions(1);
-    mockHttpsUri(jwksUri, new TcpError("1st TCP Error"));
-    mockHttpsUri(jwksUri, new TcpError("2nd TCP Error"));
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUri)).rejects.toThrow(
-      `Failed to fetch ${jwksUri}: 2nd TCP Error`
+    mockHttpsUri(jwksUriExpanded, new TcpError("1st TCP Error"));
+    mockHttpsUri(jwksUriExpanded, new TcpError("2nd TCP Error"));
+    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).rejects.toThrow(
+      `Failed to fetch ${jwksUriExpanded}: 2nd TCP Error`
     );
   });
 
   test("ALB JSON fetcher does not retry non-retryable errors", () => {
     expect.assertions(1);
-    mockHttpsUri(jwksUri, { responseStatus: 500, responsePayload: "Nope!\nError" });
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUri)).rejects.toThrow(
-      `Failed to fetch ${jwksUri}: Status code is 500, expected 200`
+    mockHttpsUri(jwksUriExpanded, { responseStatus: 500, responsePayload: "Nope!\nError" });
+    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).rejects.toThrow(
+      `Failed to fetch ${jwksUriExpanded}: Status code is 500, expected 200`
     );
   });
 
   test("ALB JSON fetcher uses defaults provided to the constructor", () => {
-    mockHttpsUri(jwksUri, { responsePayload: publicKeyAlbResponse });
+    mockHttpsUri(jwksUriExpanded, { responsePayload: publicKeyAlbResponse });
     expect.assertions(1);
     return expect(
       new AwsAlbJwksFetcher({
         defaultRequestOptions: { timeout: 100, responseTimeout: 150 },
-      }).fetch(jwksUri)
+      }).fetch(jwksUriExpanded)
     ).resolves.toEqual(jwks);
   });
 

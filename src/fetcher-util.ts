@@ -1,5 +1,5 @@
 import { JwtBaseError, JwtWithoutValidKidError, KidNotFoundInJwksError } from "./error";
-import { JsonFetcher, SimpleJsonFetcher } from "./https";
+import { JsonFetcher, SimpleBufferFetcher } from "./https";
 import { JwkWithKid, Jwks, JwksCache, PenaltyBox, SimpleJwksCache } from "./jwk";
 import crypto from "crypto";
 import { JwtHeader, JwtPayload } from "./jwt-model";
@@ -9,10 +9,7 @@ interface DecomposedJwt {
   payload: JwtPayload;
 }
 
-type AwsAlbJwks = string;
-
-// https://public-keys.auth.elb.eu-west-1.amazonaws.com/575d530c-54b0-43c3-8ce0-e7ed4dccdb8f
-const albRegex = /https:\/\/public-keys.auth.elb.(?<region>[a-z0-9-]+).amazonaws.com\/(?<kid>[a-z0-9-]+)/g;
+const albRegex = /https:\/\/public-keys.auth.elb.(?<region>[a-z0-9-]+).amazonaws.com\/(?<kid>[a-z0-9-]+)/;
 
 export class AlbUriError extends JwtBaseError {}
 
@@ -20,10 +17,10 @@ type FetchRequestOptions = Record<string, unknown>;
 
 export class AwsAlbJwksFetcher implements JsonFetcher {
 
-  private fetcher:SimpleJsonFetcher;
+  private fetcher;
 
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
-    this.fetcher = new SimpleJsonFetcher(props);
+    this.fetcher = new SimpleBufferFetcher(props);
   }
 
   public async fetch(uri: string, requestOptions?: FetchRequestOptions, data?: Buffer) {
@@ -38,9 +35,9 @@ export class AwsAlbJwksFetcher implements JsonFetcher {
       return {
         keys: [
           {
-            kid: match.groups?.kid!,
+            kid: match.groups!.kid!,
             use: "sig",
-            ...crypto.createPublicKey(response as AwsAlbJwks).export({
+            ...crypto.createPublicKey(response).export({
               format: "jwk",
             }),
           },

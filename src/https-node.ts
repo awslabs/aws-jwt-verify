@@ -4,12 +4,12 @@
 // NodeJS implementation for fetching JSON documents over HTTPS
 
 import { request } from "https";
-import { IncomingHttpHeaders, RequestOptions } from "http";
-import { validateHttpsJsonResponse } from "./https-common.js";
-import { pipeline } from "stream";
+import { RequestOptions } from "http";
+import { validateHttpsBufferResponse, validateHttpsJsonResponse } from "./https-common.js";
 import { TextDecoder } from "util";
 import { safeJsonParse, Json } from "./safe-json-parse.js";
 import { FetchError, NonRetryableFetchError } from "./error.js";
+import { IncomingMessage } from "http";
 
 /**
  * Interface for Request Options, that adds one additional option to the Node.js standard RequestOptions,
@@ -23,17 +23,21 @@ type FetchRequestOptions = RequestOptions & {
 /**
  * Execute a HTTPS request
  * @param uri - The URI
+ * @param parseResponse - Function to parse the response
+ * @param responseValidation - Function to validate the response
  * @param requestOptions - The RequestOptions to use
  * @param data - Data to send to the URI (e.g. POST data)
  * @returns - The response as parsed JSON
  */
-export async function fetchJson<ResultType extends Json>(
+async function fetch<Resultype>(
   uri: string,
+  responseValidation: (response: IncomingMessage) => void,
+  parseResponse: (data: Buffer[]) => Resultype,
   requestOptions?: FetchRequestOptions,
-  data?: Uint8Array
-): Promise<ResultType> {
+  data?: Uint8Array,
+): Promise<Resultype> {
   let responseTimeout: NodeJS.Timeout;
-  return new Promise<ResultType>((resolve, reject) => {
+  return new Promise<Resultype>((resolve, reject) => {
     const req = request(
       uri,
       {
@@ -41,23 +45,32 @@ export async function fetchJson<ResultType extends Json>(
         ...requestOptions,
       },
       (response) => {
-        // Capture response data
-        // @types/node is incomplete so cast to any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (pipeline as any)(
-          [
-            response,
-            getJsonDestination(uri, response.statusCode, response.headers),
-          ],
-          done
-        );
+        try {
+          responseValidation(response);
+        } catch(error) {
+          rejectWithCustomError(error);
+        }
+
+        // Collect response body data.
+        var responseData = [] as Buffer[];
+        response.on('data', chunk => {
+          responseData.push(chunk);
+        });
+
+        response.on('end', () => {
+          try {
+            resolve(parseResponse(responseData));
+          } catch(error) {
+            rejectWithCustomError(new NonRetryableFetchError(uri, error));
+          }
+        });
       }
     );
 
     if (requestOptions?.responseTimeout) {
       responseTimeout = setTimeout(
         () =>
-          done(
+          rejectWithCustomError(
             new FetchError(
               uri,
               `Response time-out (after ${requestOptions.responseTimeout} ms.)`
@@ -68,20 +81,13 @@ export async function fetchJson<ResultType extends Json>(
       responseTimeout.unref(); // Don't block Node from exiting
     }
 
-    function done(...args: [Error] | [null, ResultType]) {
-      if (responseTimeout) clearTimeout(responseTimeout);
-      if (args[0] == null) {
-        resolve(args[1]);
-        return;
-      }
-
+    function rejectWithCustomError(error: any) {
       // In case of errors, let the Agent (if any) know to abandon the socket
       // This is probably best, because the socket may have become stale
       /* istanbul ignore next */
       req.socket?.emit("agentRemove");
 
       // Turn error into FetchError so the URI is nicely captured in the message
-      let error = args[0];
       if (!(error instanceof FetchError)) {
         error = new FetchError(uri, error.message);
       }
@@ -90,8 +96,14 @@ export async function fetchJson<ResultType extends Json>(
       reject(error);
     }
 
+    if (responseTimeout){
+      req.on("close", () => clearTimeout(responseTimeout));
+    }
+
     // Handle errors while sending request
-    req.on("error", done);
+    req.on("error", error => {
+      rejectWithCustomError(error);
+    });
 
     // Signal end of request (include optional data)
     req.end(data);
@@ -99,33 +111,49 @@ export async function fetchJson<ResultType extends Json>(
 }
 
 /**
- * Ensures the HTTPS response contains valid JSON
- *
- * @param uri - The URI you were requesting
- * @param statusCode - The response status code to your HTTPS request
- * @param headers - The response headers to your HTTPS request
- *
- * @returns - Async function that can be used as destination in a stream.pipeline, it will return the JSON, if valid, or throw an error otherwise
+ * Execute a HTTPS request
+ * @param uri - The URI
+ * @param requestOptions - The RequestOptions to use
+ * @param data - Data to send to the URI (e.g. POST data)
+ * @returns - The response as parsed JSON
  */
-function getJsonDestination(
+export async function fetchBuffer<ResultType extends Buffer>(
   uri: string,
-  statusCode: number | undefined,
-  headers: IncomingHttpHeaders
-) {
-  return async (responseIterable: AsyncIterableIterator<Buffer>) => {
-    validateHttpsJsonResponse(uri, statusCode, headers["content-type"]);
-    const collected = [] as Buffer[];
-    for await (const chunk of responseIterable) {
-      collected.push(chunk);
-    }
-    try {
+  requestOptions?: FetchRequestOptions,
+  data?: Uint8Array,
+): Promise<ResultType> {
+  return fetch(
+    uri,
+    response=>validateHttpsBufferResponse(uri, response.statusCode),
+    (data: Buffer[]) => Buffer.concat(data) as ResultType,
+    requestOptions,
+    data);
+}
+
+/**
+ * Execute a HTTPS request
+ * @param uri - The URI
+ * @param requestOptions - The RequestOptions to use
+ * @param data - Data to send to the URI (e.g. POST data)
+ * @returns - The response as parsed JSON
+ */
+export async function fetchJson<ResultType extends Json>(
+  uri: string,
+  requestOptions?: FetchRequestOptions,
+  data?: Uint8Array
+): Promise<ResultType> {
+  return fetch(
+    uri, 
+    response=>validateHttpsJsonResponse(uri, response.statusCode, response.headers["content-type"]),  
+    (data: Buffer[]) => {
       return safeJsonParse(
         new TextDecoder("utf8", { fatal: true, ignoreBOM: true }).decode(
-          Buffer.concat(collected)
+          Buffer.concat(data)
         )
-      );
-    } catch (err) {
-      throw new NonRetryableFetchError(uri, err);
-    }
-  };
+      ) as ResultType;
+    }, 
+    requestOptions,
+    data
+  );
 }
+
