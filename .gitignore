@@ -28,3 +28,4 @@ node-web-compat*.d.ts
 safe-json-parse.d.ts
 test-util.d.ts
 typing-util.d.ts
+fetcher-util.d.ts

@@ -45,15 +45,21 @@ export interface BufferFetcher<ResultType extends Uint8Array = Uint8Array> {
   ) => Promise<ResultType>;
 }
 
-
 /**
- * HTTPS Fetcher for URIs with JSON body
- *
- * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
+ * A fetcher that retries once on failure.
+ * Use the decorator pattern
  */
-export class SimpleJsonFetcher implements JsonFetcher {
+export class RetryableFetcher<ResultType> {
+
   defaultRequestOptions: FetchRequestOptions;
-  constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
+
+  constructor(
+    private fetcher:(
+    uri: string,
+    requestOptions?: Record<string, unknown>,
+    data?: Uint8Array
+  ) => Promise<ResultType>,
+  props?: { defaultRequestOptions?: FetchRequestOptions }) {
     this.defaultRequestOptions = {
       timeout: nodeWebCompat.defaultFetchTimeouts.socketIdle,
       responseTimeout: nodeWebCompat.defaultFetchTimeouts.response,
@@ -61,29 +67,34 @@ export class SimpleJsonFetcher implements JsonFetcher {
     };
   }
 
-  /**
-   * Execute a HTTPS request (with 1 immediate retry in case of errors)
-   * @param uri - The URI
-   * @param requestOptions - The RequestOptions to use
-   * @param data - Data to send to the URI (e.g. POST data)
-   * @returns - The response as parsed JSON
-   */
-  public async fetch<ResultType extends Json>(
+  public async fetch (
     uri: string,
     requestOptions?: FetchRequestOptions,
-    data?: Uint8Array
-  ): Promise<ResultType> {
+    data?: Buffer
+  ):Promise<ResultType>{
     requestOptions = { ...this.defaultRequestOptions, ...requestOptions };
     try {
-      return await fetchJson<ResultType>(uri, requestOptions, data);
+      return await this.fetcher(uri, requestOptions, data);
     } catch (err) {
       if (err instanceof NonRetryableFetchError) {
         throw err;
       }
       // Retry once, immediately
-      return fetchJson<ResultType>(uri, requestOptions, data);
+      return this.fetcher(uri, requestOptions, data);
     }
   }
+}
+/**
+ * HTTPS Fetcher for URIs with JSON body
+ *
+ * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
+ */
+export class SimpleJsonFetcher extends RetryableFetcher<Json> implements JsonFetcher {
+  
+  constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
+    super(fetchJson, props);
+  }
+
 }
 
 
@@ -92,37 +103,10 @@ export class SimpleJsonFetcher implements JsonFetcher {
  *
  * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
  */
-export class SimpleBufferFetcher implements BufferFetcher {
-  defaultRequestOptions: FetchRequestOptions;
+export class SimpleBufferFetcher extends RetryableFetcher<Buffer> implements BufferFetcher {
+
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
-    this.defaultRequestOptions = {
-      timeout: nodeWebCompat.defaultFetchTimeouts.socketIdle,
-      responseTimeout: nodeWebCompat.defaultFetchTimeouts.response,
-      ...props?.defaultRequestOptions,
-    };
+    super(fetchBuffer, props);
   }
 
-  /**
-   * Execute a HTTPS request (with 1 immediate retry in case of errors)
-   * @param uri - The URI
-   * @param requestOptions - The RequestOptions to use
-   * @param data - Data to send to the URI (e.g. POST data)
-   * @returns - The response as parsed JSON
-   */
-  public async fetch<ResultType extends Buffer>(
-    uri: string,
-    requestOptions?: FetchRequestOptions,
-    data?: Uint8Array
-  ): Promise<ResultType> {
-    requestOptions = { ...this.defaultRequestOptions, ...requestOptions };
-    try {
-      return await fetchBuffer<ResultType>(uri, requestOptions, data);
-    } catch (err) {
-      if (err instanceof NonRetryableFetchError) {
-        throw err;
-      }
-      // Retry once, immediately
-      return fetchBuffer<ResultType>(uri, requestOptions, data);
-    }
-  }
 }
