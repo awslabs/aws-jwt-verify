@@ -39,7 +39,7 @@ export function validateHttpsJsonResponse(
  */
 export function validateHttpsBufferResponse(
   uri: string,
-  statusCode?: number,
+  statusCode?: number
 ): void {
   if (statusCode === 429) {
     throw new FetchError(uri, "Too many requests");

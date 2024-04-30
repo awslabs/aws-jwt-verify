@@ -1,5 +1,13 @@
-import { JwtWithoutValidKidError, KidNotFoundInJwksError, WaitPeriodNotYetEndedJwkError } from "../../src/error";
-import { AlbUriError, AwsAlbJwksCache, AwsAlbJwksFetcher } from "../../src/fetcher-util";
+import {
+  JwtWithoutValidKidError,
+  KidNotFoundInJwksError,
+  WaitPeriodNotYetEndedJwkError,
+} from "../../src/error";
+import {
+  AlbUriError,
+  AwsAlbJwksCache,
+  AwsAlbJwksFetcher,
+} from "../../src/fetcher-util";
 import { SimplePenaltyBox } from "../../src/jwk";
 import { mockHttpsUri, throwOnUnusedMocks } from "./test-util";
 import { readFileSync } from "fs";
@@ -15,15 +23,15 @@ describe("unit tests https", () => {
   const jwk = {
     kid: kid,
     use: "sig",
-    kty: 'EC',
-    x: 'GBJCbjNusVteS__606LS3fgYrhQyvfAh-GbOfy2n7rU',
-    y: 'oBuN90bW-AvxscoesVaE7ryPISjqseKgio6H5ZO5xmk',
-    crv: 'P-256'
-  }
-  const jwks = {
-    keys: [jwk]
+    kty: "EC",
+    x: "GBJCbjNusVteS__606LS3fgYrhQyvfAh-GbOfy2n7rU",
+    y: "oBuN90bW-AvxscoesVaE7ryPISjqseKgio6H5ZO5xmk",
+    crv: "P-256",
   };
-  const getDecomposedJwt = (kidParam?:string ) => ({
+  const jwks = {
+    keys: [jwk],
+  };
+  const getDecomposedJwt = (kidParam?: string) => ({
     header: {
       alg: "EC256",
       kid: kidParam ?? kid,
@@ -38,14 +46,18 @@ describe("unit tests https", () => {
   test("ALB JSON fetcher works", () => {
     mockHttpsUri(jwksUriExpanded, { responsePayload: publicKeyAlbResponse });
     expect.assertions(1);
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).resolves.toEqual(jwks);
+    return expect(
+      new AwsAlbJwksFetcher().fetch(jwksUriExpanded)
+    ).resolves.toEqual(jwks);
   });
 
   test("ALB JSON fetcher does not validate alb public key URI", () => {
-      const wrongUri = `https://public-keys.auth.elb.eu-west-1.amazon.wrong/${jwk.kid}`
-      mockHttpsUri(wrongUri, { responsePayload: publicKeyAlbResponse });
-      expect.assertions(1);
-      return expect(new AwsAlbJwksFetcher().fetch(wrongUri)).rejects.toThrow(AlbUriError);
+    const wrongUri = `https://public-keys.auth.elb.eu-west-1.amazon.wrong/${jwk.kid}`;
+    mockHttpsUri(wrongUri, { responsePayload: publicKeyAlbResponse });
+    expect.assertions(1);
+    return expect(new AwsAlbJwksFetcher().fetch(wrongUri)).rejects.toThrow(
+      AlbUriError
+    );
   });
 
   test("ALB JSON fetcher does retry once", () => {
@@ -53,7 +65,9 @@ describe("unit tests https", () => {
     expect.assertions(1);
     mockHttpsUri(jwksUriExpanded, new TcpError("Some TCP error occured"));
     mockHttpsUri(jwksUriExpanded, { responsePayload: publicKeyAlbResponse });
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).resolves.toEqual(jwks);
+    return expect(
+      new AwsAlbJwksFetcher().fetch(jwksUriExpanded)
+    ).resolves.toEqual(jwks);
   });
 
   test("ALB JSON fetcher does retry HTTP 429", () => {
@@ -63,7 +77,9 @@ describe("unit tests https", () => {
       responsePayload: "WE'RE BUSY RIGHT NOW",
     });
     mockHttpsUri(jwksUriExpanded, { responsePayload: publicKeyAlbResponse });
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).resolves.toEqual(jwks);
+    return expect(
+      new AwsAlbJwksFetcher().fetch(jwksUriExpanded)
+    ).resolves.toEqual(jwks);
   });
 
   test("ALB JSON fetcher does not retry twice", () => {
@@ -71,15 +87,20 @@ describe("unit tests https", () => {
     expect.assertions(1);
     mockHttpsUri(jwksUriExpanded, new TcpError("1st TCP Error"));
     mockHttpsUri(jwksUriExpanded, new TcpError("2nd TCP Error"));
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).rejects.toThrow(
-      `Failed to fetch ${jwksUriExpanded}: 2nd TCP Error`
-    );
+    return expect(
+      new AwsAlbJwksFetcher().fetch(jwksUriExpanded)
+    ).rejects.toThrow(`Failed to fetch ${jwksUriExpanded}: 2nd TCP Error`);
   });
 
   test("ALB JSON fetcher does not retry non-retryable errors", () => {
     expect.assertions(1);
-    mockHttpsUri(jwksUriExpanded, { responseStatus: 500, responsePayload: "Nope!\nError" });
-    return expect(new AwsAlbJwksFetcher().fetch(jwksUriExpanded)).rejects.toThrow(
+    mockHttpsUri(jwksUriExpanded, {
+      responseStatus: 500,
+      responsePayload: "Nope!\nError",
+    });
+    return expect(
+      new AwsAlbJwksFetcher().fetch(jwksUriExpanded)
+    ).rejects.toThrow(
       `Failed to fetch ${jwksUriExpanded}: Status code is 500, expected 200`
     );
   });
@@ -93,7 +114,6 @@ describe("unit tests https", () => {
       }).fetch(jwksUriExpanded)
     ).resolves.toEqual(jwks);
   });
-
 
   test("ALB JWKS cache returns JWK", () => {
     const jwksCache = new AwsAlbJwksCache({
@@ -111,7 +131,10 @@ describe("unit tests https", () => {
     });
     expect.assertions(1);
     return expect(
-      jwksCache.getJwk("https://public-keys.auth.elb.eu-west-1.amazonaws.com/", getDecomposedJwt())
+      jwksCache.getJwk(
+        "https://public-keys.auth.elb.eu-west-1.amazonaws.com/",
+        getDecomposedJwt()
+      )
     ).rejects.toThrow(KidNotFoundInJwksError);
   });
 
@@ -120,8 +143,9 @@ describe("unit tests https", () => {
       fetcher: { fetch: async () => jwks },
     });
     expect(
-       jwksCache.getJwk(jwksUri, getDecomposedJwt())
-       .then(()=>jwksCache.getCachedJwk(jwksUri, getDecomposedJwt()))
+      jwksCache
+        .getJwk(jwksUri, getDecomposedJwt())
+        .then(() => jwksCache.getCachedJwk(jwksUri, getDecomposedJwt()))
     ).resolves.toEqual(jwk);
   });
 
@@ -133,6 +157,18 @@ describe("unit tests https", () => {
     ).rejects.toThrow(JwtWithoutValidKidError);
   });
 
+  test("ALB JWKS add cache return not implemented exception", () => {
+    const jwksCache = new AwsAlbJwksCache();
+    return expect(jwksCache.addJwks).toThrow("Method not implemented.");
+  });
+
+  test("ALB JWKS get JWKS return not implemented exception", () => {
+    const jwksCache = new AwsAlbJwksCache();
+    expect.assertions(1);
+    return expect(jwksCache.getJwks()).rejects.toThrow(
+      "Method not implemented."
+    );
+  });
 
   test("ALB JWKS cache fetches URI one attempt at a time", async () => {
     /**

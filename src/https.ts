@@ -50,16 +50,16 @@ export interface BufferFetcher<ResultType extends Uint8Array = Uint8Array> {
  * Use the decorator pattern
  */
 export class RetryableFetcher<ResultType> {
-
   defaultRequestOptions: FetchRequestOptions;
 
   constructor(
-    private fetcher:(
-    uri: string,
-    requestOptions?: Record<string, unknown>,
-    data?: Uint8Array
-  ) => Promise<ResultType>,
-  props?: { defaultRequestOptions?: FetchRequestOptions }) {
+    private fetcher: (
+      uri: string,
+      requestOptions?: Record<string, unknown>,
+      data?: Uint8Array
+    ) => Promise<ResultType>,
+    props?: { defaultRequestOptions?: FetchRequestOptions }
+  ) {
     this.defaultRequestOptions = {
       timeout: nodeWebCompat.defaultFetchTimeouts.socketIdle,
       responseTimeout: nodeWebCompat.defaultFetchTimeouts.response,
@@ -67,11 +67,11 @@ export class RetryableFetcher<ResultType> {
     };
   }
 
-  public async fetch (
+  public async fetch(
     uri: string,
     requestOptions?: FetchRequestOptions,
     data?: Buffer
-  ):Promise<ResultType>{
+  ): Promise<ResultType> {
     requestOptions = { ...this.defaultRequestOptions, ...requestOptions };
     try {
       return await this.fetcher(uri, requestOptions, data);
@@ -89,24 +89,25 @@ export class RetryableFetcher<ResultType> {
  *
  * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
  */
-export class SimpleJsonFetcher extends RetryableFetcher<Json> implements JsonFetcher {
-  
+export class SimpleJsonFetcher
+  extends RetryableFetcher<Json>
+  implements JsonFetcher
+{
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
     super(fetchJson, props);
   }
-
 }
-
 
 /**
  * HTTPS Fetcher for URIs with Buffer body
  *
  * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
  */
-export class SimpleBufferFetcher extends RetryableFetcher<Buffer> implements BufferFetcher {
-
+export class SimpleBufferFetcher
+  extends RetryableFetcher<Buffer>
+  implements BufferFetcher
+{
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
     super(fetchBuffer, props);
   }
-
 }

@@ -52,9 +52,7 @@ export const nodeWebCompat: NodeWebCompat = {
     return response.text().then((text) => safeJsonParse(text) as ResultType);
   },
   fetchBuffer: () => {
-    throw new NotSupportedError(
-      "Fetch buffer not supported"
-    );
+    throw new NotSupportedError("Fetch buffer not supported");
   },
   defaultFetchTimeouts: {
     response: 3000,

@@ -5,7 +5,10 @@
 
 import { request } from "https";
 import { RequestOptions } from "http";
-import { validateHttpsBufferResponse, validateHttpsJsonResponse } from "./https-common.js";
+import {
+  validateHttpsBufferResponse,
+  validateHttpsJsonResponse,
+} from "./https-common.js";
 import { TextDecoder } from "util";
 import { safeJsonParse, Json } from "./safe-json-parse.js";
 import { FetchError, NonRetryableFetchError } from "./error.js";
@@ -34,7 +37,7 @@ async function fetch<Resultype>(
   responseValidation: (response: IncomingMessage) => void,
   parseResponse: (data: Buffer[]) => Resultype,
   requestOptions?: FetchRequestOptions,
-  data?: Uint8Array,
+  data?: Uint8Array
 ): Promise<Resultype> {
   let responseTimeout: NodeJS.Timeout;
   return new Promise<Resultype>((resolve, reject) => {
@@ -47,20 +50,20 @@ async function fetch<Resultype>(
       (response) => {
         try {
           responseValidation(response);
-        } catch(error) {
-          rejectWithCustomError(error);
+        } catch (error) {
+          rejectWithCustomError(error as Error);
         }
 
         // Collect response body data.
-        var responseData = [] as Buffer[];
-        response.on('data', chunk => {
+        const responseData = [] as Buffer[];
+        response.on("data", (chunk) => {
           responseData.push(chunk);
         });
 
-        response.on('end', () => {
+        response.on("end", () => {
           try {
             resolve(parseResponse(responseData));
-          } catch(error) {
+          } catch (error) {
             rejectWithCustomError(new NonRetryableFetchError(uri, error));
           }
         });
@@ -81,7 +84,7 @@ async function fetch<Resultype>(
       responseTimeout.unref(); // Don't block Node from exiting
     }
 
-    function rejectWithCustomError(error: any) {
+    function rejectWithCustomError(error: Error) {
       // In case of errors, let the Agent (if any) know to abandon the socket
       // This is probably best, because the socket may have become stale
       /* istanbul ignore next */
@@ -96,12 +99,12 @@ async function fetch<Resultype>(
       reject(error);
     }
 
-    if (responseTimeout){
+    if (responseTimeout) {
       req.on("close", () => clearTimeout(responseTimeout));
     }
 
     // Handle errors while sending request
-    req.on("error", error => {
+    req.on("error", (error) => {
       rejectWithCustomError(error);
     });
 
@@ -120,14 +123,15 @@ async function fetch<Resultype>(
 export async function fetchBuffer<ResultType extends Buffer>(
   uri: string,
   requestOptions?: FetchRequestOptions,
-  data?: Uint8Array,
+  data?: Uint8Array
 ): Promise<ResultType> {
   return fetch(
     uri,
-    response=>validateHttpsBufferResponse(uri, response.statusCode),
+    (response) => validateHttpsBufferResponse(uri, response.statusCode),
     (data: Buffer[]) => Buffer.concat(data) as ResultType,
     requestOptions,
-    data);
+    data
+  );
 }
 
 /**
@@ -143,17 +147,21 @@ export async function fetchJson<ResultType extends Json>(
   data?: Uint8Array
 ): Promise<ResultType> {
   return fetch(
-    uri, 
-    response=>validateHttpsJsonResponse(uri, response.statusCode, response.headers["content-type"]),  
+    uri,
+    (response) =>
+      validateHttpsJsonResponse(
+        uri,
+        response.statusCode,
+        response.headers["content-type"]
+      ),
     (data: Buffer[]) => {
       return safeJsonParse(
         new TextDecoder("utf8", { fatal: true, ignoreBOM: true }).decode(
           Buffer.concat(data)
         )
       ) as ResultType;
-    }, 
+    },
     requestOptions,
     data
   );
 }
-
