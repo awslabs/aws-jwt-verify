@@ -4,8 +4,6 @@ import {
   signJwt,
   allowAllRealNetworkTraffic,
   disallowAllRealNetworkTraffic,
-  publicKeyToJwk,
-  base64url,
 } from "./test-util";
 import { decomposeUnverifiedJwt } from "../../src/jwt";
 import {
@@ -41,7 +39,7 @@ describe("unit tests jwt verifier", () => {
   let rs512keypair: ReturnType<typeof generateKeyPair>;
   beforeAll(() => {
     keypair = generateKeyPair();
-    rs512keypair = generateKeyPair({ alg: "RS512" });
+    rs512keypair = generateKeyPair({ kty: "RSA", alg: "RS512" });
     disallowAllRealNetworkTraffic();
   });
   afterAll(() => {
@@ -343,7 +341,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with header that is not JSON parseable", () => {
-        const header = base64url("abc");
+        const header = Buffer.from("abc").toString("base64url");
         const signedJwt = `${header}.payload.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -356,7 +354,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with header that is not an object", () => {
-        const header = base64url("123");
+        const header = Buffer.from("123").toString("base64url");
         const signedJwt = `${header}.payload.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -367,8 +365,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with payload that is not JSON parseable", () => {
-        const header = base64url('{"alg":"rs256"}');
-        const payload = base64url("abc");
+        const header = Buffer.from('{"alg":"rs256"}').toString("base64url");
+        const payload = Buffer.from("abc").toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -381,8 +379,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with payload that is not an object", () => {
-        const header = base64url('{"alg":"rs256"}');
-        const payload = base64url("123");
+        const header = Buffer.from('{"alg":"rs256"}').toString("base64url");
+        const payload = Buffer.from("123").toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -393,8 +391,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with alg that is not a string", () => {
-        const header = base64url('{"alg":12345}');
-        const payload = base64url('{"iss":"test"}');
+        const header = Buffer.from('{"alg":12345}').toString("base64url");
+        const payload = Buffer.from('{"iss":"test"}').toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -405,8 +403,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT alg different from JWK alg", () => {
-        const header = base64url('{"alg":"RS512"}');
-        const payload = base64url('{"iss":"test"}');
+        const header = Buffer.from('{"alg":"RS512"}').toString("base64url");
+        const payload = Buffer.from('{"iss":"test"}').toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -419,8 +417,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("JWT with iss that is not a string", () => {
-        const header = base64url('{"alg":"RS256"}');
-        const payload = base64url('{"iss":12345}');
+        const header = Buffer.from('{"alg":"RS256"}').toString("base64url");
+        const payload = Buffer.from('{"iss":12345}').toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -431,8 +429,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with sub that is not a string", () => {
-        const header = base64url('{"alg":"RS256"}');
-        const payload = base64url('{"sub":12345}');
+        const header = Buffer.from('{"alg":"RS256"}').toString("base64url");
+        const payload = Buffer.from('{"sub":12345}').toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -443,8 +441,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with aud that is not a string", () => {
-        const header = base64url('{"alg":"RS256"}');
-        const payload = base64url('{"aud":12345}');
+        const header = Buffer.from('{"alg":"RS256"}').toString("base64url");
+        const payload = Buffer.from('{"aud":12345}').toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -455,8 +453,10 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with aud that is not a string array", () => {
-        const header = base64url('{"alg":"RS256"}');
-        const payload = base64url('{"aud":["1234", 5678]}');
+        const header = Buffer.from('{"alg":"RS256"}').toString("base64url");
+        const payload = Buffer.from('{"aud":["1234", 5678]}').toString(
+          "base64url"
+        );
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -467,8 +467,8 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtParseError);
       });
       test("JWT with iat that is not a number", () => {
-        const header = base64url('{"alg":"RS256"}');
-        const payload = base64url('{"iat":"12345"}');
+        const header = Buffer.from('{"alg":"RS256"}').toString("base64url");
+        const payload = Buffer.from('{"iat":"12345"}').toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
@@ -790,7 +790,7 @@ describe("unit tests jwt verifier", () => {
     });
     describe("invalid JWK for token verification", () => {
       test("wrong signature algorithm", () => {
-        const wrongJwk = publicKeyToJwk(keypair.publicKey, { alg: "RS384" });
+        const wrongJwk = { ...keypair.jwk, alg: "RS384" };
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
@@ -806,8 +806,10 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("unsupported signature algorithm", () => {
-        const header = base64url('{"alg":"PS256"}');
-        const payload = base64url('{"iss":"testiss","aud":"testaud"}');
+        const header = Buffer.from('{"alg":"PS256"}').toString("base64url");
+        const payload = Buffer.from(
+          '{"iss":"testiss","aud":"testaud"}'
+        ).toString("base64url");
         const signedJwt = `${header}.${payload}.signature`;
         const { alg: _, ...jwkWithoutAlg } = keypair.jwk;
         const statementWithJwkWithoutAlg = () =>
@@ -853,7 +855,7 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(JwtInvalidSignatureAlgorithmError);
       });
       test("wrong JWK use", () => {
-        const wrongJwk = publicKeyToJwk(keypair.publicKey, { use: "notsig" });
+        const wrongJwk = { ...keypair.jwk, use: "notsig" };
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
@@ -1707,7 +1709,7 @@ describe("unit tests jwt verifier", () => {
       pubkeyCache.transformJwkToKeyObjectSync(jwk, "RS256", "othertestissuer");
       // Using a different JWK (with other kid) forces the transformer to run
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(2);
-      const otherKeyPair = generateKeyPair({ kid: "otherkid" });
+      const otherKeyPair = generateKeyPair({ kty: "RSA", kid: "otherkid" });
       const otherJwk = otherKeyPair.jwk as RsaSignatureJwk;
       pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "RS256", "testissuer");
       pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "RS256", "testissuer"); // same JWK, same issuer, transform from cache

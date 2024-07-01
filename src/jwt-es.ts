@@ -25,6 +25,7 @@ import {
   decomposeUnverifiedJwt,
   DecomposedJwt,
   validateJwtFields,
+  GenericKeyObject,
 } from "./jwt.js";
 import {
   JwtInvalidClaimError,
@@ -43,7 +44,7 @@ export const supportedSignatureAlgorithms = [
   "ES512",
 ] as const;
 export type SupportedSignatureAlgorithm =
-  typeof supportedSignatureAlgorithms[number];
+  (typeof supportedSignatureAlgorithms)[number];
 
 /** Interface for JWT verification properties */
 export interface VerifyProperties {
@@ -125,7 +126,7 @@ export type JwtEsVerifierMultiProperties<T> = {
  * JWT Verifier (ES) for a single issuer
  */
 export type JwtEsVerifierSingleIssuer<
-  T extends JwtEsVerifierProperties<VerifyProperties>
+  T extends JwtEsVerifierProperties<VerifyProperties>,
 > = JwtEsVerifier<
   Properties<VerifyProperties, T>,
   T & JwtEsVerifierProperties<VerifyProperties>,
@@ -149,41 +150,12 @@ type VerifyParameters<SpecificVerifyProperties> = {
  * JWT Verifier (ES) for multiple issuers
  */
 export type JwtEsVerifierMultiIssuer<
-  T extends JwtEsVerifierMultiProperties<VerifyProperties>
+  T extends JwtEsVerifierMultiProperties<VerifyProperties>,
 > = JwtEsVerifier<
   Properties<VerifyProperties, T>,
   T & JwtEsVerifierProperties<VerifyProperties>,
   true
 >;
-
-/**
- * Verify (synchronously) the JSON Web Signature (JWS) of a JWT
- * https://datatracker.ietf.org/doc/html/rfc7515
- *
- * @param keyObject: the keyobject (representing the public key) in native crypto format
- * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
- * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
- * @param signature: the JSON Web Signature (JWS)
- * @returns boolean: true if the JWS is valid, or false otherwise
- */
-export type JwsVerificationFunctionSync = (props: {
-  keyObject: GenericKeyObject;
-  alg: SupportedSignatureAlgorithm;
-  jwsSigningInput: string;
-  signature: string;
-}) => boolean;
-
-/**
- * Verify (asynchronously) the JSON Web Signature (JWS) of a JWT
- * https://datatracker.ietf.org/doc/html/rfc7515
- *
- * @param keyObject: the keyobject (representing the public key) in native crypto format
- * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
- * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
- * @param signature: the JSON Web Signature (JWS)
- * @returns Promise that resolves to a boolean: true if the JWS is valid, or false otherwise
- */
-export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
 
 /**
  * Sanity check the JWT header and the selected JWK
@@ -462,7 +434,7 @@ type Kid = string;
 export abstract class JwtEsVerifierBase<
   SpecificVerifyProperties extends Record<string | number, unknown>,
   IssuerConfig extends JwtEsVerifierProperties<SpecificVerifyProperties>,
-  MultiIssuer extends boolean
+  MultiIssuer extends boolean,
 > {
   private issuersConfig: Map<Issuer, IssuerConfig & { jwksUri: string }> =
     new Map();
@@ -689,7 +661,7 @@ export abstract class JwtEsVerifierBase<
 export class JwtEsVerifier<
   SpecificVerifyProperties extends Partial<VerifyProperties>,
   IssuerConfig extends JwtEsVerifierProperties<SpecificVerifyProperties>,
-  MultiIssuer extends boolean
+  MultiIssuer extends boolean,
 > extends JwtEsVerifierBase<
   SpecificVerifyProperties,
   IssuerConfig,
@@ -732,12 +704,6 @@ export class JwtEsVerifier<
     return new this(verifyProperties, additionalProperties?.jwksCache);
   }
 }
-
-/**
- * Type for a generic key object, at runtime either the Node.js or WebCrypto concrete key object is used
- */
-// eslint-disable-next-line @typescript-eslint/ban-types
-type GenericKeyObject = Object;
 
 /**
  * Transform (synchronously) the JWK into an ES public key in crypto native key object format

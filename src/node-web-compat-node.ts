@@ -15,9 +15,9 @@ enum JwtSignatureAlgorithms {
   RS256 = "RSA-SHA256",
   RS384 = "RSA-SHA384",
   RS512 = "RSA-SHA512",
-  ES256 = "RSA-SHA256",
-  ES384 = "RSA-SHA384",
-  ES512 = "RSA-SHA512",
+  ES256 = RS256, // yes, openssl uses the same algorithm name
+  ES384 = RS384, // yes, openssl uses the same algorithm name
+  ES512 = RS512, // yes, openssl uses the same algorithm name
 }
 
 export const nodeWebCompat: NodeWebCompat = {

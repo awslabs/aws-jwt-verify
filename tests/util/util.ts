@@ -26,19 +26,42 @@ export interface KeyPair {
 }
 
 export function generateKeyPair(
-  options: { kty: "RSA" } | { kty: "EC", namedCurve: "P-256" | "P-384" | "P-521"} =  { kty: "RSA" }
+  options:
+    | {
+        kty: "RSA";
+        alg?: "RS256" | "RS384" | "RS512";
+        kid?: string;
+        use?: string;
+      }
+    | {
+        kty: "EC";
+        namedCurve: "P-256" | "P-384" | "P-521";
+        alg?: "ES256" | "ES384" | "ES512";
+        kid?: string;
+        use?: string;
+      } = {
+    kty: "RSA",
+    alg: "RS256",
+    use: "sig",
+  }
 ): KeyPair {
-  const { privateKey, publicKey } = options.kty === "RSA" ? generateKeyPairSync("rsa", {
-    modulusLength: 4096,
-    publicExponent: 0x10001,
-  }) : generateKeyPairSync("ec", {
-    namedCurve: options.namedCurve
-  });
-  
+  const { privateKey, publicKey } =
+    options.kty === "RSA"
+      ? generateKeyPairSync("rsa", {
+          modulusLength: 4096,
+          publicExponent: 0x10001,
+        })
+      : generateKeyPairSync("ec", {
+          namedCurve: options.namedCurve,
+        });
+
   const jwk = publicKey.export({
-    format: "jwk"
+    format: "jwk",
   }) as Jwk;
-  jwk.use = "sig";
+  jwk.alg =
+    "alg" in options ? options.alg : options.kty === "RSA" ? "RS256" : "ES256";
+  jwk.kid = "kid" in options ? options.kid : "testkid";
+  jwk.use = "use" in options ? options.use : "sig";
 
   return {
     publicKey,
@@ -62,9 +85,9 @@ enum JwtSignatureAlgorithms {
   RS256 = "RSA-SHA256",
   RS384 = "RSA-SHA384",
   RS512 = "RSA-SHA512",
-  ES256 = "RSA-SHA256",
-  ES384 = "RSA-SHA384",
-  ES512 = "RSA-SHA512",
+  ES256 = RS256,
+  ES384 = RS384,
+  ES512 = RS512,
 }
 
 export function signJwt(
@@ -75,23 +98,26 @@ export function signJwt(
 ) {
   header = {
     ...header,
-    alg: Object.keys(header).includes("alg") ? header.alg : "RS256",
+    alg: "alg" in header ? header.alg : "RS256",
   };
   payload = { exp: Math.floor(Date.now() / 1000 + 100), ...payload };
   const toSign = [
     Buffer.from(JSON.stringify(header)).toString("base64url"),
-    Buffer.from(JSON.stringify(payload)).toString("base64url")
+    Buffer.from(JSON.stringify(payload)).toString("base64url"),
   ].join(".");
-  const digestFunction = JwtSignatureAlgorithms[header.alg as keyof typeof JwtSignatureAlgorithms ?? "RS256"];
-  const sign = createSign(
-    digestFunction
-  );
+  const digestFunction =
+    JwtSignatureAlgorithms[
+      (header.alg as keyof typeof JwtSignatureAlgorithms) ?? "RS256"
+    ];
+  const sign = createSign(digestFunction);
   sign.write(toSign);
   sign.end();
   const signature = sign.sign(privateKey);
   if (!produceValidSignature) {
     signature[0] = ~signature[0]; // swap first byte
   }
-  const signedJwt = [toSign, Buffer.from(signature).toString("base64url")].join(".");
+  const signedJwt = [toSign, Buffer.from(signature).toString("base64url")].join(
+    "."
+  );
   return signedJwt;
 }

@@ -44,7 +44,7 @@ export const supportedSignatureAlgorithms = [
   "RS512",
 ] as const;
 export type SupportedSignatureAlgorithm =
-  typeof supportedSignatureAlgorithms[number];
+  (typeof supportedSignatureAlgorithms)[number];
 
 /** Interface for JWT verification properties */
 export interface VerifyProperties {
@@ -126,7 +126,7 @@ export type JwtRsaVerifierMultiProperties<T> = {
  * JWT Verifier (RSA) for a single issuer
  */
 export type JwtRsaVerifierSingleIssuer<
-  T extends JwtRsaVerifierProperties<VerifyProperties>
+  T extends JwtRsaVerifierProperties<VerifyProperties>,
 > = JwtRsaVerifier<
   Properties<VerifyProperties, T>,
   T & JwtRsaVerifierProperties<VerifyProperties>,
@@ -150,7 +150,7 @@ type VerifyParameters<SpecificVerifyProperties> = {
  * JWT Verifier (RSA) for multiple issuers
  */
 export type JwtRsaVerifierMultiIssuer<
-  T extends JwtRsaVerifierMultiProperties<VerifyProperties>
+  T extends JwtRsaVerifierMultiProperties<VerifyProperties>,
 > = JwtRsaVerifier<
   Properties<VerifyProperties, T>,
   T & JwtRsaVerifierProperties<VerifyProperties>,
@@ -434,7 +434,7 @@ type Kid = string;
 export abstract class JwtRsaVerifierBase<
   SpecificVerifyProperties extends Record<string | number, unknown>,
   IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties>,
-  MultiIssuer extends boolean
+  MultiIssuer extends boolean,
 > {
   private issuersConfig: Map<Issuer, IssuerConfig & { jwksUri: string }> =
     new Map();
@@ -661,7 +661,7 @@ export abstract class JwtRsaVerifierBase<
 export class JwtRsaVerifier<
   SpecificVerifyProperties extends Partial<VerifyProperties>,
   IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties>,
-  MultiIssuer extends boolean
+  MultiIssuer extends boolean,
 > extends JwtRsaVerifierBase<
   SpecificVerifyProperties,
   IssuerConfig,
