@@ -29,7 +29,7 @@ import {
   KeyObjectCache,
 } from "../../src/jwt-verifier";
 import { nodeWebCompat } from "../../src/node-web-compat-node";
-import { JwksCache, Jwks, Jwk, RsaSignatureJwk } from "../../src/jwk";
+import { JwksCache, Jwks, Jwk, SignatureJwk } from "../../src/jwk";
 import { performance } from "perf_hooks";
 import { KeyObject } from "crypto";
 import { validateCognitoJwtFields } from "../../src/cognito-verifier";
@@ -1752,7 +1752,7 @@ describe("unit tests jwt verifier", () => {
       );
       const pubkeyCache = new KeyObjectCache(jwkToKeyObjectTransformerSpy);
       const issuer = "testissuer";
-      const jwk = keypair.jwk as RsaSignatureJwk;
+      const jwk = keypair.jwk as SignatureJwk;
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
         jwk,
         "RS256",
@@ -1766,7 +1766,7 @@ describe("unit tests jwt verifier", () => {
       // Using a different JWK (with other kid) forces the transformer to run
       expect(jwkToKeyObjectTransformerSpy).toHaveBeenCalledTimes(2);
       const otherKeyPair = generateKeyPair({ kty: "RSA", kid: "otherkid" });
-      const otherJwk = otherKeyPair.jwk as RsaSignatureJwk;
+      const otherJwk = otherKeyPair.jwk as SignatureJwk;
       pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "RS256", "testissuer");
       pubkeyCache.transformJwkToKeyObjectSync(otherJwk, "RS256", "testissuer"); // same JWK, same issuer, transform from cache
       pubkeyCache.transformJwkToKeyObjectSync(
@@ -1785,7 +1785,7 @@ describe("unit tests jwt verifier", () => {
         nodeWebCompat.transformJwkToKeyObjectSync
       );
       const pubkeyCache = new KeyObjectCache(jwkToKeyObjectTransformerSpy);
-      const copiedJwk = { ...(keypair.jwk as RsaSignatureJwk) };
+      const copiedJwk = { ...(keypair.jwk as SignatureJwk) };
       delete copiedJwk.alg;
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
         copiedJwk,
@@ -1812,7 +1812,7 @@ describe("unit tests jwt verifier", () => {
         undefined,
         jwkToKeyObjectTransformerSpy
       );
-      const copiedJwk = { ...(keypair.jwk as RsaSignatureJwk) };
+      const copiedJwk = { ...(keypair.jwk as SignatureJwk) };
       delete copiedJwk.alg;
       const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
         copiedJwk,
@@ -1842,7 +1842,7 @@ describe("unit tests jwt verifier", () => {
       const issuer = undefined;
       const pubkeyCache = new KeyObjectCache();
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
-        keypair.jwk as RsaSignatureJwk,
+        keypair.jwk as SignatureJwk,
         issuer
       ) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
@@ -1853,7 +1853,7 @@ describe("unit tests jwt verifier", () => {
       const issuer = undefined;
       const pubkeyCache = new KeyObjectCache();
       const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
-        keypair.jwk as RsaSignatureJwk,
+        keypair.jwk as SignatureJwk,
         issuer
       )) as KeyObject;
       expect(pubkey.export({ format: "der", type: "spki" })).toEqual(
@@ -1863,7 +1863,7 @@ describe("unit tests jwt verifier", () => {
     test("no kid", () => {
       const issuer = "testissuer";
       const pubkeyCache = new KeyObjectCache();
-      const jwk = { ...keypair.jwk } as RsaSignatureJwk;
+      const jwk = { ...keypair.jwk } as SignatureJwk;
       delete jwk.kid;
       const pubkey = pubkeyCache.transformJwkToKeyObjectSync(
         jwk,
@@ -1877,7 +1877,7 @@ describe("unit tests jwt verifier", () => {
     test("no kid - async", async () => {
       const issuer = "testissuer";
       const pubkeyCache = new KeyObjectCache();
-      const jwk = { ...keypair.jwk } as RsaSignatureJwk;
+      const jwk = { ...keypair.jwk } as SignatureJwk;
       delete jwk.kid;
       const pubkey = (await pubkeyCache.transformJwkToKeyObjectAsync(
         jwk,
