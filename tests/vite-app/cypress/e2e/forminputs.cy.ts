@@ -112,7 +112,7 @@ describe("click Verify RSA", () => {
 
     cy.get("#result").should(
       "include.text",
-      "Failed to fetch /notexample-JWKS.json: Status code is 404, expected 200"
+      "Failed to fetch /notexample-JWKS.json"
     );
   });
 

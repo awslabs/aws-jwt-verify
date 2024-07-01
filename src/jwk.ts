@@ -15,7 +15,10 @@ import {
   JwkInvalidKtyError,
 } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
-import { assertStringEquals } from "./assert.js";
+import {
+  assertStringArrayContainsString,
+  assertStringEquals,
+} from "./assert.js";
 
 interface DecomposedJwt {
   header: JwtHeader;
@@ -36,8 +39,8 @@ const mandatoryJwkFieldNames = [
   "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
 ] as const;
 
-type OptionalJwkFieldNames = typeof optionalJwkFieldNames[number];
-type MandatoryJwkFieldNames = typeof mandatoryJwkFieldNames[number];
+type OptionalJwkFieldNames = (typeof optionalJwkFieldNames)[number];
+type MandatoryJwkFieldNames = (typeof mandatoryJwkFieldNames)[number];
 type OptionalJwkFields = {
   [key in OptionalJwkFieldNames]?: string;
 };
@@ -61,6 +64,8 @@ export type EsSignatureJwk = Jwk & {
   x: string;
   y: string;
 };
+
+export type SignatureJwk = RsaSignatureJwk | EsSignatureJwk;
 
 export type JwkWithKid = Jwk & {
   kid: string;
@@ -127,11 +132,27 @@ export function assertIsJwks(jwks: Json): asserts jwks is Jwks {
   }
 }
 
+export function assertIsSignatureJwk(jwk: Jwk): asserts jwk is SignatureJwk {
+  assertStringArrayContainsString(
+    "JWK kty",
+    jwk.kty,
+    ["EC", "RSA"],
+    JwkInvalidKtyError
+  );
+  if (jwk.kty === "EC") {
+    assertIsEsSignatureJwk(jwk);
+  } else if (jwk.kty === "RSA") {
+    assertIsRsaSignatureJwk(jwk);
+  }
+}
+
 export function assertIsEsSignatureJwk(
   jwk: Jwk
 ): asserts jwk is EsSignatureJwk {
   // Check JWK use
-  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  if (jwk.use) {
+    assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  }
 
   // Check JWK kty
   assertStringEquals("JWK kty", jwk.kty, "EC", JwkInvalidKtyError);
@@ -150,7 +171,9 @@ export function assertIsRsaSignatureJwk(
   jwk: Jwk
 ): asserts jwk is RsaSignatureJwk {
   // Check JWK use
-  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  if (jwk.use) {
+    assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  }
 
   // Check JWK kty
   assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);

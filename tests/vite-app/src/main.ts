@@ -1,5 +1,5 @@
 import "./style.css";
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 
 const inputjwt = document.querySelector<HTMLInputElement>("#jwt");
 const inputissuer = document.querySelector<HTMLInputElement>("#issuer");
@@ -23,7 +23,7 @@ if (inputjwt) {
 if (button) {
   button.onclick = async () => {
     if (inputjwt && inputissuer && inputjwskuri && inputaudience && result) {
-      const verifier = JwtRsaVerifier.create({
+      const verifier = JwtVerifier.create({
         issuer: inputissuer?.value,
         audience: inputaudience?.value === "" ? null : inputaudience.value,
         jwksUri: inputjwskuri?.value,

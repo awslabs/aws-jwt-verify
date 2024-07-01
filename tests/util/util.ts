@@ -90,6 +90,15 @@ enum JwtSignatureAlgorithms {
   ES512 = RS512,
 }
 
+/**
+ * Create a signed JWT with the given header and payload.
+ * The signature algorithm will be taken from the "alg" in the header that you provide, and will default to RS256 if not given.
+ * @param header
+ * @param payload
+ * @param privateKey
+ * @param produceValidSignature
+ * @returns
+ */
 export function signJwt(
   header: { kid?: string; alg?: string; [key: string]: any },
   payload: { [key: string]: any },

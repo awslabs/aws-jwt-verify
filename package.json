@@ -1,7 +1,7 @@
 {
   "name": "aws-jwt-verify",
   "version": "4.0.1",
-  "description": "Verify RS256/RS384/RS512 signed JSON Web Tokens (JWT)",
+  "description": "Verify RS256/RS384/RS512/ES256/ES384/ES512 signed JSON Web Tokens (JWT)",
   "license": "Apache-2.0",
   "author": {
     "name": "Amazon Web Services",
@@ -12,7 +12,6 @@
   "types": "index.d.ts",
   "module": "dist/esm/index.js",
   "files": [
-    "asn1.d.ts",
     "assert.d.ts",
     "cognito-verifier.d.ts",
     "dist",
@@ -23,7 +22,7 @@
     "index.d.ts",
     "jwk.d.ts",
     "jwt-model.d.ts",
-    "jwt-rsa.d.ts",
+    "jwt-verifier.d.ts",
     "jwt.d.ts",
     "safe-json-parse.d.ts",
     "typing-util.d.ts"
@@ -33,11 +32,6 @@
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
       "types": "./index.d.ts"
-    },
-    "./asn1": {
-      "import": "./dist/esm/asn1.js",
-      "require": "./dist/cjs/asn1.js",
-      "types": "./asn1.d.ts"
     },
     "./assert": {
       "import": "./dist/esm/assert.js",
@@ -74,10 +68,10 @@
       "require": "./dist/cjs/jwt-model.js",
       "types": "./jwt-model.d.ts"
     },
-    "./jwt-rsa": {
-      "import": "./dist/esm/jwt-rsa.js",
-      "require": "./dist/cjs/jwt-rsa.js",
-      "types": "./jwt-rsa.d.ts"
+    "./jwt-verifier": {
+      "import": "./dist/esm/jwt-verifier.js",
+      "require": "./dist/cjs/jwt-verifier.js",
+      "types": "./jwt-verifier.d.ts"
     },
     "./safe-json-parse": {
       "import": "./dist/esm/safe-json-parse.js",
@@ -104,7 +98,7 @@
   "scripts": {
     "dist:cjs": "tsc --module CommonJS --moduleResolution node --outDir dist/cjs && node dist-create-package.cjs cjs",
     "dist:esm": "tsc --module ES2020 --moduleResolution node --outDir dist/esm && node dist-create-package.cjs esm",
-    "dist:types": "tsc --declarationDir . --declaration --emitDeclarationOnly",
+    "dist:types": "mkdir -p dist/dts && tsc --outDir dist/dts --declaration --emitDeclarationOnly && mv dist/dts/*.d.ts . && rm -r dist/dts",
     "dist": "rm -rf dist && npm run dist:cjs && npm run dist:esm && npm run dist:types",
     "lint:check": "eslint . --ignore-path .gitignore --max-warnings 0",
     "lint": "eslint . --fix --ignore-path .gitignore --max-warnings 0",

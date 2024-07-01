@@ -1,5 +1,5 @@
+/* eslint-disable security/detect-non-literal-fs-filename */
 import { generateKeyPair, signJwt } from "../../util/util";
-import { deconstructPublicKeyInDerFormat } from "aws-jwt-verify/asn1";
 import { randomUUID } from "crypto";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
@@ -71,11 +71,12 @@ const tokendata = {
 };
 
 const main = async () => {
-  const { privateKey, jwk } = generateKeyPair(deconstructPublicKeyInDerFormat, {
+  const { privateKey, jwk } = generateKeyPair({
+    kty: "RSA",
     kid: randomUUID(),
   });
   const { privateKey: privateKeyForJwkWithoutAlg, jwk: jwkWithoutAlg } =
-    generateKeyPair(deconstructPublicKeyInDerFormat, { kid: randomUUID() });
+    generateKeyPair({ kty: "RSA", kid: randomUUID() });
   delete jwkWithoutAlg.alg;
   const jwks = { keys: [jwk, jwkWithoutAlg] };
 

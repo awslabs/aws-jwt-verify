@@ -32,14 +32,14 @@ export type CognitoIdOrAccessTokenPayload<IssuerConfig, VerifyProps> =
   VerifyProps extends { tokenUse: null }
     ? CognitoJwtPayload
     : VerifyProps extends { tokenUse: "id" }
-    ? CognitoIdTokenPayload
-    : VerifyProps extends { tokenUse: "access" }
-    ? CognitoAccessTokenPayload
-    : IssuerConfig extends { tokenUse: "id" }
-    ? CognitoIdTokenPayload
-    : IssuerConfig extends { tokenUse: "access" }
-    ? CognitoAccessTokenPayload
-    : CognitoJwtPayload;
+      ? CognitoIdTokenPayload
+      : VerifyProps extends { tokenUse: "access" }
+        ? CognitoAccessTokenPayload
+        : IssuerConfig extends { tokenUse: "id" }
+          ? CognitoIdTokenPayload
+          : IssuerConfig extends { tokenUse: "access" }
+            ? CognitoAccessTokenPayload
+            : CognitoJwtPayload;
 
 interface CognitoJwtFields {
   token_use: "access" | "id";

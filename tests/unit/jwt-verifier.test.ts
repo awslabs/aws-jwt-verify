@@ -23,11 +23,11 @@ import {
   ParameterValidationError,
 } from "../../src/error";
 import {
-  JwtRsaVerifier,
+  JwtVerifier,
   verifyJwt,
   verifyJwtSync,
   KeyObjectCache,
-} from "../../src/jwt-rsa";
+} from "../../src/jwt-verifier";
 import { nodeWebCompat } from "../../src/node-web-compat-node";
 import { JwksCache, Jwks, Jwk, RsaSignatureJwk } from "../../src/jwk";
 import { performance } from "perf_hooks";
@@ -36,9 +36,15 @@ import { validateCognitoJwtFields } from "../../src/cognito-verifier";
 
 describe("unit tests jwt verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
+  let es384keypair: ReturnType<typeof generateKeyPair>;
   let rs512keypair: ReturnType<typeof generateKeyPair>;
   beforeAll(() => {
     keypair = generateKeyPair();
+    es384keypair = generateKeyPair({
+      kty: "EC",
+      alg: "ES384",
+      namedCurve: "P-384",
+    });
     rs512keypair = generateKeyPair({ kty: "RSA", alg: "RS512" });
     disallowAllRealNetworkTraffic();
   });
@@ -58,6 +64,23 @@ describe("unit tests jwt verifier", () => {
         );
         expect(
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with jwk - ES384", () => {
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "ES384", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          es384keypair.privateKey
+        );
+        const jwtHeader = JSON.parse(
+          Buffer.from(signedJwt.split(".")[0], "base64url").toString()
+        );
+        expect(jwtHeader).toMatchObject({ alg: "ES384" });
+        expect(es384keypair.jwk.alg).toBe("ES384");
+        expect(
+          verifyJwtSync(signedJwt, es384keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
       test("happy flow with RS512 jwk", () => {
@@ -870,18 +893,6 @@ describe("unit tests jwt verifier", () => {
         );
         expect(statement).toThrow(JwkInvalidUseError);
       });
-      test("missing JWK use", () => {
-        const { jwk, privateKey } = generateKeyPair();
-        const signedJwt = signJwt({}, {}, privateKey);
-        delete (jwk as Jwk).use;
-        const statement = () =>
-          verifyJwtSync(signedJwt, jwk, {
-            audience: null,
-            issuer: null,
-          });
-        expect(statement).toThrow("Missing JWK use. Expected: sig");
-        expect(statement).toThrow(JwkInvalidUseError);
-      });
       test("missing modulus on JWK", () => {
         const { jwk, privateKey } = generateKeyPair();
         const signedJwt = signJwt({}, {}, privateKey);
@@ -904,6 +915,51 @@ describe("unit tests jwt verifier", () => {
             issuer: null,
           });
         expect(statement).toThrow("Missing exponent (e)");
+        expect(statement).toThrow(JwkValidationError);
+      });
+      test("missing crv on JWK", () => {
+        const { jwk, privateKey } = generateKeyPair({
+          kty: "EC",
+          namedCurve: "P-256",
+        });
+        delete jwk.crv;
+        const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing Curve (crv)");
+        expect(statement).toThrow(JwkValidationError);
+      });
+      test("missing x on JWK", () => {
+        const { jwk, privateKey } = generateKeyPair({
+          kty: "EC",
+          namedCurve: "P-256",
+        });
+        delete jwk.x;
+        const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing X Coordinate (x)");
+        expect(statement).toThrow(JwkValidationError);
+      });
+      test("missing y on JWK", () => {
+        const { jwk, privateKey } = generateKeyPair({
+          kty: "EC",
+          namedCurve: "P-256",
+        });
+        delete jwk.y;
+        const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing Y Coordinate (y)");
         expect(statement).toThrow(JwkValidationError);
       });
     });
@@ -1101,7 +1157,7 @@ describe("unit tests jwt verifier", () => {
     describe("verify", () => {
       test("happy flow", () => {
         const issuer = "https://example.com";
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
           jwksUri: `${issuer}/.well-known/keys.json`,
           customJwtCheck: async () => {
@@ -1121,7 +1177,7 @@ describe("unit tests jwt verifier", () => {
       });
       test("happy flow - jwks uri defaults from issuer", () => {
         const issuer = "https://example.com/foo/bar";
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
         });
         mockHttpsUri(`${issuer}/.well-known/jwks.json`, {
@@ -1139,7 +1195,7 @@ describe("unit tests jwt verifier", () => {
       });
       test("jwt without iss claim", () => {
         const signedJwt = signJwt({}, { hello: "world" }, keypair.privateKey);
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer: "testissuer",
           jwksUri: "https://example.com/keys/jwks.json",
           audience: "1234567890",
@@ -1174,7 +1230,7 @@ describe("unit tests jwt verifier", () => {
         const customJwksCache = new CustomJwksCache();
         const issuer = "https://example.com";
         const jwksUri = `${issuer}/.well-known/keys.json`;
-        const verifier = JwtRsaVerifier.create(
+        const verifier = JwtVerifier.create(
           {
             issuer,
             jwksUri,
@@ -1208,7 +1264,7 @@ describe("unit tests jwt verifier", () => {
       });
       test("hydrate the JWKS cache by prefetching JWKS works", async () => {
         const issuer = "https://example.com";
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
         });
         const jwksUri = `${issuer}/.well-known/jwks.json`;
@@ -1249,7 +1305,7 @@ describe("unit tests jwt verifier", () => {
             );
         }
         const customJwksCache = new CustomJwksCache();
-        const verifier = JwtRsaVerifier.create(
+        const verifier = JwtVerifier.create(
           [
             {
               issuer: issuer1,
@@ -1292,7 +1348,7 @@ describe("unit tests jwt verifier", () => {
       });
       test("custom JWT check that throws", () => {
         const issuer = "https://example.com";
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
           jwksUri: `${issuer}/.well-known/keys.json`,
           customJwtCheck: async () => {
@@ -1324,7 +1380,7 @@ describe("unit tests jwt verifier", () => {
         );
         const decomposedJwt = decomposeUnverifiedJwt(signedJwt);
         const customJwtCheck = jest.fn();
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
           jwksUri: "https://example.com/keys/jwks.json",
           audience,
@@ -1345,7 +1401,7 @@ describe("unit tests jwt verifier", () => {
     describe("verifySync", () => {
       test("happy flow", () => {
         const issuer = "https://example.com";
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
           jwksUri: `${issuer}/.well-known/keys.json`,
           customJwtCheck: () => {
@@ -1368,7 +1424,7 @@ describe("unit tests jwt verifier", () => {
           { hello: "world" },
           keypair.privateKey
         );
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer: "testissuer",
           jwksUri: "https://example.com/keys/jwks.json",
           audience: "1234567890",
@@ -1384,7 +1440,7 @@ describe("unit tests jwt verifier", () => {
           { hello: "world", iss: "testissuer" },
           keypair.privateKey
         );
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer: "testissuer",
           jwksUri: "https://example.com/keys/jwks.json",
           audience: "1234567890",
@@ -1408,7 +1464,7 @@ describe("unit tests jwt verifier", () => {
             throw new Error("Oops my custom check failed");
           }
         });
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
           jwksUri: "https://example.com/keys/jwks.json",
           audience,
@@ -1433,7 +1489,7 @@ describe("unit tests jwt verifier", () => {
           { aud: audience, iss: issuer, hello: "world" },
           keypair.privateKey
         );
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
           jwksUri: "https://example.com/keys/jwks.json",
           audience,
@@ -1455,7 +1511,7 @@ describe("unit tests jwt verifier", () => {
           { aud: audience, iss: issuer, hello: "world" },
           keypair.privateKey
         );
-        const verifier = JwtRsaVerifier.create({
+        const verifier = JwtVerifier.create({
           issuer,
           jwksUri: "https://example.com/keys/jwks.json",
           audience,
@@ -1494,7 +1550,7 @@ describe("unit tests jwt verifier", () => {
             keypair: generateKeyPair(),
           },
         ];
-        const verifier = JwtRsaVerifier.create(
+        const verifier = JwtVerifier.create(
           identityProviders.map((idp) => idp.config)
         );
 
@@ -1526,7 +1582,7 @@ describe("unit tests jwt verifier", () => {
             audience: "audience2",
           },
         ];
-        const verifier = JwtRsaVerifier.create(identityProviders);
+        const verifier = JwtVerifier.create(identityProviders);
         const emptyIssuer: any = undefined;
         const statement = () => verifier.cacheJwks(keypair.jwks, emptyIssuer);
         expect(statement).toThrow("issuer must be provided");
@@ -1543,21 +1599,21 @@ describe("unit tests jwt verifier", () => {
             audience: "audience2",
           },
         ];
-        const verifier = JwtRsaVerifier.create(identityProviders);
+        const verifier = JwtVerifier.create(identityProviders);
         const statement = () =>
           verifier.cacheJwks(keypair.jwks, "https://example-3.com");
         expect(statement).toThrow("issuer not configured");
         expect(statement).toThrow(ParameterValidationError);
       });
       test("need at least one issuer config", () => {
-        const statement = () => JwtRsaVerifier.create([]);
+        const statement = () => JwtVerifier.create([]);
         expect(statement).toThrow("Provide at least one issuer configuration");
         expect(statement).toThrow(ParameterValidationError);
       });
       test("should provide distinct issuers", () => {
         const issuer = "https://example.com";
         const statement = () =>
-          JwtRsaVerifier.create([
+          JwtVerifier.create([
             {
               issuer,
               audience: "audience1",
@@ -1578,7 +1634,7 @@ describe("unit tests jwt verifier", () => {
       const poolId = "eu-west-1_poolid";
       const issuer = `https://cognito-idp.eu-west-1.amazonaws.com/${poolId}`;
       const clientId = "<client_id>";
-      const verifier = JwtRsaVerifier.create({
+      const verifier = JwtVerifier.create({
         issuer: "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid",
         audience: null,
         customJwtCheck: ({ payload }) =>
@@ -1615,7 +1671,7 @@ describe("unit tests jwt verifier", () => {
       const poolId = "eu-west-1_poolid";
       const issuer = `https://cognito-idp.eu-west-1.amazonaws.com/${poolId}`;
       const clientId = "<client_id>";
-      const verifier = JwtRsaVerifier.create({
+      const verifier = JwtVerifier.create({
         issuer: "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid",
         audience: null,
         customJwtCheck: ({ payload }) =>
@@ -1652,7 +1708,7 @@ describe("unit tests jwt verifier", () => {
       const poolId = "eu-west-1_poolid";
       const issuer = `https://cognito-idp.eu-west-1.amazonaws.com/${poolId}`;
       const clientId = "<client_id>";
-      const verifier = JwtRsaVerifier.create({
+      const verifier = JwtVerifier.create({
         issuer: "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_poolid",
         audience: null,
         customJwtCheck: ({ payload }) =>
@@ -1882,7 +1938,7 @@ describe("speed tests jwt", () => {
     const aWholeLotOfJWTs = [...new Array(testCount)].map(
       createSignedJwtCallbackInMap
     );
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       audience,
       issuer,
       jwksUri: "http://example.com/jwks.json",

@@ -15,8 +15,7 @@ import {
   JwsVerificationFunctionSync,
   GenericKeyObject,
 } from "./jwt.js";
-import { SupportedSignatureAlgorithm as SupportedSignatureAlgorithmEs } from "./jwt-es.js";
-import { SupportedSignatureAlgorithm as SupportedSignatureAlgorithmRsa } from "./jwt-rsa.js";
+import { SupportedSignatureAlgorithm } from "./jwt-verifier.js";
 
 /**
  * Interface that the specific Node.js and Web implementations must implement
@@ -24,22 +23,14 @@ import { SupportedSignatureAlgorithm as SupportedSignatureAlgorithmRsa } from ".
 export interface NodeWebCompat {
   transformJwkToKeyObjectSync: (
     jwk: RsaSignatureJwk | EsSignatureJwk,
-    jwtHeaderAlg?:
-      | SupportedSignatureAlgorithmEs
-      | SupportedSignatureAlgorithmRsa
+    jwtHeaderAlg?: SupportedSignatureAlgorithm
   ) => GenericKeyObject;
   transformJwkToKeyObjectAsync: (
     jwk: RsaSignatureJwk | EsSignatureJwk,
-    jwtHeaderAlg?:
-      | SupportedSignatureAlgorithmEs
-      | SupportedSignatureAlgorithmRsa
+    jwtHeaderAlg?: SupportedSignatureAlgorithm
   ) => Promise<GenericKeyObject>;
-  verifySignatureSync: JwsVerificationFunctionSync<
-    SupportedSignatureAlgorithmEs | SupportedSignatureAlgorithmRsa
-  >;
-  verifySignatureAsync: JwsVerificationFunctionAsync<
-    SupportedSignatureAlgorithmEs | SupportedSignatureAlgorithmRsa
-  >;
+  verifySignatureSync: JwsVerificationFunctionSync<SupportedSignatureAlgorithm>;
+  verifySignatureAsync: JwsVerificationFunctionAsync<SupportedSignatureAlgorithm>;
   parseB64UrlString: (b64: string) => string;
   setTimeoutUnref: (
     ...args: Parameters<typeof setTimeout>

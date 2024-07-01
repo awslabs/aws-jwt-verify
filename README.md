@@ -1,6 +1,6 @@
 # AWS JWT Verify
 
-**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512**.
+**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512** / **ES256** / **ES384** / **ES512**.
 
 ## Installation
 
@@ -39,9 +39,9 @@ See all verify parameters for Amazon Cognito JWTs [here](#cognitojwtverifier-ver
 ### Other IDPs
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 
-const verifier = JwtRsaVerifier.create({
+const verifier = JwtVerifier.create({
   issuer: "https://example.com/", // set this to the expected "iss" claim on your JWTs
   audience: "<audience>", // set this to the expected "aud" claim on your JWTs
   jwksUri: "https://example.com/.well-known/jwks.json", // set this to the JWKS uri from your OpenID configuration
@@ -55,18 +55,18 @@ try {
 }
 ```
 
-See all verify parameters for JWTs from any IDP [here](#jwtrsaverifier-verify-parameters).
+See all verify parameters for JWTs from any IDP [here](#JwtVerifier-verify-parameters).
 
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
 - Pure **TypeScript** library that can be used in **Node.js** v14 and above (both CommonJS and ESM supported), as well in the modern evergreen Web browser.
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
-- **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI, and it includes a simple **ASN.1** encoder to transform JWKs into **DER-encoded RSA public keys** (in order to verify JWTs with Node.js native crypto calls).
+- **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512/ES256/ES384/ES512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI.
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp-02#section-3).
 - Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above).
 
-Currently, only signature algorithms **RS256** , **RS384** and **RS512** are supported.
+Currently, signature algorithms **RS256** , **RS384** , **RS512** and **ES256** , **ES384** , **ES512** are supported.
 
 ## Intended Usage
 
@@ -90,9 +90,9 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Checking scope](#checking-scope)
   - [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)
   - [Trusting multiple User Pools](#trusting-multiple-user-pools)
-  - [Using the generic JWT RSA verifier for Cognito JWTs](#using-the-generic-jwt-rsa-verifier-for-cognito-jwts)
+  - [Using the generic JWT verifier for Cognito JWTs](#using-the-generic-jwt-verifier-for-cognito-jwts)
 - [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
-  - [Verify parameters](#jwtrsaverifier-verify-parameters)
+  - [Verify parameters](#JwtVerifier-verify-parameters)
 - [Peeking inside unverified JWTs](#peeking-inside-unverified-jwts)
 - [Verification errors](#verification-errors)
   - [Peek inside invalid JWTs](#peek-inside-invalid-jwts)
@@ -293,18 +293,18 @@ try {
 }
 ```
 
-### Using the generic JWT RSA verifier for Cognito JWTs
+### Using the generic JWT verifier for Cognito JWTs
 
-The generic `JwtRsaVerifier` (see [below](#verifying-jwts-from-any-oidc-compatible-idp)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP.
+The generic `JwtVerifier` (see [below](#verifying-jwts-from-any-oidc-compatible-idp)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP.
 
 In this case, leave `audience` to `null`, but rather manually add `validateCognitoJwtFields` in the `customJwtCheck`.
 (Only Cognito ID tokens have an `audience` claim, Cognito Access token have a `client_id` claim instead. The `validateCognitoJwtFields` function handles this difference automatically for you)
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 import { validateCognitoJwtFields } from "aws-jwt-verify/cognito-verifier";
 
-const verifier = JwtRsaVerifier.create([
+const verifier = JwtVerifier.create([
   {
     issuer: "https://cognito-idp.eu-west-1.amazonaws.com/<user_pool_id>",
     audience: null, // audience (~clientId) is checked instead, by the Cognito specific checks below
@@ -324,12 +324,12 @@ const verifier = JwtRsaVerifier.create([
 
 ## Verifying JWTs from any OIDC-compatible IDP
 
-The generic `JwtRsaVerifier` works for any OIDC-compatible IDP that signs JWTs with RS256/RS384/RS512:
+The generic `JwtVerifier` works for any OIDC-compatible IDP that signs JWTs with RS256/RS384/RS512/ES256/ES384/ES512/:
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 
-const verifier = JwtRsaVerifier.create({
+const verifier = JwtVerifier.create({
   issuer: "https://example.com/", // set this to the expected "iss" claim on your JWTs
   audience: "<audience>", // set this to the expected "aud" claim on your JWTs
   jwksUri: "https://example.com/.well-known/jwks.json", // set this to the JWKS uri from your OpenID configuration
@@ -346,7 +346,7 @@ try {
 Support Multiple IDP's:
 
 ```typescript
-const verifier = JwtRsaVerifier.create([
+const verifier = JwtVerifier.create([
   {
     issuer: "https://example.com/idp1",
     audience: "expectedAudienceIdp1",
@@ -365,14 +365,14 @@ try {
 }
 ```
 
-### `JwtRsaVerifier` `verify` parameters
+### `JwtVerifier` `verify` parameters
 
-Except `issuer`, parameters provided when creating the `JwtRsaVerifier` act as defaults, that can be overridden upon calling `verify` or `verifySync`.
+Except `issuer`, parameters provided when creating the `JwtVerifier` act as defaults, that can be overridden upon calling `verify` or `verifySync`.
 
 Supported parameters are:
 
 - `jwksUri` (optional, can only be provided at verifier level): the URI where the JWKS can be downloaded from. To find this URI for your IDP, consult your IDP's OpenId configuration (e.g. by opening the OpenId configuration in your browser). Usually, it is `${issuer}/.well-known/jwks.json`, which is the default value that will be used if you don't explicitly provide `jwksUri`.
-- `audience` (mandatory): verify that the JWT's `aud` claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these audiences must match the JWT). Set to `null` to skip checking audience (not recommended unless you know what you are doing). Note that a JWT's `aud` claim might be an array of audiences. The `JwtRsaVerifier` will in that case make sure that at least one of these audiences matches with at least one of the audiences that were provided to the verifier.
+- `audience` (mandatory): verify that the JWT's `aud` claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these audiences must match the JWT). Set to `null` to skip checking audience (not recommended unless you know what you are doing). Note that a JWT's `aud` claim might be an array of audiences. The `JwtVerifier` will in that case make sure that at least one of these audiences matches with at least one of the audiences that were provided to the verifier.
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#checking-scope).
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
@@ -454,7 +454,7 @@ try {
 The `instanceof` check in the `catch` block above is crucial, because not all errors will include the rawJwt, only errors that subclass `JwtInvalidClaimError` will. In order to understand why this makes sense, you should know that this library verifies JWTs in 3 stages, that all must succeed for the JWT to be considered valid:
 
 - Stage 1: Verify JWT structure and JSON parse the JWT
-- Stage 2: Verify JWT cryptographic signature (i.e. RS256/RS384/RS512)
+- Stage 2: Verify JWT cryptographic signature (i.e. RS256/RS384/RS512/ES256/ES384/ES512/)
 - Stage 3: Verify JWT claims (such as e.g. its expiration)
 
 Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid (stages 1 and 2 succeeded).
@@ -492,9 +492,9 @@ try {
 
 ## The JWKS cache
 
-The JWKS cache is responsible for fetching the JWKS from the JWKS URI, caching it, and selecting the right JWK from it. Both the `CognitoJwtVerifier` and the (generic) `JwtRsaVerifier` utilize an in-memory JWKS cache. For each `issuer` a JWKS cache is maintained, and each JWK in a JWKS is selected and cached using its `kid` (key id). The JWKS for an `issuer` will be fetched once initially, and thereafter only upon key rotations (detected by the occurrence of a JWT with a `kid` that is not yet in the cache).
+The JWKS cache is responsible for fetching the JWKS from the JWKS URI, caching it, and selecting the right JWK from it. Both the `CognitoJwtVerifier` and the (generic) `JwtVerifier` utilize an in-memory JWKS cache. For each `issuer` a JWKS cache is maintained, and each JWK in a JWKS is selected and cached using its `kid` (key id). The JWKS for an `issuer` will be fetched once initially, and thereafter only upon key rotations (detected by the occurrence of a JWT with a `kid` that is not yet in the cache).
 
-Note: examples below work the same for `CognitoJwtVerifier` and `JwtRsaVerifier`.
+Note: examples below work the same for `CognitoJwtVerifier` and `JwtVerifier`.
 
 ### Loading the JWKS from file
 
@@ -538,7 +538,7 @@ Note that the verifier will still try to fetch the JWKS, if it encounters a JWT 
 
 ### Rate limiting
 
-Both the `CognitoJwtVerifier` and the `JwtRsaVerifier` enforce a rate limit of 1 JWKS download per JWKS uri per 10 seconds. This protects users of this library from inadvertently flooding the JWKS uri with requests, and prevents wasting time doing network calls.
+Both the `CognitoJwtVerifier` and the `JwtVerifier` enforce a rate limit of 1 JWKS download per JWKS uri per 10 seconds. This protects users of this library from inadvertently flooding the JWKS uri with requests, and prevents wasting time doing network calls.
 
 The rate limit works as follows (implemented by the `penaltyBox`, see below). When the verifier fetches the JWKS and fails to locate the JWT's kid in the JWKS, an error is thrown, and a timer of 10 seconds is started. Until that timer completes, the verifier will refuse to fetch the particular JWKS uri again. It will instead throw an error immediately on `verify` calls where that would require the JWKS to be downloaded.
 
@@ -553,7 +553,7 @@ In a long running Node.js API (e.g. a Fargate container), it might make sense to
 This call will always fetch the current, latest, JWKS for each of the verifier's issuers (even though the JWKS might have been fetched and cached before):
 
 ```typescript
-const verifier = JwtRsaVerifier.create([
+const verifier = JwtVerifier.create([
   {
     issuer: "https://example.com/idp1",
     audience: "myappclient1",
@@ -575,16 +575,19 @@ Note: it is only useful to call this method if your calling process has an idle 
 If you have a predefined rotation schedule for your JWKS, you could set the refresh interval of the verifier aligned to this schedule:
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 
-const verifier = JwtRsaVerifier.create({
+const verifier = JwtVerifier.create({
   issuer: "https://example.com/",
   audience: "<audience>",
 });
 
-setInterval(() => {
-  verifier.cacheJwks({ keys: [] }); // empty cache, by loading an empty JWKS
-}, 1000 * 60 * 60 * 4); // For a 4 hour refresh schedule
+setInterval(
+  () => {
+    verifier.cacheJwks({ keys: [] }); // empty cache, by loading an empty JWKS
+  },
+  1000 * 60 * 60 * 4
+); // For a 4 hour refresh schedule
 ```
 
 If an automated rotation does not fit your use case, and you need to clear out the JWKS cache, you could use:
@@ -595,18 +598,18 @@ verifier.cacheJwks({ keys: [] });
 
 ### Customizing the JWKS cache
 
-When you instantiate a `CognitoJwtVerifier` or `JwtRsaVerifier` without providing a `JwksCache`, the `SimpleJwksCache` is used:
+When you instantiate a `CognitoJwtVerifier` or `JwtVerifier` without providing a `JwksCache`, the `SimpleJwksCache` is used:
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 
-const verifier = JwtRsaVerifier.create({
+const verifier = JwtVerifier.create({
   issuer: "http://my-tenant.my-idp.com",
 });
 
 // Equivalent:
-const verifier2 = JwtRsaVerifier.create(
+const verifier2 = JwtVerifier.create(
   {
     issuer: "http://my-tenant.my-idp.com",
   },
@@ -625,12 +628,12 @@ Alternatively, you can implement an entirely custom `JwksCache` yourself, by cre
 If you want to define multiple verifiers for the same JWKS uri, it makes sense to share the JWKS cache, so the JWKS will be downloaded and cached once:
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 
 const sharedJwksCache = new SimpleJwksCache();
 
-const verifierA = JwtRsaVerifier.create(
+const verifierA = JwtVerifier.create(
   {
     jwksUri: "https://example.com/keys/jwks.json",
     issuer: "https://example.com/",
@@ -641,7 +644,7 @@ const verifierA = JwtRsaVerifier.create(
   }
 );
 
-const verifierB = JwtRsaVerifier.create(
+const verifierB = JwtVerifier.create(
   {
     jwksUri: "https://example.com/keys/jwks.json", // same JWKS URI, so sharing cache makes sense
     issuer: "https://example.com/",
@@ -663,7 +666,7 @@ The default implementation, the `SimpleJsonFetcher`, has basic machinery to do f
 By supplying a custom fetcher when instantiating `SimpleJwksCache`, instead of `SimpleJsonFetcher`, you can implement any retry and backoff scheme you want, or use another HTTPS library:
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { JsonFetcher } from "aws-jwt-verify/https";
 import axios from "axios";
@@ -676,7 +679,7 @@ class CustomFetcher implements JsonFetcher {
   }
 }
 
-const verifier = JwtRsaVerifier.create(
+const verifier = JwtVerifier.create(
   {
     issuer: "http://my-tenant.my-idp.com",
   },
@@ -744,7 +747,7 @@ By supplying a custom penaltyBox when instantiating `SimpleJwksCache`, instead o
 The `SimpleJwksCache` will call `penaltyBox.registerSuccessfulAttempt(jwksUri, kid)` when it succeeds in locating the right JWK in the JWKS, and call `penaltyBox.registerFailedAttempt(jwksUri, kid)` otherwise. You need to process these calls, so that you can determine the right amount of waiting in your `wait` implementation.
 
 ```typescript
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 import {
   SimpleJwksCache,
   SimplePenaltyBox,
@@ -752,7 +755,7 @@ import {
 } from "aws-jwt-verify/jwk";
 
 // In this example we use the SimplePenaltyBox, but override the default wait period
-const verifier = JwtRsaVerifier.create(
+const verifier = JwtVerifier.create(
   {
     issuer: "http://my-tenant.my-idp.com",
   },
@@ -778,7 +781,7 @@ class CustomPenaltyBox implements PenaltyBox {
     // implement
   }
 }
-const verifier2 = JwtRsaVerifier.create(
+const verifier2 = JwtVerifier.create(
   {
     issuer: "http://my-tenant.my-idp.com",
   },

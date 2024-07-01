@@ -1,9 +1,7 @@
 import nock from "nock";
 import { URL } from "url";
 export { signJwt } from "../util/util";
-export {
-  generateKeyPair
-} from "../util/util";
+export { generateKeyPair } from "../util/util";
 
 export function disallowAllRealNetworkTraffic() {
   nock.disableNetConnect();
