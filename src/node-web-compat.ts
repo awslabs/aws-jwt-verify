@@ -9,7 +9,7 @@
 // package.json specifies "#node-web-compat" as a subpath import, with conditions pointing to the right implementation (for Node.js or Web)
 
 import { Json } from "./safe-json-parse.js";
-import { EsSignatureJwk, RsaSignatureJwk } from "./jwk.js";
+import { SignatureJwk } from "./jwk.js";
 import {
   JwsVerificationFunctionAsync,
   JwsVerificationFunctionSync,
@@ -22,11 +22,11 @@ import { SupportedSignatureAlgorithm } from "./jwt-verifier.js";
  */
 export interface NodeWebCompat {
   transformJwkToKeyObjectSync: (
-    jwk: RsaSignatureJwk | EsSignatureJwk,
+    jwk: SignatureJwk,
     jwtHeaderAlg?: SupportedSignatureAlgorithm
   ) => GenericKeyObject;
   transformJwkToKeyObjectAsync: (
-    jwk: RsaSignatureJwk | EsSignatureJwk,
+    jwk: SignatureJwk,
     jwtHeaderAlg?: SupportedSignatureAlgorithm
   ) => Promise<GenericKeyObject>;
   verifySignatureSync: JwsVerificationFunctionSync<SupportedSignatureAlgorithm>;

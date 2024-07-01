@@ -50,14 +50,14 @@ type MandatoryJwkFields = {
 
 export type Jwk = OptionalJwkFields & MandatoryJwkFields & JsonObject;
 
-export type RsaSignatureJwk = Jwk & {
+type RsaSignatureJwk = Jwk & {
   use?: "sig";
   kty: "RSA";
   n: string;
   e: string;
 };
 
-export type EsSignatureJwk = Jwk & {
+type EcSignatureJwk = Jwk & {
   use?: "sig";
   kty: "EC";
   crv: "P-256" | "P-384" | "P-521";
@@ -65,7 +65,7 @@ export type EsSignatureJwk = Jwk & {
   y: string;
 };
 
-export type SignatureJwk = RsaSignatureJwk | EsSignatureJwk;
+export type SignatureJwk = RsaSignatureJwk | EcSignatureJwk;
 
 export type JwkWithKid = Jwk & {
   kid: string;
@@ -146,9 +146,7 @@ export function assertIsSignatureJwk(jwk: Jwk): asserts jwk is SignatureJwk {
   }
 }
 
-export function assertIsEsSignatureJwk(
-  jwk: Jwk
-): asserts jwk is EsSignatureJwk {
+function assertIsEsSignatureJwk(jwk: Jwk): asserts jwk is EcSignatureJwk {
   // Check JWK use
   if (jwk.use) {
     assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
@@ -167,9 +165,7 @@ export function assertIsEsSignatureJwk(
   if (!jwk.y) throw new JwkValidationError("Missing Y Coordinate (y)");
 }
 
-export function assertIsRsaSignatureJwk(
-  jwk: Jwk
-): asserts jwk is RsaSignatureJwk {
+function assertIsRsaSignatureJwk(jwk: Jwk): asserts jwk is RsaSignatureJwk {
   // Check JWK use
   if (jwk.use) {
     assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);

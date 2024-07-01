@@ -4,7 +4,7 @@
 // Node.js implementations for the node-web-compatibility layer
 
 import { createPublicKey, createVerify, KeyObject } from "crypto";
-import { EsSignatureJwk, RsaSignatureJwk } from "./jwk.js";
+import { SignatureJwk } from "./jwk.js";
 import { fetchJson } from "./https-node.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 
@@ -22,12 +22,12 @@ enum JwtSignatureAlgorithms {
 
 export const nodeWebCompat: NodeWebCompat = {
   fetchJson,
-  transformJwkToKeyObjectSync: (jwk: RsaSignatureJwk | EsSignatureJwk) =>
+  transformJwkToKeyObjectSync: (jwk: SignatureJwk) =>
     createPublicKey({
       key: jwk,
       format: "jwk",
     }),
-  transformJwkToKeyObjectAsync: async (jwk: RsaSignatureJwk | EsSignatureJwk) =>
+  transformJwkToKeyObjectAsync: async (jwk: SignatureJwk) =>
     createPublicKey({
       key: jwk,
       format: "jwk",
