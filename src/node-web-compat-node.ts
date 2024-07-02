@@ -4,8 +4,7 @@
 // Node.js implementations for the node-web-compatibility layer
 
 import { createPublicKey, createVerify, KeyObject } from "crypto";
-import { RsaSignatureJwk } from "./jwk.js";
-import { constructPublicKeyInDerFormat } from "./asn1.js";
+import { SignatureJwk } from "./jwk.js";
 import { fetchJson } from "./https-node.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 
@@ -16,27 +15,22 @@ enum JwtSignatureAlgorithms {
   RS256 = "RSA-SHA256",
   RS384 = "RSA-SHA384",
   RS512 = "RSA-SHA512",
+  ES256 = RS256, // yes, openssl uses the same algorithm name
+  ES384 = RS384, // yes, openssl uses the same algorithm name
+  ES512 = RS512, // yes, openssl uses the same algorithm name
 }
 
 export const nodeWebCompat: NodeWebCompat = {
   fetchJson,
-  transformJwkToKeyObjectSync: (jwk: RsaSignatureJwk) =>
+  transformJwkToKeyObjectSync: (jwk: SignatureJwk) =>
     createPublicKey({
-      key: constructPublicKeyInDerFormat(
-        Buffer.from(jwk.n, "base64"),
-        Buffer.from(jwk.e, "base64")
-      ),
-      format: "der",
-      type: "spki",
+      key: jwk,
+      format: "jwk",
     }),
-  transformJwkToKeyObjectAsync: async (jwk: RsaSignatureJwk) =>
+  transformJwkToKeyObjectAsync: async (jwk: SignatureJwk) =>
     createPublicKey({
-      key: constructPublicKeyInDerFormat(
-        Buffer.from(jwk.n, "base64"),
-        Buffer.from(jwk.e, "base64")
-      ),
-      format: "der",
-      type: "spki",
+      key: jwk,
+      format: "jwk",
     }),
   parseB64UrlString: (b64: string): string =>
     Buffer.from(b64, "base64").toString("utf8"),

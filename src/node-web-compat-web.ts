@@ -15,10 +15,19 @@ import { Json, safeJsonParse } from "./safe-json-parse.js";
 /**
  * Enum to map supported JWT signature algorithms with WebCrypto message digest algorithm names
  */
-enum JwtSignatureAlgorithmsWebCrypto {
+enum DigestFunctionsWebCrypto {
   RS256 = "SHA-256",
   RS384 = "SHA-384",
   RS512 = "SHA-512",
+}
+
+/**
+ * Enum to map supported JWT signature algorithms with WebCrypto curve names
+ */
+enum NamedCurvesWebCrypto {
+  ES256 = "P-256",
+  ES384 = "P-384",
+  ES512 = "P-521", // yes, 521
 }
 
 export const nodeWebCompat: NodeWebCompat = {
@@ -60,8 +69,7 @@ export const nodeWebCompat: NodeWebCompat = {
     );
   },
   transformJwkToKeyObjectAsync: (jwk, jwtHeaderAlg) => {
-    const alg =
-      (jwk.alg as keyof typeof JwtSignatureAlgorithmsWebCrypto) ?? jwtHeaderAlg;
+    const alg = (jwk.alg as typeof jwtHeaderAlg) ?? jwtHeaderAlg;
     if (!alg) {
       throw new JwtInvalidSignatureAlgorithmError(
         "Missing alg on both JWK and JWT header",
@@ -71,11 +79,20 @@ export const nodeWebCompat: NodeWebCompat = {
     return crypto.subtle.importKey(
       "jwk",
       jwk,
-      {
-        name: "RSASSA-PKCS1-v1_5",
-        // eslint-disable-next-line security/detect-object-injection
-        hash: JwtSignatureAlgorithmsWebCrypto[alg],
-      },
+      alg.startsWith("RS")
+        ? {
+            name: "RSASSA-PKCS1-v1_5",
+            // eslint-disable-next-line security/detect-object-injection
+            hash: DigestFunctionsWebCrypto[
+              alg as keyof typeof DigestFunctionsWebCrypto
+            ],
+          }
+        : {
+            name: "ECDSA",
+            // eslint-disable-next-line security/detect-object-injection
+            namedCurve:
+              NamedCurvesWebCrypto[alg as keyof typeof NamedCurvesWebCrypto],
+          },
       false,
       ["verify"]
     );
@@ -109,15 +126,18 @@ const bufferFromBase64url = (function () {
   return function (base64url: string) {
     const paddingLength = base64url.match(/^.+?(=?=?)$/)![1].length;
     let first: number, second: number, third: number, fourth: number;
-    return base64url.match(/.{1,4}/g)!.reduce((acc, chunk, index) => {
-      first = map[chunk.charCodeAt(0)];
-      second = map[chunk.charCodeAt(1)];
-      third = map[chunk.charCodeAt(2)];
-      fourth = map[chunk.charCodeAt(3)];
-      acc[3 * index] = (first << 2) | (second >> 4);
-      acc[3 * index + 1] = ((second & 0b1111) << 4) | (third >> 2);
-      acc[3 * index + 2] = ((third & 0b11) << 6) | fourth;
-      return acc;
-    }, new Uint8Array((base64url.length * 3) / 4 - paddingLength));
+    return base64url.match(/.{1,4}/g)!.reduce(
+      (acc, chunk, index) => {
+        first = map[chunk.charCodeAt(0)];
+        second = map[chunk.charCodeAt(1)];
+        third = map[chunk.charCodeAt(2)];
+        fourth = map[chunk.charCodeAt(3)];
+        acc[3 * index] = (first << 2) | (second >> 4);
+        acc[3 * index + 1] = ((second & 0b1111) << 4) | (third >> 2);
+        acc[3 * index + 2] = ((third & 0b11) << 6) | fourth;
+        return acc;
+      },
+      new Uint8Array((base64url.length * 3) / 4 - paddingLength)
+    );
   };
 })();

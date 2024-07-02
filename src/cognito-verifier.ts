@@ -8,7 +8,7 @@ import {
   JwtInvalidClaimError,
   ParameterValidationError,
 } from "./error.js";
-import { JwtRsaVerifierBase, JwtRsaVerifierProperties } from "./jwt-rsa.js";
+import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
 import { JwksCache, Jwks, Jwk } from "./jwk.js";
 import {
   JwtHeader,
@@ -96,11 +96,11 @@ export type CognitoJwtVerifierMultiProperties = {
  * Cognito JWT Verifier for a single user pool
  */
 export type CognitoJwtVerifierSingleUserPool<
-  T extends CognitoJwtVerifierProperties
+  T extends CognitoJwtVerifierProperties,
 > = CognitoJwtVerifier<
   Properties<CognitoVerifyProperties, T>,
   T &
-    JwtRsaVerifierProperties<CognitoVerifyProperties> & {
+    JwtVerifierProperties<CognitoVerifyProperties> & {
       userPoolId: string;
       audience: null;
     },
@@ -111,11 +111,11 @@ export type CognitoJwtVerifierSingleUserPool<
  * Cognito JWT Verifier for multiple user pools
  */
 export type CognitoJwtVerifierMultiUserPool<
-  T extends CognitoJwtVerifierMultiProperties
+  T extends CognitoJwtVerifierMultiProperties,
 > = CognitoJwtVerifier<
   Properties<CognitoVerifyProperties, T>,
   T &
-    JwtRsaVerifierProperties<CognitoVerifyProperties> & {
+    JwtVerifierProperties<CognitoVerifyProperties> & {
       userPoolId: string;
       audience: null;
     },
@@ -215,16 +215,12 @@ export function validateCognitoJwtFields(
  */
 export class CognitoJwtVerifier<
   SpecificVerifyProperties extends Partial<CognitoVerifyProperties>,
-  IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties> & {
+  IssuerConfig extends JwtVerifierProperties<SpecificVerifyProperties> & {
     userPoolId: string;
     audience: null;
   },
-  MultiIssuer extends boolean
-> extends JwtRsaVerifierBase<
-  SpecificVerifyProperties,
-  IssuerConfig,
-  MultiIssuer
-> {
+  MultiIssuer extends boolean,
+> extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
     jwksCache?: JwksCache

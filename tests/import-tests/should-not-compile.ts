@@ -1,4 +1,4 @@
-import { JwtRsaVerifier, CognitoJwtVerifier } from "aws-jwt-verify";
+import { JwtVerifier, CognitoJwtVerifier } from "aws-jwt-verify";
 
 if (process.env.JUST_CHECKING_IF_THE_BELOW_TS_COMPILES_DONT_NEED_TO_RUN_IT) {
   const cognitoVerifier = CognitoJwtVerifier.create({
@@ -10,7 +10,7 @@ if (process.env.JUST_CHECKING_IF_THE_BELOW_TS_COMPILES_DONT_NEED_TO_RUN_IT) {
   // that specifies at least `tokenUse` and `clientId`:
   cognitoVerifier.verify("");
 
-  const genericVerifier = JwtRsaVerifier.create({ issuer: "" });
+  const genericVerifier = JwtVerifier.create({ issuer: "" });
   // This statement should not compile,
   // because `audience` was not provided yet at verifier level.
   // Therefore, it should be mandatory now, to provide the 2nd argument, an object

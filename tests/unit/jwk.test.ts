@@ -29,7 +29,7 @@ describe("unit tests jwk", () => {
   const getDecomposedJwt = (kid?: string) => ({
     header: {
       alg: "RS256",
-      kid: kid ?? keypair.jwk.kid,
+      kid: kid ?? keypair.jwk.kid ?? "kid",
     },
     payload: {},
   });

@@ -30,7 +30,7 @@ export default defineConfig({
 ## Cypress
 
 The `cypress\integration` folder includes both functional tests that interact
-with an HTML form in the web browser and unit tests that use `JwtRsaVerifier`
+with an HTML form in the web browser and unit tests that use `JwtVerifier`
 directly. To enable the unit tests to work, `@cypress/webpack-preprocessor` is
 required. Here is the minimal `cypress\plugins\index.js` to support that:
 

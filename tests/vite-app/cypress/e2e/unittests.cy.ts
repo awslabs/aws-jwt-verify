@@ -1,5 +1,5 @@
 /// <reference types="cypress" />
-import { JwtRsaVerifier } from "aws-jwt-verify";
+import { JwtVerifier } from "aws-jwt-verify";
 import {
   JwtExpiredError,
   JwtNotBeforeError,
@@ -33,7 +33,7 @@ describe("unit tests", () => {
   });
 
   it("valid token", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
@@ -44,7 +44,7 @@ describe("unit tests", () => {
   });
 
   it("valid token for JWK without alg", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
@@ -55,7 +55,7 @@ describe("unit tests", () => {
   });
 
   it("expired token", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
@@ -73,7 +73,7 @@ describe("unit tests", () => {
   });
 
   it("not yet valid token", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
@@ -91,7 +91,7 @@ describe("unit tests", () => {
   });
 
   it("invalid issuer", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: INVALID_ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
@@ -109,7 +109,7 @@ describe("unit tests", () => {
   });
 
   it("invalid audience", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: ISSUER,
       audience: INVALID_AUDIENCE,
       jwksUri: JWKSURI,
@@ -127,7 +127,7 @@ describe("unit tests", () => {
   });
 
   it("invalid signature", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
       jwksUri: JWKSURI,
@@ -147,7 +147,7 @@ describe("unit tests", () => {
   });
 
   it("invalid JWKS Uri", async () => {
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: ISSUER,
       audience: AUDIENCE,
       jwksUri: INVALID_JWKSURI,
@@ -158,15 +158,13 @@ describe("unit tests", () => {
 
       expect(payload).to.not.exist;
     } catch (ex) {
-      expect(ex.message).to.include(
-        "Failed to fetch /notexample-JWKS.json: Status code is 404, expected 200"
-      );
+      expect(ex.message).to.include("Failed to fetch /notexample-JWKS.json");
     }
   });
 
   it("invalid JWK kid", async () => {
     // example token from https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens
-    const verifier = JwtRsaVerifier.create({
+    const verifier = JwtVerifier.create({
       issuer: MS_ISSUER,
       audience: MS_AUDIENCE,
       jwksUri: MS_JWKSURI,
