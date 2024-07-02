@@ -387,7 +387,36 @@ At first sight, this design decision may seem dubious, because the JWT header, a
 
 If the JWK that's selected for verification (see [The JWKS cache](#the-jwks-cache)) has an `alg`, it must match the JWT header's `alg`, or the JWT is considered invalid. `alg` is an optional JWK field, but in practice present in most implementations (such as Amazon Cognito).
 
-Should you want to enforce a certain `alg`, you should use a JWKS that only contains JWKs which have that `alg` explicitly specified. If the JWKS is not under your control, you can customize the way your JWKS is used by [customizing the JWKS cache](#customizing-the-jwks-cache). E.g. you could override the `alg` value on each JWK in it, or filter the JWKS to only those JWKs that have a specific `alg`.
+### Enforcing the algorithm (`alg`)
+
+If you really want to enforce a certain `alg`, you should use a JWKS that only contains JWKs which have that `alg` explicitly specified.
+
+If the JWKS is not under your control, you can customize the way your JWKS is used by [customizing the JWKS cache](#customizing-the-jwks-cache). E.g. you could explicitly set the `alg` value on each JWK, or filter the JWKS to only those JWKs that have a specific `alg`, such as in the example below:
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { SimpleJwksCache } from "aws-jwt-verify/jwk";
+
+class CustomJwksCache extends SimpleJwksCache {
+  async getJwks(jwksUri: string) {
+    const jwks = await super.getJwks(jwksUri);
+    // filter JWKS to alg ES256
+    jwks.keys = jwks.keys.filter((jwk) => jwk.alg === "ES256");
+    return jwks;
+  }
+}
+
+const verifier = CognitoJwtVerifier.create(
+  {
+    userPoolId: "<user_pool_id>",
+    tokenUse: "access",
+    clientId: "<client_id>",
+  },
+  {
+    jwksCache: new CustomJwksCache(),
+  }
+);
+```
 
 ## Peeking inside unverified JWTs
 
