@@ -93,6 +93,7 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Using the generic JWT verifier for Cognito JWTs](#using-the-generic-jwt-verifier-for-cognito-jwts)
 - [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
   - [Verify parameters](#JwtVerifier-verify-parameters)
+- [How the algorithm (`alg`) is selected to verify the JWT signature with](#how-the-algorithm-alg-is-selected-to-verify-the-jwt-signature-with)
 - [Peeking inside unverified JWTs](#peeking-inside-unverified-jwts)
 - [Verification errors](#verification-errors)
   - [Peek inside invalid JWTs](#peek-inside-invalid-jwts)
@@ -377,6 +378,16 @@ Supported parameters are:
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
 - `includeRawJwtInErrors` (optional, default `false`): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+
+## How the algorithm (`alg`) is selected to verify the JWT signature with
+
+`aws-jwt-verify` does not require, nor supports, users to specify the algorithm (`alg`) to verify JWT signatures with. Rather, the `alg` is selected automatically from the JWT header, and matched against the `alg` (if any) on the selected JWK. We believe this design decision makes it easier to use this library: one less parameter to provide, that developers potentially would not know which value to provide for.
+
+At first sight, this design decision may seem dubious, because the JWT header, and thus the `alg` in it, is under threat actor control. But this is mitigated because `aws-jwt-verify` only allows a limited set of algorithms anyway, all asymmetric: RS256, RS384, RS512, ES256, ES384, ES512. The egregious case of `alg` with value `none` is explicitly not supported, nor are symmetric algorithms, and such JWTs would be considered invalid.
+
+If the JWK that's selected for verification (see [The JWKS cache](#the-jwks-cache)) has an `alg`, it must match the JWT header's `alg`, or the JWT is considered invalid. `alg` is an optional JWK field, but in practice present in most implementations (such as Amazon Cognito).
+
+Should you want to enforce a certain `alg`, you should use a JWKS that only contains JWKs which have that `alg` explicitly specified. If the JWKS is not under your control, you can customize the way your JWKS is used by [customizing the JWKS cache](#customizing-the-jwks-cache). E.g. you could override the `alg` value on each JWK in it, or filter the JWKS to only those JWKs that have a specific `alg`.
 
 ## Peeking inside unverified JWTs
 
