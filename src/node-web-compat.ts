@@ -33,6 +33,11 @@ export interface NodeWebCompat {
     requestOptions?: Record<string, unknown>,
     data?: Uint8Array
   ) => Promise<ResultType>;
+  fetchBuffer: <ResultType extends Buffer>(
+    uri: string,
+    requestOptions?: Record<string, unknown>,
+    data?: Uint8Array
+  ) => Promise<ResultType>;
   defaultFetchTimeouts: {
     socketIdle?: number; // socket idle timeout (Only supported by Node.js runtime)
     response: number; // total round trip timeout
