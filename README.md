@@ -381,7 +381,7 @@ Supported parameters are:
 
 ## How the algorithm (`alg`) is selected to verify the JWT signature with
 
-`aws-jwt-verify` does not require, nor supports, users to specify the algorithm (`alg`) to verify JWT signatures with. Rather, the `alg` is selected automatically from the JWT header, and matched against the `alg` (if any) on the selected JWK. We believe this design decision makes it easier to use this library: one less parameter to provide, that developers potentially would not know which value to provide for.
+`aws-jwt-verify` does not require users to specify the algorithm (`alg`) to verify JWT signatures with. Rather, the `alg` is selected automatically from the JWT header, and matched against the `alg` (if any) on the selected JWK. We believe this design decision makes it easier to use this library: one less parameter to provide, that developers potentially would not know which value to provide for.
 
 At first sight, this design decision may seem dubious, because the JWT header, and thus the `alg` in it, is under threat actor control. But this is mitigated because `aws-jwt-verify` only allows a limited set of algorithms anyway, all asymmetric: RS256, RS384, RS512, ES256, ES384, ES512. The egregious case of `alg` with value `none` is explicitly not supported, nor are symmetric algorithms, and such JWTs would be considered invalid.
 
