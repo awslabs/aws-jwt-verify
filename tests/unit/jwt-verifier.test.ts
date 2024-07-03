@@ -36,16 +36,8 @@ import { validateCognitoJwtFields } from "../../src/cognito-verifier";
 
 describe("unit tests jwt verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
-  let es384keypair: ReturnType<typeof generateKeyPair>;
-  let rs512keypair: ReturnType<typeof generateKeyPair>;
   beforeAll(() => {
     keypair = generateKeyPair();
-    es384keypair = generateKeyPair({
-      kty: "EC",
-      alg: "ES384",
-      namedCurve: "P-384",
-    });
-    rs512keypair = generateKeyPair({ kty: "RSA", alg: "RS512" });
     disallowAllRealNetworkTraffic();
   });
   afterAll(() => {
@@ -54,7 +46,7 @@ describe("unit tests jwt verifier", () => {
 
   describe("verifySync", () => {
     describe("basic cases", () => {
-      test("happy flow with jwk", () => {
+      test("happy flow with RS256 jwk", () => {
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
@@ -66,24 +58,21 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
-      test("happy flow with jwk - ES384", () => {
+      test("happy flow with RS384 jwk", () => {
+        const rs384keypair = generateKeyPair({ kty: "RSA", alg: "RS384" });
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
-          { alg: "ES384", kid: keypair.jwk.kid },
+          { kid: rs384keypair.jwk.kid, alg: "RS384" },
           { aud: audience, iss: issuer, hello: "world" },
-          es384keypair.privateKey
+          rs384keypair.privateKey
         );
-        const jwtHeader = JSON.parse(
-          Buffer.from(signedJwt.split(".")[0], "base64url").toString()
-        );
-        expect(jwtHeader).toMatchObject({ alg: "ES384" });
-        expect(es384keypair.jwk.alg).toBe("ES384");
         expect(
-          verifyJwtSync(signedJwt, es384keypair.jwk, { issuer, audience })
+          verifyJwtSync(signedJwt, rs384keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
       test("happy flow with RS512 jwk", () => {
+        const rs512keypair = generateKeyPair({ kty: "RSA", alg: "RS512" });
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
@@ -93,6 +82,57 @@ describe("unit tests jwt verifier", () => {
         );
         expect(
           verifyJwtSync(signedJwt, rs512keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with jwk - ES256", () => {
+        const es256keypair = generateKeyPair({
+          kty: "EC",
+          alg: "ES256",
+          namedCurve: "P-256",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "ES256", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          es256keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, es256keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with jwk - ES384", () => {
+        const es384keypair = generateKeyPair({
+          kty: "EC",
+          alg: "ES384",
+          namedCurve: "P-384",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "ES384", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          es384keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, es384keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with jwk - ES512", () => {
+        const es512keypair = generateKeyPair({
+          kty: "EC",
+          alg: "ES512",
+          namedCurve: "P-521",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "ES512", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          es512keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, es512keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
       test("happy flow with jwk without alg", () => {
@@ -892,6 +932,17 @@ describe("unit tests jwt verifier", () => {
           `JWK use not allowed: ${wrongJwk.use}. Expected: sig`
         );
         expect(statement).toThrow(JwkInvalidUseError);
+      });
+      test("missing JWK use", () => {
+        const { jwk, privateKey } = generateKeyPair();
+        const signedJwt = signJwt({}, { hello: "world!" }, privateKey);
+        delete (jwk as Jwk).use;
+        expect(
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          })
+        ).toMatchObject({ hello: "world!" });
       });
       test("missing modulus on JWK", () => {
         const { jwk, privateKey } = generateKeyPair();

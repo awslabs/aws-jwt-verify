@@ -4,7 +4,7 @@ import {
   JwtRsaVerifier,
 } from "../../src/index";
 
-describe("import from index works", () => {
+describe("unit tests index", () => {
   test("import from index works", () => {
     CognitoJwtVerifier.create({
       userPoolId: "us-east-1_abcdefg",
