@@ -383,9 +383,9 @@ Supported parameters are:
 
 `aws-jwt-verify` does not require users to specify the algorithm (`alg`) to verify JWT signatures with. Rather, the `alg` is selected automatically from the JWT header, and matched against the `alg` (if any) on the selected JWK. We believe this design decision makes it easier to use this library: one less parameter to provide, that developers potentially would not know which value to provide for.
 
-At first sight, this design decision may seem dubious, because the JWT header, and thus the `alg` in it, is under threat actor control. But this is mitigated because `aws-jwt-verify` only allows a limited set of algorithms anyway, all asymmetric: RS256, RS384, RS512, ES256, ES384, ES512. The egregious case of `alg` with value `none` is explicitly not supported, nor are symmetric algorithms, and such JWTs would be considered invalid.
+To readers who are intimately aware of how JWT verification in general should work, this design decision may seem dubious, because the JWT header, and thus the `alg` in it, would be under potential threat actor control. But this is mitigated because `aws-jwt-verify` only allows a limited set of algorithms anyway, all asymmetric: RS256, RS384, RS512, ES256, ES384, ES512. The egregious case of `alg` with value `none` is explicitly not supported, nor are symmetric algorithms, and such JWTs would be considered invalid.
 
-If the JWK that's selected for verification (see [The JWKS cache](#the-jwks-cache)) has an `alg`, it must match the JWT header's `alg`, or the JWT is considered invalid. `alg` is an optional JWK field, but in practice present in most implementations (such as Amazon Cognito).
+If the JWK that's selected for verification (see [The JWKS cache](#the-jwks-cache)) has an `alg`, it must match the JWT header's `alg`, or the JWT is considered invalid. `alg` is an optional JWK field, but in practice present in most implementations (such as Amazon Cognito User Pools).
 
 ### Enforcing the algorithm (`alg`)
 
@@ -397,11 +397,13 @@ If the JWKS is not under your control, you can customize the way your JWKS is us
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 
-class CustomJwksCache extends SimpleJwksCache {
+class EllipticCurvesOnlyJwksCache extends SimpleJwksCache {
   async getJwks(jwksUri: string) {
     const jwks = await super.getJwks(jwksUri);
-    // filter JWKS to alg ES256
-    jwks.keys = jwks.keys.filter((jwk) => jwk.alg === "ES256");
+    // filter JWKS to elliptic curve algorithms
+    jwks.keys = jwks.keys.filter(
+      (jwk) => jwk.alg && ["ES256", "ES384", "ES512"].includes(jwk.alg)
+    );
     return jwks;
   }
 }
@@ -413,7 +415,7 @@ const verifier = CognitoJwtVerifier.create(
     clientId: "<client_id>",
   },
   {
-    jwksCache: new CustomJwksCache(),
+    jwksCache: new EllipticCurvesOnlyJwksCache(),
   }
 );
 ```
@@ -494,7 +496,7 @@ try {
 The `instanceof` check in the `catch` block above is crucial, because not all errors will include the rawJwt, only errors that subclass `JwtInvalidClaimError` will. In order to understand why this makes sense, you should know that this library verifies JWTs in 3 stages, that all must succeed for the JWT to be considered valid:
 
 - Stage 1: Verify JWT structure and JSON parse the JWT
-- Stage 2: Verify JWT cryptographic signature (i.e. RS256/RS384/RS512/ES256/ES384/ES512/)
+- Stage 2: Verify JWT cryptographic signature (i.e. RS256/RS384/RS512/ES256/ES384/ES512)
 - Stage 3: Verify JWT claims (such as e.g. its expiration)
 
 Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid (stages 1 and 2 succeeded).
