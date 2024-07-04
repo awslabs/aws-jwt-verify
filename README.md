@@ -325,7 +325,7 @@ const verifier = JwtVerifier.create([
 
 ## Verifying JWTs from any OIDC-compatible IDP
 
-The generic `JwtVerifier` works for any OIDC-compatible IDP that signs JWTs with RS256/RS384/RS512/ES256/ES384/ES512/:
+The generic `JwtVerifier` works for any OIDC-compatible IDP that signs JWTs with RS256/RS384/RS512/ES256/ES384/ES512:
 
 ```typescript
 import { JwtVerifier } from "aws-jwt-verify";
@@ -387,7 +387,7 @@ To readers who are intimately aware of how JWT verification in general should wo
 
 If the JWK that's selected for verification (see [The JWKS cache](#the-jwks-cache)) has an `alg`, it must match the JWT header's `alg`, or the JWT is considered invalid. `alg` is an optional JWK field, but in practice present in most implementations (such as Amazon Cognito User Pools).
 
-### Enforcing the algorithm (`alg`)
+### Advanced: enforcing the algorithm (`alg`)
 
 If you really want to enforce a certain `alg`, you should use a JWKS that only contains JWKs which have that `alg` explicitly specified.
 
@@ -397,13 +397,11 @@ If the JWKS is not under your control, you can customize the way your JWKS is us
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 
-class EllipticCurvesOnlyJwksCache extends SimpleJwksCache {
+class Rs256OnlyJwksCache extends SimpleJwksCache {
   async getJwks(jwksUri: string) {
     const jwks = await super.getJwks(jwksUri);
-    // filter JWKS to elliptic curve algorithms
-    jwks.keys = jwks.keys.filter(
-      (jwk) => jwk.alg && ["ES256", "ES384", "ES512"].includes(jwk.alg)
-    );
+    // filter JWKS to RS256 only
+    jwks.keys = jwks.keys.filter((jwk) => jwk.alg === "RS256");
     return jwks;
   }
 }
@@ -415,7 +413,7 @@ const verifier = CognitoJwtVerifier.create(
     clientId: "<client_id>",
   },
   {
-    jwksCache: new EllipticCurvesOnlyJwksCache(),
+    jwksCache: new Rs256OnlyJwksCache(),
   }
 );
 ```
