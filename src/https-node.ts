@@ -1,14 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// NodeJS implementation for fetching JSON documents over HTTPS
+// NodeJS implementation for fetching documents over HTTPS
 
+import { Transform } from "stream";
 import { request } from "https";
-import { IncomingHttpHeaders, RequestOptions } from "http";
-import { validateHttpsJsonResponse } from "./https-common.js";
+import { RequestOptions } from "http";
 import { pipeline } from "stream";
 import { TextDecoder } from "util";
-import { safeJsonParse, Json } from "./safe-json-parse.js";
 import { FetchError, NonRetryableFetchError } from "./error.js";
 
 /**
@@ -25,15 +24,15 @@ type FetchRequestOptions = RequestOptions & {
  * @param uri - The URI
  * @param requestOptions - The RequestOptions to use
  * @param data - Data to send to the URI (e.g. POST data)
- * @returns - The response as parsed JSON
+ * @returns - The response body as a string
  */
-export async function fetchJson<ResultType extends Json>(
+export async function fetchText(
   uri: string,
   requestOptions?: FetchRequestOptions,
   data?: Uint8Array
-): Promise<ResultType> {
+): Promise<string> {
   let responseTimeout: NodeJS.Timeout;
-  return new Promise<ResultType>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     const req = request(
       uri,
       {
@@ -41,14 +40,29 @@ export async function fetchJson<ResultType extends Json>(
         ...requestOptions,
       },
       (response) => {
-        // Capture response data
-        // @types/node is incomplete so cast to any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (pipeline as any)(
-          [
-            response,
-            getJsonDestination(uri, response.statusCode, response.headers),
-          ],
+        // check status
+        if (response.statusCode === 429) {
+          done(new FetchError(uri, "Too many requests"));
+        } else if (response.statusCode !== 200) {
+          done(
+            new NonRetryableFetchError(
+              uri,
+              `Status code is ${response.statusCode}, expected 200`
+            )
+          );
+        }
+        // Collect response data
+        pipeline(
+          response,
+          collector(),
+          async (collector) => {
+            for await (const collected of collector) {
+              return new TextDecoder("utf8", {
+                fatal: true,
+                ignoreBOM: true,
+              }).decode(collected);
+            }
+          },
           done
         );
       }
@@ -68,10 +82,10 @@ export async function fetchJson<ResultType extends Json>(
       responseTimeout.unref(); // Don't block Node from exiting
     }
 
-    function done(...args: [Error] | [null, ResultType]) {
+    function done(err: Error | null, text?: string) {
       if (responseTimeout) clearTimeout(responseTimeout);
-      if (args[0] == null) {
-        resolve(args[1]);
+      if (err == null) {
+        resolve(text!);
         return;
       }
 
@@ -81,13 +95,12 @@ export async function fetchJson<ResultType extends Json>(
       req.socket?.emit("agentRemove");
 
       // Turn error into FetchError so the URI is nicely captured in the message
-      let error = args[0];
-      if (!(error instanceof FetchError)) {
-        error = new FetchError(uri, error.message);
+      if (!(err instanceof FetchError)) {
+        err = new FetchError(uri, err.message);
       }
 
       req.destroy();
-      reject(error);
+      reject(err);
     }
 
     // Handle errors while sending request
@@ -99,33 +112,20 @@ export async function fetchJson<ResultType extends Json>(
 }
 
 /**
- * Ensures the HTTPS response contains valid JSON
- *
- * @param uri - The URI you were requesting
- * @param statusCode - The response status code to your HTTPS request
- * @param headers - The response headers to your HTTPS request
- *
- * @returns - Async function that can be used as destination in a stream.pipeline, it will return the JSON, if valid, or throw an error otherwise
+ * Function that returns a Transform stream, which collects the incoming data
+ * @param uri the URI that is being collected
+ * @returns
  */
-function getJsonDestination(
-  uri: string,
-  statusCode: number | undefined,
-  headers: IncomingHttpHeaders
-) {
-  return async (responseIterable: AsyncIterableIterator<Buffer>) => {
-    validateHttpsJsonResponse(uri, statusCode, headers["content-type"]);
-    const collected = [] as Buffer[];
-    for await (const chunk of responseIterable) {
+function collector() {
+  const collected: Buffer[] = [];
+  return new Transform({
+    transform: function (chunk: Buffer, _encoding, cb) {
       collected.push(chunk);
-    }
-    try {
-      return safeJsonParse(
-        new TextDecoder("utf8", { fatal: true, ignoreBOM: true }).decode(
-          Buffer.concat(collected)
-        )
-      );
-    } catch (err) {
-      throw new NonRetryableFetchError(uri, err);
-    }
-  };
+      cb();
+    },
+    final: function (cb) {
+      this.push(Buffer.concat(collected));
+      cb();
+    },
+  });
 }

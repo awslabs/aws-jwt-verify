@@ -1,9 +1,14 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { SimpleJsonFetcher, JsonFetcher, fetchJson } from "./https.js";
+import { SimpleFetcher, Fetcher, fetchText } from "./https.js";
 import { JwtHeader, JwtPayload } from "./jwt-model.js";
-import { Json, JsonObject, isJsonObject } from "./safe-json-parse.js";
+import {
+  Json,
+  JsonObject,
+  isJsonObject,
+  safeJsonParse,
+} from "./safe-json-parse.js";
 import {
   JwkValidationError,
   JwksNotAvailableInCacheError,
@@ -90,7 +95,7 @@ export interface JwksCache {
 }
 
 export async function fetchJwks(jwksUri: string): Promise<Jwks> {
-  const jwks = await fetchJson(jwksUri);
+  const jwks = await fetchText(jwksUri).then(safeJsonParse);
   assertIsJwks(jwks);
   return jwks;
 }
@@ -268,14 +273,14 @@ export class SimplePenaltyBox implements PenaltyBox {
 }
 
 export class SimpleJwksCache implements JwksCache {
-  fetcher: JsonFetcher;
+  fetcher: Fetcher;
   penaltyBox: PenaltyBox;
   private jwksCache: Map<JwksUri, Jwks> = new Map();
   private fetchingJwks: Map<JwksUri, Promise<Jwks>> = new Map();
 
-  constructor(props?: { penaltyBox?: PenaltyBox; fetcher?: JsonFetcher }) {
+  constructor(props?: { penaltyBox?: PenaltyBox; fetcher?: Fetcher }) {
     this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
-    this.fetcher = props?.fetcher ?? new SimpleJsonFetcher();
+    this.fetcher = props?.fetcher ?? new SimpleFetcher();
   }
 
   public addJwks(jwksUri: string, jwks: Jwks): void {
@@ -288,8 +293,9 @@ export class SimpleJwksCache implements JwksCache {
       return existingFetch;
     }
     const jwksPromise = this.fetcher.fetch(jwksUri).then((res) => {
-      assertIsJwks(res);
-      return res;
+      const jwks = safeJsonParse(res);
+      assertIsJwks(jwks);
+      return jwks;
     });
     this.fetchingJwks.set(jwksUri, jwksPromise);
     let jwks: Jwks;

@@ -7,10 +7,9 @@ import {
   FetchError,
   NotSupportedError,
   JwtInvalidSignatureAlgorithmError,
+  NonRetryableFetchError,
 } from "./error.js";
 import { NodeWebCompat } from "./node-web-compat.js";
-import { validateHttpsJsonResponse } from "./https-common.js";
-import { Json, safeJsonParse } from "./safe-json-parse.js";
 
 /**
  * Enum to map supported JWT signature algorithms with WebCrypto message digest algorithm names
@@ -31,7 +30,7 @@ enum NamedCurvesWebCrypto {
 }
 
 export const nodeWebCompat: NodeWebCompat = {
-  fetchJson: async <ResultType extends Json>(
+  fetchText: async (
     uri: string,
     requestOptions?: Record<string, unknown>,
     data?: Uint8Array
@@ -53,12 +52,15 @@ export const nodeWebCompat: NodeWebCompat = {
       requestOptions = { signal: abort.signal, ...requestOptions };
     }
     const response = await fetch(uri, { ...requestOptions, body: data });
-    validateHttpsJsonResponse(
-      uri,
-      response.status,
-      response.headers.get("content-type") ?? undefined
-    );
-    return response.text().then((text) => safeJsonParse(text) as ResultType);
+    if (response.status === 429) {
+      throw new FetchError(uri, "Too many requests");
+    } else if (response.status !== 200) {
+      throw new NonRetryableFetchError(
+        uri,
+        `Status code is ${response.status}, expected 200`
+      );
+    }
+    return response.text();
   },
   defaultFetchTimeouts: {
     response: 3000,

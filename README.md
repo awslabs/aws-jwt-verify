@@ -104,8 +104,8 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Clearing the JWKS cache](#clearing-the-jwks-cache)
   - [Customizing the JWKS cache](#customizing-the-jwks-cache)
   - [Sharing the JWKS cache amongst different verifiers](#sharing-the-jwks-cache-amongst-different-verifiers)
-  - [Using a different `JsonFetcher` with `SimpleJwksCache`](#using-a-different-jsonfetcher-with-simplejwkscache)
-  - [Configuring the JWKS response timeout and other HTTP options with `JsonFetcher`](#configuring-the-jwks-response-timeout-and-other-http-options-with-jsonfetcher)
+  - [Using a different `Fetcher` with `SimpleJwksCache`](#using-a-different-fetcher-with-simplejwkscache)
+  - [Configuring the JWKS response timeout and other HTTP options with `Fetcher`](#configuring-the-jwks-response-timeout-and-other-http-options-with-fetcher)
   - [Using a different `penaltyBox` with `SimpleJwksCache`](#using-a-different-penaltybox-with-simplejwkscache)
 - [Usage examples](#Usage-examples)
   - [CloudFront Lambda@Edge](#cloudfront-lambdaedge)
@@ -696,26 +696,28 @@ const verifierB = JwtVerifier.create(
 );
 ```
 
-### Using a different `JsonFetcher` with `SimpleJwksCache`
+### Using a different `Fetcher` with `SimpleJwksCache`
 
-When instantiating `SimpleJwksCache`, the `fetcher` property can be populated with an instance of a class that implements the interface `JsonFetcher` (from `"aws-jwt-verify/https"`), such as the `SimpleJsonFetcher` (which is the default).
+When instantiating `SimpleJwksCache`, the `fetcher` property can be populated with an instance of a class that implements the interface `Fetcher` (from `"aws-jwt-verify/https"`), such as the `SimpleFetcher` (which is the default).
 
-The purpose of the fetcher, is to execute fetches against the JWKS uri (HTTPS GET) and parse the resulting JSON file.
-The default implementation, the `SimpleJsonFetcher`, has basic machinery to do fetches over HTTPS. It does 1 (immediate) retry in case of connection errors.
+The purpose of the fetcher, is to execute fetches against the JWKS uri (HTTPS GET) and return the response as text.
+The default implementation, the `SimpleFetcher`, has basic machinery to do fetches over HTTPS. It does 1 (immediate) retry in case of connection errors.
 
-By supplying a custom fetcher when instantiating `SimpleJwksCache`, instead of `SimpleJsonFetcher`, you can implement any retry and backoff scheme you want, or use another HTTPS library:
+By supplying a custom fetcher when instantiating `SimpleJwksCache`, instead of `SimpleFetcher`, you can implement any retry and backoff scheme you want, or use another HTTPS library:
 
 ```typescript
 import { JwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
-import { JsonFetcher } from "aws-jwt-verify/https";
+import { Fetcher } from "aws-jwt-verify/https";
 import axios from "axios";
 
 // Use axios to do the HTTPS fetches
-class CustomFetcher implements JsonFetcher {
+class CustomFetcher implements Fetcher {
   instance = axios.create();
   public async fetch(uri: string) {
-    return this.instance.get(uri).then((response) => response.data);
+    return this.instance
+      .get(uri, { responseType: "text" })
+      .then((response) => response.data);
   }
 }
 
@@ -731,7 +733,7 @@ const verifier = JwtVerifier.create(
 );
 ```
 
-### Configuring the JWKS response timeout and other HTTP options with `JsonFetcher`
+### Configuring the JWKS response timeout and other HTTP options with `Fetcher`
 
 The following configurations are equivalent, use the latter one to set a custom fetch timeout and other HTTP options.
 
@@ -739,7 +741,7 @@ The following configurations are equivalent, use the latter one to set a custom 
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 // No jwksCache configured explicitly,
-// so the default `SimpleJwksCache` with `SimpleJsonFetcher` will be used,
+// so the default `SimpleJwksCache` with `SimpleFetcher` will be used,
 // with a default response timeout of 1500 ms.:
 const verifier = CognitoJwtVerifier.create({
   userPoolId: "<user_pool_id>",
@@ -753,7 +755,7 @@ Equivalent explicit configuration:
 ```typescript
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
-import { SimpleJsonFetcher } from "aws-jwt-verify/https";
+import { Fetcher } from "aws-jwt-verify/https";
 
 const verifier = CognitoJwtVerifier.create(
   {
@@ -763,7 +765,7 @@ const verifier = CognitoJwtVerifier.create(
   },
   {
     jwksCache: new SimpleJwksCache({
-      fetcher: new SimpleJsonFetcher({
+      fetcher: new SimpleFetcher({
         defaultRequestOptions: {
           responseTimeout: 1500,
           // You can add additional request options:

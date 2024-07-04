@@ -15,7 +15,7 @@ import {
   JwksValidationError,
   JwkValidationError,
 } from "../../src/error";
-import { JsonFetcher } from "../../src/https";
+import { Fetcher } from "../../src/https";
 import {
   mockHttpsUri,
   generateKeyPair,
@@ -84,7 +84,7 @@ describe("unit tests jwk", () => {
 
   test("Simple JWKS cache returns JWK", () => {
     const jwksCache = new SimpleJwksCache({
-      fetcher: { fetch: async () => keypair.jwks as any },
+      fetcher: { fetch: async () => JSON.stringify(keypair.jwks) },
     });
     expect.assertions(1);
     return expect(
@@ -134,7 +134,9 @@ describe("unit tests jwk", () => {
      * (e.g. in parallel promises). When this happens only 1 actual HTTPS request should
      * be made to the JWKS URI.
      */
-    const fetcher = { fetch: jest.fn(async () => keypair.jwks as any) };
+    const fetcher = {
+      fetch: jest.fn(async () => JSON.stringify(keypair.jwks)),
+    };
     const jwksCache = new SimpleJwksCache({
       fetcher,
     });
@@ -154,7 +156,9 @@ describe("unit tests jwk", () => {
      * Test that this indeed happens. Also, test that requests for JWKs that are already in the cache, still
      * sucessfully return the JWK. After the wait time lapses, the JWKS URI may be fetched again.
      */
-    const fetcher = { fetch: jest.fn(async () => keypair.jwks as any) };
+    const fetcher = {
+      fetch: jest.fn(async () => JSON.stringify(keypair.jwks)),
+    };
     const waitSeconds = 0.5;
     const penaltyBox = new SimplePenaltyBox({ waitSeconds });
     const jwksCache = new SimpleJwksCache({
@@ -270,9 +274,9 @@ describe("unit tests jwk", () => {
           }
         );
       }
-      class CustomJsonFetcher implements JsonFetcher {
+      class CustomJsonFetcher implements Fetcher {
         public fetch = jest.fn(async (_uri: string) => {
-          return keypair.jwks as any;
+          return JSON.stringify(keypair.jwks);
         });
       }
       const penaltyBox = new CustomPenaltyBox();

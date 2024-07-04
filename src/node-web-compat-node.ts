@@ -5,7 +5,7 @@
 
 import { createPublicKey, createVerify, KeyObject } from "crypto";
 import { SignatureJwk } from "./jwk.js";
-import { fetchJson } from "./https-node.js";
+import { fetchText } from "./https-node.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 
 /**
@@ -21,7 +21,7 @@ enum JwtSignatureAlgorithms {
 }
 
 export const nodeWebCompat: NodeWebCompat = {
-  fetchJson,
+  fetchText,
   transformJwkToKeyObjectSync: (jwk: SignatureJwk) =>
     createPublicKey({
       key: jwk,

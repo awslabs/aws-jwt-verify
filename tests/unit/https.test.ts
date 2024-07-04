@@ -1,4 +1,4 @@
-import { fetchJson, SimpleJsonFetcher } from "../../src/https";
+import { fetchText, SimpleFetcher } from "../../src/https";
 import { mockHttpsUri, throwOnUnusedMocks } from "./test-util";
 
 describe("unit tests https", () => {
@@ -11,15 +11,7 @@ describe("unit tests https", () => {
     const payload = { hello: "world" };
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
     expect.assertions(1);
-    return expect(fetchJson(uri)).resolves.toEqual(payload);
-  });
-
-  test("Fetch JSON error flow works: invalid JSON", () => {
-    const uri = "https://example.com/test/jwks.json";
-    const payload = JSON.stringify({ hello: "world" }) + "}";
-    mockHttpsUri(uri, { responsePayload: payload });
-    expect.assertions(1);
-    return expect(fetchJson(uri)).rejects.toThrow("JSON at position 17");
+    return expect(fetchText(uri)).resolves.toEqual(JSON.stringify(payload));
   });
 
   test("Fetch JSON error flow works: 404", () => {
@@ -30,34 +22,8 @@ describe("unit tests https", () => {
       responseStatus: 404,
     });
     expect.assertions(1);
-    return expect(fetchJson(uri)).rejects.toThrow(
+    return expect(fetchText(uri)).rejects.toThrow(
       "Failed to fetch https://example.com/test/jwks.json: Status code is 404, expected 200"
-    );
-  });
-
-  test("Fetch JSON error flow works: wrong Content-Type", () => {
-    const uri = "https://example.com/test/jwks.json";
-    const payload = { hello: "world" };
-    mockHttpsUri(uri, {
-      responsePayload: JSON.stringify(payload),
-      responseHeaders: { "Content-Type": "text/html" },
-    });
-    expect.assertions(1);
-    return expect(fetchJson(uri)).rejects.toThrow(
-      'Failed to fetch https://example.com/test/jwks.json: Content-type is "text/html", expected "application/json"'
-    );
-  });
-
-  test("Fetch JSON error flow works: no Content-Type", () => {
-    const uri = "https://example.com/test/jwks.json";
-    const payload = { hello: "world" };
-    mockHttpsUri(uri, {
-      responsePayload: JSON.stringify(payload),
-      responseHeaders: {},
-    });
-    expect.assertions(1);
-    return expect(fetchJson(uri)).rejects.toThrow(
-      'Failed to fetch https://example.com/test/jwks.json: Content-type is "undefined", expected "application/json"'
     );
   });
 
@@ -66,7 +32,7 @@ describe("unit tests https", () => {
     class TcpError extends Error {}
     mockHttpsUri(uri, new TcpError("Some TCP error occured"));
     expect.assertions(1);
-    return expect(fetchJson(uri)).rejects.toThrow(
+    return expect(fetchText(uri)).rejects.toThrow(
       "Failed to fetch https://example.com/test/jwks.json: Some TCP error occured"
     );
   });
@@ -78,10 +44,8 @@ describe("unit tests https", () => {
       responseHeaders: { "Content-Type": "application/json" },
     });
     expect.assertions(1);
-    return expect(fetchJson(uri)).rejects.toThrow(
-      new RegExp(
-        "Failed to fetch https://example.com/test/jwks.json: (.*) The encoded data was not valid for encoding utf-8"
-      )
+    return expect(fetchText(uri)).rejects.toThrow(
+      "The encoded data was not valid for encoding utf-8"
     );
   });
 
@@ -93,7 +57,7 @@ describe("unit tests https", () => {
       delayBody: 300,
     });
     expect.assertions(1);
-    return expect(fetchJson(uri, { responseTimeout: 299 })).rejects.toThrow(
+    return expect(fetchText(uri, { responseTimeout: 299 })).rejects.toThrow(
       "Failed to fetch https://example.com/test/jwks.json: Response time-out (after 299 ms.)"
     );
   });
@@ -103,7 +67,9 @@ describe("unit tests https", () => {
     const payload = { hello: "world" };
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
     expect.assertions(1);
-    return expect(new SimpleJsonFetcher().fetch(uri)).resolves.toEqual(payload);
+    return expect(new SimpleFetcher().fetch(uri)).resolves.toEqual(
+      JSON.stringify(payload)
+    );
   });
 
   test("Simple JSON fetcher does retry once", () => {
@@ -113,7 +79,9 @@ describe("unit tests https", () => {
     expect.assertions(1);
     mockHttpsUri(uri, new TcpError("Some TCP error occured"));
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
-    return expect(new SimpleJsonFetcher().fetch(uri)).resolves.toEqual(payload);
+    return expect(new SimpleFetcher().fetch(uri)).resolves.toEqual(
+      JSON.stringify(payload)
+    );
   });
 
   test("Simple JSON fetcher does retry HTTP 429", () => {
@@ -125,7 +93,9 @@ describe("unit tests https", () => {
       responsePayload: "WE'RE BUSY RIGHT NOW",
     });
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
-    return expect(new SimpleJsonFetcher().fetch(uri)).resolves.toEqual(payload);
+    return expect(new SimpleFetcher().fetch(uri)).resolves.toEqual(
+      JSON.stringify(payload)
+    );
   });
 
   test("Simple JSON fetcher does not retry twice", () => {
@@ -134,7 +104,7 @@ describe("unit tests https", () => {
     expect.assertions(1);
     mockHttpsUri(uri, new TcpError("1st TCP Error"));
     mockHttpsUri(uri, new TcpError("2nd TCP Error"));
-    return expect(new SimpleJsonFetcher().fetch(uri)).rejects.toThrow(
+    return expect(new SimpleFetcher().fetch(uri)).rejects.toThrow(
       "Failed to fetch https://example.com/test/jwks.json: 2nd TCP Error"
     );
   });
@@ -143,7 +113,7 @@ describe("unit tests https", () => {
     const uri = "https://example.com/test/jwks.json";
     expect.assertions(1);
     mockHttpsUri(uri, { responseStatus: 500, responsePayload: "Nope!\nError" });
-    return expect(new SimpleJsonFetcher().fetch(uri)).rejects.toThrow(
+    return expect(new SimpleFetcher().fetch(uri)).rejects.toThrow(
       "Failed to fetch https://example.com/test/jwks.json: Status code is 500, expected 200"
     );
   });
@@ -154,9 +124,9 @@ describe("unit tests https", () => {
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
     expect.assertions(1);
     return expect(
-      new SimpleJsonFetcher({
+      new SimpleFetcher({
         defaultRequestOptions: { timeout: 100, responseTimeout: 150 },
       }).fetch(uri)
-    ).resolves.toEqual(payload);
+    ).resolves.toEqual(JSON.stringify(payload));
   });
 });

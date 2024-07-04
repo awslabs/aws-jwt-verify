@@ -3,7 +3,6 @@
 //
 // Utilities for fetching the JWKS URI, to get the public keys with which to verify JWTs
 
-import { Json } from "./safe-json-parse.js";
 import { NonRetryableFetchError } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
 
@@ -12,27 +11,27 @@ import { nodeWebCompat } from "#node-web-compat";
  * @param uri - The URI
  * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
  * @param data - Data to send to the URI (e.g. POST data)
- * @returns - The response as parsed JSON
+ * @returns - The response as text
  */
-export const fetchJson = nodeWebCompat.fetchJson;
+export const fetchText = nodeWebCompat.fetchText;
 
 type FetchRequestOptions = Record<string, unknown>;
 
-/** Interface for JS objects that can be used with the SimpleJsonFetcher */
-export interface JsonFetcher<ResultType extends Json = Json> {
+/** Interface for JS objects that can be used as Fetcher */
+export interface Fetcher {
   fetch: (
     uri: string,
     requestOptions?: FetchRequestOptions,
     data?: Buffer
-  ) => Promise<ResultType>;
+  ) => Promise<string>;
 }
 
 /**
- * HTTPS Fetcher for URIs with JSON body
+ * HTTPS Fetcher
  *
  * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
  */
-export class SimpleJsonFetcher implements JsonFetcher {
+export class SimpleFetcher implements Fetcher {
   defaultRequestOptions: FetchRequestOptions;
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
     this.defaultRequestOptions = {
@@ -47,22 +46,22 @@ export class SimpleJsonFetcher implements JsonFetcher {
    * @param uri - The URI
    * @param requestOptions - The RequestOptions to use
    * @param data - Data to send to the URI (e.g. POST data)
-   * @returns - The response as parsed JSON
+   * @returns - The response as string
    */
-  public async fetch<ResultType extends Json>(
+  public async fetch(
     uri: string,
     requestOptions?: FetchRequestOptions,
     data?: Uint8Array
-  ): Promise<ResultType> {
+  ): Promise<string> {
     requestOptions = { ...this.defaultRequestOptions, ...requestOptions };
     try {
-      return await fetchJson<ResultType>(uri, requestOptions, data);
+      return await fetchText(uri, requestOptions, data);
     } catch (err) {
       if (err instanceof NonRetryableFetchError) {
         throw err;
       }
       // Retry once, immediately
-      return fetchJson<ResultType>(uri, requestOptions, data);
+      return fetchText(uri, requestOptions, data);
     }
   }
 }

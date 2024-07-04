@@ -8,7 +8,6 @@
 // At runtime, either the Node.js or Web implementation is actually loaded. This works because the
 // package.json specifies "#node-web-compat" as a subpath import, with conditions pointing to the right implementation (for Node.js or Web)
 
-import { Json } from "./safe-json-parse.js";
 import { SignatureJwk } from "./jwk.js";
 import {
   JwsVerificationFunctionAsync,
@@ -35,11 +34,11 @@ export interface NodeWebCompat {
   setTimeoutUnref: (
     ...args: Parameters<typeof setTimeout>
   ) => ReturnType<typeof setTimeout>;
-  fetchJson: <ResultType extends Json>(
+  fetchText: (
     uri: string,
     requestOptions?: Record<string, unknown>,
     data?: Uint8Array
-  ) => Promise<ResultType>;
+  ) => Promise<string>;
   defaultFetchTimeouts: {
     socketIdle?: number; // socket idle timeout (Only supported by Node.js runtime)
     response: number; // total round trip timeout
