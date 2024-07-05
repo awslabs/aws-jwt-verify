@@ -739,8 +739,8 @@ The default `JwksParser` takes the `ArrayBuffer` that the fetcher (see above) re
 If your JWKS is non-standard, you can override the parser, giving you the option to do any transformations needed to make it a standard JWKS:
 
 ```typescript
-import { JwtVerifier } from "..";
-import { SimpleJwksCache, assertIsJwks } from "../jwk";
+import { JwtVerifier } from "aws-jwt-verify";
+import { SimpleJwksCache, assertIsJwks } from "aws-jwt-verify/jwk";
 
 const verifier = JwtVerifier.create(
   {
@@ -749,6 +749,8 @@ const verifier = JwtVerifier.create(
   {
     jwksCache: new SimpleJwksCache({
       jwksParser: (buf) => {
+        // This is roughly what the default JwksParser does,
+        // override with your own logic as needed:
         const jwks = JSON.parse(new TextDecoder().decode(buf));
         assertIsJwks(jwks);
         return jwks;
