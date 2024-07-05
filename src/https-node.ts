@@ -7,7 +7,6 @@ import { Transform } from "stream";
 import { request } from "https";
 import { RequestOptions } from "http";
 import { pipeline } from "stream";
-import { TextDecoder } from "util";
 import { FetchError, NonRetryableFetchError } from "./error.js";
 
 /**
@@ -24,15 +23,15 @@ type FetchRequestOptions = RequestOptions & {
  * @param uri - The URI
  * @param requestOptions - The RequestOptions to use
  * @param data - Data to send to the URI (e.g. POST data)
- * @returns - The response body as a string
+ * @returns - The response body as a Uit8Array
  */
-export async function fetchText(
+export async function fetch(
   uri: string,
   requestOptions?: FetchRequestOptions,
-  data?: Uint8Array
-): Promise<string> {
+  data?: ArrayBuffer
+): Promise<ArrayBuffer> {
   let responseTimeout: NodeJS.Timeout;
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<ArrayBuffer>((resolve, reject) => {
     const req = request(
       uri,
       {
@@ -43,6 +42,7 @@ export async function fetchText(
         // check status
         if (response.statusCode === 429) {
           done(new FetchError(uri, "Too many requests"));
+          return;
         } else if (response.statusCode !== 200) {
           done(
             new NonRetryableFetchError(
@@ -50,6 +50,7 @@ export async function fetchText(
               `Status code is ${response.statusCode}, expected 200`
             )
           );
+          return;
         }
         // Collect response data
         pipeline(
@@ -57,10 +58,7 @@ export async function fetchText(
           collector(),
           async (collector) => {
             for await (const collected of collector) {
-              return new TextDecoder("utf8", {
-                fatal: true,
-                ignoreBOM: true,
-              }).decode(collected);
+              return collected;
             }
           },
           done
@@ -82,10 +80,10 @@ export async function fetchText(
       responseTimeout.unref(); // Don't block Node from exiting
     }
 
-    function done(err: Error | null, text?: string) {
+    function done(err: Error | null, data?: ArrayBuffer) {
       if (responseTimeout) clearTimeout(responseTimeout);
       if (err == null) {
-        resolve(text!);
+        resolve(data!);
         return;
       }
 
@@ -112,9 +110,8 @@ export async function fetchText(
 }
 
 /**
- * Function that returns a Transform stream, which collects the incoming data
- * @param uri the URI that is being collected
- * @returns
+ * Function that returns a Transform stream, which collects the incoming chunks (in-memory) into 1 Buffer
+ * @returns Transform
  */
 function collector() {
   const collected: Buffer[] = [];

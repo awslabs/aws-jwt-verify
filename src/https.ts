@@ -11,25 +11,33 @@ import { nodeWebCompat } from "#node-web-compat";
  * @param uri - The URI
  * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
  * @param data - Data to send to the URI (e.g. POST data)
- * @returns - The response as text
+ * @returns - The response body as ArrayBuffer
  */
-export const fetchText = nodeWebCompat.fetchText;
+export const fetch = nodeWebCompat.fetch.bind(undefined);
 
 type FetchRequestOptions = Record<string, unknown>;
 
 /** Interface for JS objects that can be used as Fetcher */
 export interface Fetcher {
+  /**
+   * Execute a HTTPS request
+   * @param uri - The URI
+   * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
+   * @param data - Data to send to the URI (e.g. POST data)
+   * @returns - The response body as ArrayBuffer
+   */
   fetch: (
     uri: string,
     requestOptions?: FetchRequestOptions,
     data?: Buffer
-  ) => Promise<string>;
+  ) => Promise<ArrayBuffer>;
 }
 
 /**
- * HTTPS Fetcher
+ * HTTPS Fetcher. The fetch implementation has 1 immediate retry in case of errors
  *
  * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
+ *   (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
  */
 export class SimpleFetcher implements Fetcher {
   defaultRequestOptions: FetchRequestOptions;
@@ -44,24 +52,24 @@ export class SimpleFetcher implements Fetcher {
   /**
    * Execute a HTTPS request (with 1 immediate retry in case of errors)
    * @param uri - The URI
-   * @param requestOptions - The RequestOptions to use
+   * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
    * @param data - Data to send to the URI (e.g. POST data)
-   * @returns - The response as string
+   * @returns - The response body as ArrayBuffer
    */
   public async fetch(
     uri: string,
     requestOptions?: FetchRequestOptions,
-    data?: Uint8Array
-  ): Promise<string> {
+    data?: ArrayBuffer
+  ): Promise<ArrayBuffer> {
     requestOptions = { ...this.defaultRequestOptions, ...requestOptions };
     try {
-      return await fetchText(uri, requestOptions, data);
+      return await fetch(uri, requestOptions, data);
     } catch (err) {
       if (err instanceof NonRetryableFetchError) {
         throw err;
       }
       // Retry once, immediately
-      return fetchText(uri, requestOptions, data);
+      return fetch(uri, requestOptions, data);
     }
   }
 }

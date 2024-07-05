@@ -34,11 +34,11 @@ export interface NodeWebCompat {
   setTimeoutUnref: (
     ...args: Parameters<typeof setTimeout>
   ) => ReturnType<typeof setTimeout>;
-  fetchText: (
+  fetch: (
     uri: string,
     requestOptions?: Record<string, unknown>,
-    data?: Uint8Array
-  ) => Promise<string>;
+    data?: ArrayBuffer
+  ) => Promise<ArrayBuffer>;
   defaultFetchTimeouts: {
     socketIdle?: number; // socket idle timeout (Only supported by Node.js runtime)
     response: number; // total round trip timeout

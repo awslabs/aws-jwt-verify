@@ -30,10 +30,10 @@ enum NamedCurvesWebCrypto {
 }
 
 export const nodeWebCompat: NodeWebCompat = {
-  fetchText: async (
+  fetch: async (
     uri: string,
     requestOptions?: Record<string, unknown>,
-    data?: Uint8Array
+    data?: ArrayBuffer
   ) => {
     const responseTimeout = Number(requestOptions?.["responseTimeout"]);
     if (responseTimeout) {
@@ -51,7 +51,12 @@ export const nodeWebCompat: NodeWebCompat = {
       );
       requestOptions = { signal: abort.signal, ...requestOptions };
     }
-    const response = await fetch(uri, { ...requestOptions, body: data });
+    const response = await fetch(uri, { ...requestOptions, body: data }).catch(
+      (err) => {
+        new FetchError(uri, err.message);
+        throw err;
+      }
+    );
     if (response.status === 429) {
       throw new FetchError(uri, "Too many requests");
     } else if (response.status !== 200) {
@@ -60,7 +65,7 @@ export const nodeWebCompat: NodeWebCompat = {
         `Status code is ${response.status}, expected 200`
       );
     }
-    return response.text();
+    return response.arrayBuffer();
   },
   defaultFetchTimeouts: {
     response: 3000,

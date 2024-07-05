@@ -700,7 +700,7 @@ const verifierB = JwtVerifier.create(
 
 When instantiating `SimpleJwksCache`, the `fetcher` property can be populated with an instance of a class that implements the interface `Fetcher` (from `"aws-jwt-verify/https"`), such as the `SimpleFetcher` (which is the default).
 
-The purpose of the fetcher, is to execute fetches against the JWKS uri (HTTPS GET) and return the response as text.
+The purpose of the fetcher, is to execute fetches against the JWKS uri (HTTPS GET) and return the response as an arraybuffer (that will be UTF-8 decoded and JSON parsed by the `SimpleJwksCache`).
 The default implementation, the `SimpleFetcher`, has basic machinery to do fetches over HTTPS. It does 1 (immediate) retry in case of connection errors.
 
 By supplying a custom fetcher when instantiating `SimpleJwksCache`, instead of `SimpleFetcher`, you can implement any retry and backoff scheme you want, or use another HTTPS library:
@@ -716,7 +716,7 @@ class CustomFetcher implements Fetcher {
   instance = axios.create();
   public async fetch(uri: string) {
     return this.instance
-      .get(uri, { responseType: "text" })
+      .get(uri, { responseType: "arraybuffer" })
       .then((response) => response.data);
   }
 }
@@ -728,6 +728,31 @@ const verifier = JwtVerifier.create(
   {
     jwksCache: new SimpleJwksCache({
       fetcher: new CustomFetcher(),
+    }),
+  }
+);
+```
+
+### Using a different `JwksParser` with `SimpleJwksCache`
+
+The default `JwksParser` takes the `ArrayBuffer` that the fetcher (see above) returns, and UTF-8 decodes and JSON parses it, and verifies it is a valid JWKS.
+If your JWKS is non-standard, you can override the parser, giving you the option to do any transformations needed to make it a standard JWKS:
+
+```typescript
+import { JwtVerifier } from "..";
+import { SimpleJwksCache, assertIsJwks } from "../jwk";
+
+const verifier = JwtVerifier.create(
+  {
+    issuer: "http://my-tenant.my-idp.com",
+  },
+  {
+    jwksCache: new SimpleJwksCache({
+      jwksParser: (buf) => {
+        const jwks = JSON.parse(new TextDecoder().decode(buf));
+        assertIsJwks(jwks);
+        return jwks;
+      },
     }),
   }
 );

@@ -55,6 +55,16 @@ describe("unit tests jwk", () => {
     );
   });
 
+  test("Fetch JWK error flow: invalid JSON", () => {
+    mockHttpsUri(jwksUri, {
+      responsePayload: Buffer.from("ff", "hex"), // will be invalid UTF-8
+    });
+    expect.assertions(1);
+    return expect(fetchJwk(jwksUri, getDecomposedJwt())).rejects.toThrow(
+      JwksValidationError
+    );
+  });
+
   test("Fetch JWK error flow: kid empty", () => {
     expect.assertions(1);
     return expect(
@@ -84,7 +94,7 @@ describe("unit tests jwk", () => {
 
   test("Simple JWKS cache returns JWK", () => {
     const jwksCache = new SimpleJwksCache({
-      fetcher: { fetch: async () => JSON.stringify(keypair.jwks) },
+      fetcher: { fetch: async () => Buffer.from(JSON.stringify(keypair.jwks)) },
     });
     expect.assertions(1);
     return expect(
@@ -93,17 +103,28 @@ describe("unit tests jwk", () => {
   });
 
   test("Simple JWKS cache returns cached JWK", () => {
-    const jwksCache = new SimpleJwksCache({
-      fetcher: { fetch: async () => keypair.jwks as any },
-    });
+    const jwksCache = new SimpleJwksCache();
     jwksCache.addJwks(jwksUri, keypair.jwks);
     expect(jwksCache.getCachedJwk(jwksUri, getDecomposedJwt())).toEqual(
       keypair.jwk
     );
   });
 
+  test("Simple JWKS cache error flow: invalid JSON", () => {
+    const jwksCache = new SimpleJwksCache({
+      fetcher: {
+        fetch: async () => Buffer.from(JSON.stringify(keypair.jwks) + "}"),
+      },
+    });
+    expect.assertions(1);
+    return expect(
+      jwksCache.getJwk(jwksUri, getDecomposedJwt())
+    ).rejects.toThrow(`JWKS could not be parsed as JSON`);
+  });
+
   test("Simple JWKS cache error flow: kid empty", () => {
     const jwksCache = new SimpleJwksCache();
+    jwksCache.addJwks(jwksUri, keypair.jwks);
     expect.assertions(1);
     return expect(
       jwksCache.getJwk(jwksUri, { header: { alg: "RS256" }, payload: {} })
@@ -111,9 +132,7 @@ describe("unit tests jwk", () => {
   });
 
   test("Simple JWKS cache error flow: JWK not cached", () => {
-    const jwksCache = new SimpleJwksCache({
-      fetcher: { fetch: async () => keypair.jwks as any },
-    });
+    const jwksCache = new SimpleJwksCache();
     jwksCache.addJwks(jwksUri, keypair.jwks);
     expect(() =>
       jwksCache.getCachedJwk(
@@ -135,7 +154,7 @@ describe("unit tests jwk", () => {
      * be made to the JWKS URI.
      */
     const fetcher = {
-      fetch: jest.fn(async () => JSON.stringify(keypair.jwks)),
+      fetch: jest.fn(async () => Buffer.from(JSON.stringify(keypair.jwks))),
     };
     const jwksCache = new SimpleJwksCache({
       fetcher,
@@ -157,7 +176,7 @@ describe("unit tests jwk", () => {
      * sucessfully return the JWK. After the wait time lapses, the JWKS URI may be fetched again.
      */
     const fetcher = {
-      fetch: jest.fn(async () => JSON.stringify(keypair.jwks)),
+      fetch: jest.fn(async () => Buffer.from(JSON.stringify(keypair.jwks))),
     };
     const waitSeconds = 0.5;
     const penaltyBox = new SimplePenaltyBox({ waitSeconds });
@@ -276,7 +295,7 @@ describe("unit tests jwk", () => {
       }
       class CustomJsonFetcher implements Fetcher {
         public fetch = jest.fn(async (_uri: string) => {
-          return JSON.stringify(keypair.jwks);
+          return Buffer.from(JSON.stringify(keypair.jwks));
         });
       }
       const penaltyBox = new CustomPenaltyBox();
