@@ -40,10 +40,7 @@ export async function fetch(
       },
       (response) => {
         // check status
-        if (response.statusCode === 429) {
-          done(new FetchError(uri, "Too many requests"));
-          return;
-        } else if (response.statusCode !== 200) {
+        if (response.statusCode !== 200) {
           done(
             new NonRetryableFetchError(
               uri,

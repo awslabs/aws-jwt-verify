@@ -57,9 +57,7 @@ export const nodeWebCompat: NodeWebCompat = {
         throw err;
       }
     );
-    if (response.status === 429) {
-      throw new FetchError(uri, "Too many requests");
-    } else if (response.status !== 200) {
+    if (response.status !== 200) {
       throw new NonRetryableFetchError(
         uri,
         `Status code is ${response.status}, expected 200`

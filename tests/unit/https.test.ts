@@ -74,20 +74,6 @@ describe("unit tests https", () => {
     );
   });
 
-  test("Simple JSON fetcher does retry HTTP 429", () => {
-    const uri = "https://example.com/test/jwks.json";
-    const payload = { hello: "world" };
-    expect.assertions(1);
-    mockHttpsUri(uri, {
-      responseStatus: 429,
-      responsePayload: "WE'RE BUSY RIGHT NOW",
-    });
-    mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
-    return expect(new SimpleFetcher().fetch(uri)).resolves.toEqual(
-      Buffer.from(JSON.stringify(payload))
-    );
-  });
-
   test("Simple JSON fetcher does not retry twice", () => {
     const uri = "https://example.com/test/jwks.json";
     class TcpError extends Error {}
