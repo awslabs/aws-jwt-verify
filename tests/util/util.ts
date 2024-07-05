@@ -35,7 +35,6 @@ export function generateKeyPair(
       }
     | {
         kty: "EC";
-        namedCurve: "P-256" | "P-384" | "P-521";
         alg?: "ES256" | "ES384" | "ES512";
         kid?: string;
         use?: string;
@@ -52,7 +51,9 @@ export function generateKeyPair(
           publicExponent: 0x10001,
         })
       : generateKeyPairSync("ec", {
-          namedCurve: options.namedCurve,
+          namedCurve: { ES256: "P-256", ES384: "P-384", ES512: "P-521" }[
+            options.alg ?? "ES256"
+          ],
         });
 
   const jwk = publicKey.export({

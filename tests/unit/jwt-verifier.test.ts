@@ -88,7 +88,6 @@ describe("unit tests jwt verifier", () => {
         const es256keypair = generateKeyPair({
           kty: "EC",
           alg: "ES256",
-          namedCurve: "P-256",
         });
         const issuer = "https://example.com";
         const audience = "1234";
@@ -105,7 +104,6 @@ describe("unit tests jwt verifier", () => {
         const es384keypair = generateKeyPair({
           kty: "EC",
           alg: "ES384",
-          namedCurve: "P-384",
         });
         const issuer = "https://example.com";
         const audience = "1234";
@@ -122,7 +120,6 @@ describe("unit tests jwt verifier", () => {
         const es512keypair = generateKeyPair({
           kty: "EC",
           alg: "ES512",
-          namedCurve: "P-521",
         });
         const issuer = "https://example.com";
         const audience = "1234";
@@ -971,7 +968,7 @@ describe("unit tests jwt verifier", () => {
       test("missing crv on JWK", () => {
         const { jwk, privateKey } = generateKeyPair({
           kty: "EC",
-          namedCurve: "P-256",
+          alg: "ES256",
         });
         delete jwk.crv;
         const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
@@ -986,7 +983,7 @@ describe("unit tests jwt verifier", () => {
       test("missing x on JWK", () => {
         const { jwk, privateKey } = generateKeyPair({
           kty: "EC",
-          namedCurve: "P-256",
+          alg: "ES256",
         });
         delete jwk.x;
         const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
@@ -1001,7 +998,7 @@ describe("unit tests jwt verifier", () => {
       test("missing y on JWK", () => {
         const { jwk, privateKey } = generateKeyPair({
           kty: "EC",
-          namedCurve: "P-256",
+          alg: "ES384",
         });
         delete jwk.y;
         const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
