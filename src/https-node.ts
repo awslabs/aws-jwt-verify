@@ -3,7 +3,6 @@
 //
 // NodeJS implementation for fetching documents over HTTPS
 
-import { Transform } from "stream";
 import { request } from "https";
 import { RequestOptions } from "http";
 import { pipeline } from "stream";
@@ -52,11 +51,12 @@ export async function fetch(
         // Collect response data
         pipeline(
           response,
-          collector(),
-          async (collector) => {
-            for await (const collected of collector) {
-              return collected;
+          async (response) => {
+            const collected: Buffer[] = [];
+            for await (const chunk of response) {
+              collected.push(chunk);
             }
+            return Buffer.concat(collected);
           },
           done
         );
@@ -103,23 +103,5 @@ export async function fetch(
 
     // Signal end of request (include optional data)
     req.end(data);
-  });
-}
-
-/**
- * Function that returns a Transform stream, which collects the incoming chunks (in-memory) into 1 Buffer
- * @returns Transform
- */
-function collector() {
-  const collected: Buffer[] = [];
-  return new Transform({
-    transform: function (chunk: Buffer, _encoding, cb) {
-      collected.push(chunk);
-      cb();
-    },
-    final: function (cb) {
-      this.push(Buffer.concat(collected));
-      cb();
-    },
   });
 }
