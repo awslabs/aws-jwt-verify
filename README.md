@@ -769,7 +769,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 // No jwksCache configured explicitly,
 // so the default `SimpleJwksCache` with `SimpleFetcher` will be used,
-// with a default response timeout of 1500 ms.:
+// with a default response timeout of 3000 ms.:
 const verifier = CognitoJwtVerifier.create({
   userPoolId: "<user_pool_id>",
   tokenUse: "access", // or "id"
@@ -794,7 +794,7 @@ const verifier = CognitoJwtVerifier.create(
     jwksCache: new SimpleJwksCache({
       fetcher: new SimpleFetcher({
         defaultRequestOptions: {
-          responseTimeout: 1500,
+          responseTimeout: 3000,
           // You can add additional request options:
           // For NodeJS: https://nodejs.org/api/http.html#httprequestoptions-callback
           // For Web (init object): https://developer.mozilla.org/en-US/docs/Web/API/fetch#syntax
