@@ -51,12 +51,12 @@ export async function fetch(
         // Collect response data
         pipeline(
           response,
-          async (response) => {
-            const collected: Buffer[] = [];
-            for await (const chunk of response) {
-              collected.push(chunk);
+          async (responseBody) => {
+            const chunks: Buffer[] = [];
+            for await (const chunk of responseBody) {
+              chunks.push(chunk);
             }
-            return Buffer.concat(collected);
+            return Buffer.concat(chunks);
           },
           done
         );
