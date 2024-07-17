@@ -158,7 +158,7 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, keypair.jwks, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
-      test("happy flow with mixed JWKS - JWKS that includes non-RSA keys", () => {
+      test("happy flow with mixed JWKS - JWKS that includes unsupported keys", () => {
         const issuer = "https://example.com";
         const audience = "1234";
         const signedJwt = signJwt(
@@ -169,8 +169,8 @@ describe("unit tests jwt verifier", () => {
         const mixedJwks: Jwks = {
           keys: [
             {
-              kty: "EC",
-              alg: "ES256",
+              kty: "RSA",
+              alg: "PS256",
               use: "sig",
               kid: "somekid",
             },
@@ -878,7 +878,7 @@ describe("unit tests jwt verifier", () => {
             issuer: "testiss",
           });
         expect(statementWithJwkWithoutAlg).toThrow(
-          `JWT signature algorithm not allowed: PS256. Expected one of: RS256, RS384, RS512`
+          `JWT signature algorithm not allowed: PS256. Expected one of: RS256, RS384, RS512, ES256, ES384, ES512`
         );
         expect(statementWithJwkWithoutAlg).toThrow(
           JwtInvalidSignatureAlgorithmError
@@ -893,7 +893,7 @@ describe("unit tests jwt verifier", () => {
             }
           );
         expect(statementWithJwkWithWrongAlg).toThrow(
-          `JWT signature algorithm not allowed: PS256. Expected one of: RS256, RS384, RS512`
+          `JWT signature algorithm not allowed: PS256. Expected one of: RS256, RS384, RS512, ES256, ES384, ES512`
         );
         expect(statementWithJwkWithWrongAlg).toThrow(
           JwtInvalidSignatureAlgorithmError
