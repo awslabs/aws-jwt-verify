@@ -50,11 +50,11 @@ export function assertStringEquals<T extends string>(
  * @param name - Name for the value being checked
  * @param actual - The value to check
  * @param expected - The array of expected values. For your convenience you can provide
+ *   a string here as well, which will mean an array with just that string
  * @param errorConstructor - Constructor for the concrete error to be thrown
- * a string here as well, which will mean an array with just that string
  */
 export function assertStringArrayContainsString<
-  T extends string | Readonly<string[]>
+  T extends string | Readonly<string[]>,
 >(
   name: string,
   actual: unknown,

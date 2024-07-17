@@ -3,16 +3,8 @@
 
 import { JsonObject } from "./safe-json-parse.js";
 
-export const supportedSignatureAlgorithms = [
-  "RS256",
-  "RS384",
-  "RS512",
-] as const;
-export type SupportedSignatureAlgorithm =
-  typeof supportedSignatureAlgorithms[number];
-
 interface JwtHeaderStandardFields {
-  alg?: SupportedSignatureAlgorithm | string; // algorithm: https://tools.ietf.org/html/rfc7517#section-4.4
+  alg?: string; // algorithm: https://tools.ietf.org/html/rfc7517#section-4.4
   kid?: string; // key id: https://tools.ietf.org/html/rfc7517#section-4.5
 }
 
@@ -40,14 +32,14 @@ export type CognitoIdOrAccessTokenPayload<IssuerConfig, VerifyProps> =
   VerifyProps extends { tokenUse: null }
     ? CognitoJwtPayload
     : VerifyProps extends { tokenUse: "id" }
-    ? CognitoIdTokenPayload
-    : VerifyProps extends { tokenUse: "access" }
-    ? CognitoAccessTokenPayload
-    : IssuerConfig extends { tokenUse: "id" }
-    ? CognitoIdTokenPayload
-    : IssuerConfig extends { tokenUse: "access" }
-    ? CognitoAccessTokenPayload
-    : CognitoJwtPayload;
+      ? CognitoIdTokenPayload
+      : VerifyProps extends { tokenUse: "access" }
+        ? CognitoAccessTokenPayload
+        : IssuerConfig extends { tokenUse: "id" }
+          ? CognitoIdTokenPayload
+          : IssuerConfig extends { tokenUse: "access" }
+            ? CognitoAccessTokenPayload
+            : CognitoJwtPayload;
 
 interface CognitoJwtFields {
   token_use: "access" | "id";

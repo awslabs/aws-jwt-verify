@@ -107,12 +107,6 @@ export class CognitoJwtInvalidTokenUseError extends JwtInvalidClaimError {}
 export class CognitoJwtInvalidClientIdError extends JwtInvalidClaimError {}
 
 /**
- * ASN.1 errors
- */
-
-export class Asn1DecodingError extends JwtBaseError {}
-
-/**
  * JWK errors
  */
 

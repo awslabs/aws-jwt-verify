@@ -6,12 +6,12 @@ import {
   JwksCache,
   Jwk,
   JwkWithKid,
-  RsaSignatureJwk,
+  SignatureJwk,
   Jwks,
   isJwk,
   isJwks,
   fetchJwk,
-  assertIsRsaSignatureJwk,
+  assertIsSignatureJwk,
   findJwkInJwks,
 } from "./jwk.js";
 import {
@@ -19,17 +19,13 @@ import {
   assertStringArrayContainsString,
   assertStringEquals,
 } from "./assert.js";
-import {
-  JwtHeader,
-  JwtPayload,
-  supportedSignatureAlgorithms,
-  SupportedSignatureAlgorithm,
-} from "./jwt-model.js";
+import { JwtHeader, JwtPayload } from "./jwt-model.js";
 import { AsAsync, Properties } from "./typing-util.js";
 import {
   decomposeUnverifiedJwt,
   DecomposedJwt,
   validateJwtFields,
+  GenericKeyObject,
 } from "./jwt.js";
 import {
   JwtInvalidClaimError,
@@ -41,6 +37,17 @@ import {
 } from "./error.js";
 import { JsonObject } from "./safe-json-parse.js";
 import { nodeWebCompat } from "#node-web-compat";
+
+export const supportedSignatureAlgorithms = [
+  "RS256",
+  "RS384",
+  "RS512",
+  "ES256",
+  "ES384",
+  "ES512",
+] as const;
+export type SupportedSignatureAlgorithm =
+  (typeof supportedSignatureAlgorithms)[number];
 
 /** Interface for JWT verification properties */
 export interface VerifyProperties {
@@ -85,8 +92,8 @@ export interface VerifyProperties {
   includeRawJwtInErrors?: boolean;
 }
 
-/** Type for JWT RSA verifier properties, for a single issuer */
-export type JwtRsaVerifierProperties<VerifyProps> = {
+/** Type for JWT verifier properties, for a single issuer */
+export type JwtVerifierProperties<VerifyProps> = {
   /**
    * URI where the JWKS (JSON Web Key Set) can be downloaded from.
    * The JWKS contains one or more JWKs, which represent the public keys with which
@@ -101,10 +108,10 @@ export type JwtRsaVerifierProperties<VerifyProps> = {
 } & Partial<VerifyProps>;
 
 /**
- * Type for JWT RSA verifier properties, when multiple issuers are used in the verifier.
+ * Type for JWT verifier properties, when multiple issuers are used in the verifier.
  * In this case, you should be explicit in mapping audience to issuer.
  */
-export type JwtRsaVerifierMultiProperties<T> = {
+export type JwtVerifierMultiProperties<T> = {
   /**
    * URI where the JWKS (JSON Web Key Set) can be downloaded from.
    * The JWKS contains one or more JWKs, which represent the public keys with which
@@ -119,13 +126,13 @@ export type JwtRsaVerifierMultiProperties<T> = {
 } & T;
 
 /**
- * JWT Verifier (RSA) for a single issuer
+ * JWT Verifier for a single issuer
  */
-export type JwtRsaVerifierSingleIssuer<
-  T extends JwtRsaVerifierProperties<VerifyProperties>
-> = JwtRsaVerifier<
+export type JwtVerifierSingleIssuer<
+  T extends JwtVerifierProperties<VerifyProperties>,
+> = JwtVerifier<
   Properties<VerifyProperties, T>,
-  T & JwtRsaVerifierProperties<VerifyProperties>,
+  T & JwtVerifierProperties<VerifyProperties>,
   false
 >;
 
@@ -143,44 +150,15 @@ type VerifyParameters<SpecificVerifyProperties> = {
   : [jwt: string, props: SpecificVerifyProperties];
 
 /**
- * JWT Verifier (RSA) for multiple issuers
+ * JWT Verifier for multiple issuers
  */
-export type JwtRsaVerifierMultiIssuer<
-  T extends JwtRsaVerifierMultiProperties<VerifyProperties>
-> = JwtRsaVerifier<
+export type JwtVerifierMultiIssuer<
+  T extends JwtVerifierMultiProperties<VerifyProperties>,
+> = JwtVerifier<
   Properties<VerifyProperties, T>,
-  T & JwtRsaVerifierProperties<VerifyProperties>,
+  T & JwtVerifierProperties<VerifyProperties>,
   true
 >;
-
-/**
- * Verify (synchronously) the JSON Web Signature (JWS) of a JWT
- * https://datatracker.ietf.org/doc/html/rfc7515
- *
- * @param keyObject: the keyobject (representing the public key) in native crypto format
- * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
- * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
- * @param signature: the JSON Web Signature (JWS)
- * @returns boolean: true if the JWS is valid, or false otherwise
- */
-export type JwsVerificationFunctionSync = (props: {
-  keyObject: GenericKeyObject;
-  alg: SupportedSignatureAlgorithm;
-  jwsSigningInput: string;
-  signature: string;
-}) => boolean;
-
-/**
- * Verify (asynchronously) the JSON Web Signature (JWS) of a JWT
- * https://datatracker.ietf.org/doc/html/rfc7515
- *
- * @param keyObject: the keyobject (representing the public key) in native crypto format
- * @param alg: the JWS algorithm that was used to create the JWS (e.g. RS256)
- * @param jwsSigningInput: the input for which the JWS was created, i.e. that what was signed
- * @param signature: the JSON Web Signature (JWS)
- * @returns Promise that resolves to a boolean: true if the JWS is valid, or false otherwise
- */
-export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
 
 /**
  * Sanity check the JWT header and the selected JWK
@@ -191,9 +169,9 @@ export type JwsVerificationFunctionAsync = AsAsync<JwsVerificationFunctionSync>;
 function validateJwtHeaderAndJwk(
   header: JwtHeader,
   jwk: Jwk
-): asserts jwk is RsaSignatureJwk {
-  // Check that the JWK is in fact a JWK for RSA signatures
-  assertIsRsaSignatureJwk(jwk);
+): asserts jwk is SignatureJwk {
+  // Check that the JWK is in fact a JWK for signatures
+  assertIsSignatureJwk(jwk);
 
   // Check that JWT signature algorithm matches JWK
   if (jwk.alg) {
@@ -444,7 +422,7 @@ type Issuer = string;
 type Kid = string;
 
 /**
- * Abstract class representing a verifier for JWTs signed with RSA (e.g. RS256, RS384, RS512)
+ * Abstract class representing a verifier for JWTs
  *
  * A class is used, because there is state:
  * - The JWKS is fetched (downloaded) from the JWKS URI and cached in memory
@@ -456,10 +434,10 @@ type Kid = string;
  * @param IssuerConfig The issuer config that you'll use (config options are used as default verification options)
  * @param MultiIssuer Verify multiple issuers (true) or just a single one (false)
  */
-export abstract class JwtRsaVerifierBase<
+export abstract class JwtVerifierBase<
   SpecificVerifyProperties extends Record<string | number, unknown>,
-  IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties>,
-  MultiIssuer extends boolean
+  IssuerConfig extends JwtVerifierProperties<SpecificVerifyProperties>,
+  MultiIssuer extends boolean,
 > {
   private issuersConfig: Map<Issuer, IssuerConfig & { jwksUri: string }> =
     new Map();
@@ -546,7 +524,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (synchronously) a JWT that is signed using RS256 / RS384 / RS512.
+   * Verify (synchronously) a JWT.
    *
    * @param jwt The JWT, as string
    * @param props Verification properties
@@ -565,7 +543,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (synchronously) an already decomposed JWT, that is signed using RS256 / RS384 / RS512.
+   * Verify (synchronously) an already decomposed JWT.
    *
    * @param decomposedJwt The decomposed Jwt
    * @param jwk The JWK to verify the JWTs signature with
@@ -587,7 +565,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (asynchronously) a JWT that is signed using RS256 / RS384 / RS512.
+   * Verify (asynchronously) a JWT.
    * This call is asynchronous, and the JWKS will be fetched from the JWKS uri,
    * in case it is not yet available in the cache.
    *
@@ -604,7 +582,7 @@ export abstract class JwtRsaVerifierBase<
   }
 
   /**
-   * Verify (asynchronously) an already decomposed JWT, that is signed using RS256 / RS384 / RS512.
+   * Verify (asynchronously) an already decomposed JWT.
    *
    * @param decomposedJwt The decomposed Jwt
    * @param jwk The JWK to verify the JWTs signature with
@@ -681,49 +659,44 @@ export abstract class JwtRsaVerifierBase<
 }
 
 /**
- * Class representing a verifier for JWTs signed with RSA (e.g. RS256 / RS384 / RS512)
+ * Class representing a verifier for JWTs
  */
-export class JwtRsaVerifier<
+export class JwtVerifier<
   SpecificVerifyProperties extends Partial<VerifyProperties>,
-  IssuerConfig extends JwtRsaVerifierProperties<SpecificVerifyProperties>,
-  MultiIssuer extends boolean
-> extends JwtRsaVerifierBase<
-  SpecificVerifyProperties,
-  IssuerConfig,
-  MultiIssuer
-> {
+  IssuerConfig extends JwtVerifierProperties<SpecificVerifyProperties>,
+  MultiIssuer extends boolean,
+> extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
   /**
-   * Create an RSA JWT verifier for a single issuer
+   * Create an JWT verifier for a single issuer
    *
    * @param verifyProperties The verification properties for your issuer
    * @param additionalProperties Additional properties
    * @param additionalProperties.jwksCache Overriding JWKS cache that you want to use
-   * @returns An RSA JWT Verifier instance, that you can use to verify JWTs with
+   * @returns An JWT Verifier instance, that you can use to verify JWTs with
    */
-  static create<T extends JwtRsaVerifierProperties<VerifyProperties>>(
-    verifyProperties: T & Partial<JwtRsaVerifierProperties<VerifyProperties>>,
+  static create<T extends JwtVerifierProperties<VerifyProperties>>(
+    verifyProperties: T & Partial<JwtVerifierProperties<VerifyProperties>>,
     additionalProperties?: { jwksCache: JwksCache }
-  ): JwtRsaVerifierSingleIssuer<T>;
+  ): JwtVerifierSingleIssuer<T>;
 
   /**
-   * Create an RSA JWT verifier for multiple issuer
+   * Create a JWT verifier for multiple issuer
    *
    * @param verifyProperties An array of verification properties, one for each issuer
    * @param additionalProperties Additional properties
    * @param additionalProperties.jwksCache Overriding JWKS cache that you want to use
-   * @returns An RSA JWT Verifier instance, that you can use to verify JWTs with
+   * @returns A JWT Verifier instance, that you can use to verify JWTs with
    */
-  static create<T extends JwtRsaVerifierMultiProperties<VerifyProperties>>(
-    verifyProperties: (T &
-      Partial<JwtRsaVerifierProperties<VerifyProperties>>)[],
+  static create<T extends JwtVerifierMultiProperties<VerifyProperties>>(
+    verifyProperties: (T & Partial<JwtVerifierProperties<VerifyProperties>>)[],
     additionalProperties?: { jwksCache: JwksCache }
-  ): JwtRsaVerifierMultiIssuer<T>;
+  ): JwtVerifierMultiIssuer<T>;
 
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   static create(
     verifyProperties:
-      | JwtRsaVerifierProperties<VerifyProperties>
-      | JwtRsaVerifierMultiProperties<VerifyProperties>[],
+      | JwtVerifierProperties<VerifyProperties>
+      | JwtVerifierMultiProperties<VerifyProperties>[],
     additionalProperties?: { jwksCache: JwksCache }
   ) {
     return new this(verifyProperties, additionalProperties?.jwksCache);
@@ -731,38 +704,32 @@ export class JwtRsaVerifier<
 }
 
 /**
- * Type for a generic key object, at runtime either the Node.js or WebCrypto concrete key object is used
- */
-// eslint-disable-next-line @typescript-eslint/ban-types
-type GenericKeyObject = Object;
-
-/**
- * Transform (synchronously) the JWK into an RSA public key in crypto native key object format
+ * Transform (synchronously) the JWK into a public key in crypto native key object format
  *
  * @param jwk: the JWK
  * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
  * @param issuer: the issuer that uses the JWK for signing JWTs (may be used for caching the transformation)
- * @returns the RSA public key in crypto native key object format
+ * @returns the public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerSync = (
-  jwk: RsaSignatureJwk,
+  jwk: SignatureJwk,
   jwtHeaderAlg?: SupportedSignatureAlgorithm,
   issuer?: string
 ) => GenericKeyObject;
 
 /**
- * Transform (asynchronously) the JWK into an RSA public key in crypto native key object format
+ * Transform (asynchronously) the JWK into a public key in crypto native key object format
  *
  * @param jwk: the JWK
  * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
  * @param issuer: the issuer that uses the JWK for signing JWTs (may be used for caching the transformation)
- * @returns Promise that will resolve with the RSA public key in crypto native key object format
+ * @returns Promise that will resolve with the public key in crypto native key object format
  */
 export type JwkToKeyObjectTransformerAsync =
   AsAsync<JwkToKeyObjectTransformerSync>;
 
 /**
- * Class representing a cache of RSA public keys in native key object format
+ * Class representing a cache of public keys in native key object format
  *
  * Because it takes a bit of compute time to turn a JWK into native key object format,
  * we want to cache this computation.
@@ -779,16 +746,16 @@ export class KeyObjectCache {
   ) {}
 
   /**
-   * Transform the JWK into an RSA public key in native key object format.
+   * Transform the JWK into a public key in native key object format.
    * If the transformed JWK is already in the cache, it is returned from the cache instead.
    *
    * @param jwk: the JWK
    * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
    * @param issuer: the issuer that uses the JWK for signing JWTs (used for caching the transformation)
-   * @returns the RSA public key in native key object format
+   * @returns the public key in native key object format
    */
   transformJwkToKeyObjectSync(
-    jwk: RsaSignatureJwk,
+    jwk: SignatureJwk,
     jwtHeaderAlg?: SupportedSignatureAlgorithm,
     issuer?: string
   ): GenericKeyObject {
@@ -804,16 +771,16 @@ export class KeyObjectCache {
   }
 
   /**
-   * Transform the JWK into an RSA public key in native key object format (async).
+   * Transform the JWK into a public key in native key object format (async).
    * If the transformed JWK is already in the cache, it is returned from the cache instead.
    *
    * @param jwk: the JWK
    * @param jwtHeaderAlg: the alg from the JWT header (used if absent on JWK)
    * @param issuer: the issuer that uses the JWK for signing JWTs (used for caching the transformation)
-   * @returns the RSA public key in native key object format
+   * @returns the public key in native key object format
    */
   async transformJwkToKeyObjectAsync(
-    jwk: RsaSignatureJwk,
+    jwk: SignatureJwk,
     jwtHeaderAlg?: SupportedSignatureAlgorithm,
     issuer?: string
   ): Promise<GenericKeyObject> {

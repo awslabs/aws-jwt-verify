@@ -15,7 +15,10 @@ import {
   JwkInvalidKtyError,
 } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
-import { assertStringEquals } from "./assert.js";
+import {
+  assertStringArrayContainsString,
+  assertStringEquals,
+} from "./assert.js";
 
 interface DecomposedJwt {
   header: JwtHeader;
@@ -28,13 +31,16 @@ const optionalJwkFieldNames = [
   "kid", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.5
   "n", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
   "e", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
+  "x", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.2
+  "y", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.3
+  "crv", //https:// datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.1
 ] as const;
 const mandatoryJwkFieldNames = [
   "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
 ] as const;
 
-type OptionalJwkFieldNames = typeof optionalJwkFieldNames[number];
-type MandatoryJwkFieldNames = typeof mandatoryJwkFieldNames[number];
+type OptionalJwkFieldNames = (typeof optionalJwkFieldNames)[number];
+type MandatoryJwkFieldNames = (typeof mandatoryJwkFieldNames)[number];
 type OptionalJwkFields = {
   [key in OptionalJwkFieldNames]?: string;
 };
@@ -44,12 +50,22 @@ type MandatoryJwkFields = {
 
 export type Jwk = OptionalJwkFields & MandatoryJwkFields & JsonObject;
 
-export type RsaSignatureJwk = Jwk & {
-  use: "sig";
+type RsaSignatureJwk = Jwk & {
+  use?: "sig";
   kty: "RSA";
   n: string;
   e: string;
 };
+
+type EcSignatureJwk = Jwk & {
+  use?: "sig";
+  kty: "EC";
+  crv: "P-256" | "P-384" | "P-521";
+  x: string;
+  y: string;
+};
+
+export type SignatureJwk = RsaSignatureJwk | EcSignatureJwk;
 
 export type JwkWithKid = Jwk & {
   kid: string;
@@ -116,11 +132,44 @@ export function assertIsJwks(jwks: Json): asserts jwks is Jwks {
   }
 }
 
-export function assertIsRsaSignatureJwk(
-  jwk: Jwk
-): asserts jwk is RsaSignatureJwk {
+export function assertIsSignatureJwk(jwk: Jwk): asserts jwk is SignatureJwk {
+  assertStringArrayContainsString(
+    "JWK kty",
+    jwk.kty,
+    ["EC", "RSA"],
+    JwkInvalidKtyError
+  );
+  if (jwk.kty === "EC") {
+    assertIsEsSignatureJwk(jwk);
+  } else if (jwk.kty === "RSA") {
+    assertIsRsaSignatureJwk(jwk);
+  }
+}
+
+function assertIsEsSignatureJwk(jwk: Jwk): asserts jwk is EcSignatureJwk {
   // Check JWK use
-  assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  if (jwk.use) {
+    assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  }
+
+  // Check JWK kty
+  assertStringEquals("JWK kty", jwk.kty, "EC", JwkInvalidKtyError);
+
+  // Check Curve (crv) has a value
+  if (!jwk.crv) throw new JwkValidationError("Missing Curve (crv)");
+
+  // Check X Coordinate (x) has a value
+  if (!jwk.x) throw new JwkValidationError("Missing X Coordinate (x)");
+
+  // Check Y Coordinate (y) has a value
+  if (!jwk.y) throw new JwkValidationError("Missing Y Coordinate (y)");
+}
+
+function assertIsRsaSignatureJwk(jwk: Jwk): asserts jwk is RsaSignatureJwk {
+  // Check JWK use
+  if (jwk.use) {
+    assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  }
 
   // Check JWK kty
   assertStringEquals("JWK kty", jwk.kty, "RSA", JwkInvalidKtyError);

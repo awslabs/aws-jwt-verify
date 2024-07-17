@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2019",
     "lib": ["es2019", "dom"],
-    "types": ["cypress"],
+    "types": ["cypress", "node"],
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "esModuleInterop": true

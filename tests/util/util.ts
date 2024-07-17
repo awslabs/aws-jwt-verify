@@ -3,6 +3,7 @@
  */
 
 import { createSign, generateKeyPairSync, KeyObject } from "crypto";
+import { Jwk } from "../../src/jwk";
 
 /** RSA keypair with its various manifestations as properties, for use in automated tests */
 export interface KeyPair {
@@ -19,30 +20,49 @@ export interface KeyPair {
   /** The private key of the keypair, in PEM format */
   privateKeyPem: string;
   /** The public key of the keypair, in JWK format, wrapped as a JWKS */
-  jwks: { keys: [ReturnType<typeof publicKeyToJwk>] };
+  jwks: { keys: Jwk[] };
   /** The public key of the keypair, in JWK format */
-  jwk: ReturnType<typeof publicKeyToJwk>;
-  /** The modulus of the public key of the keypair, as NodeJS buffer */
-  nBuffer: Buffer;
-  /** The exponent of the public key of the keypair, as NodeJS buffer */
-  eBuffer: Buffer;
+  jwk: Jwk;
 }
 
 export function generateKeyPair(
-  deconstructPublicKeyInDerFormat: (publicKey: Buffer) => {
-    n: Buffer;
-    e: Buffer;
-  },
-  options?: { kid?: string; alg?: string }
+  options:
+    | {
+        kty: "RSA";
+        alg?: "RS256" | "RS384" | "RS512";
+        kid?: string;
+        use?: string;
+      }
+    | {
+        kty: "EC";
+        alg?: "ES256" | "ES384" | "ES512";
+        kid?: string;
+        use?: string;
+      } = {
+    kty: "RSA",
+    alg: "RS256",
+    use: "sig",
+  }
 ): KeyPair {
-  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
-    modulusLength: 4096,
-    publicExponent: 0x10001,
-  });
-  const jwk = publicKeyToJwk(publicKey, deconstructPublicKeyInDerFormat, {
-    kid: options?.kid,
-    alg: options?.alg,
-  });
+  const { privateKey, publicKey } =
+    options.kty === "RSA"
+      ? generateKeyPairSync("rsa", {
+          modulusLength: 4096,
+          publicExponent: 0x10001,
+        })
+      : generateKeyPairSync("ec", {
+          namedCurve: { ES256: "P-256", ES384: "P-384", ES512: "P-521" }[
+            options.alg ?? "ES256"
+          ],
+        });
+
+  const jwk = publicKey.export({
+    format: "jwk",
+  }) as Jwk;
+  jwk.alg =
+    "alg" in options ? options.alg : options.kty === "RSA" ? "RS256" : "ES256";
+  jwk.kid = "kid" in options ? options.kid : "testkid";
+  jwk.use = "use" in options ? options.use : "sig";
 
   return {
     publicKey,
@@ -56,53 +76,30 @@ export function generateKeyPair(
     }) as string,
     jwks: { keys: [jwk] },
     jwk,
-    nBuffer: Buffer.from(jwk.n, "base64"),
-    eBuffer: Buffer.from(jwk.e, "base64"),
   };
 }
 
-export function publicKeyToJwk(
-  publicKey: KeyObject,
-  deconstructPublicKeyInDerFormat: (k: Buffer) => { n: Buffer; e: Buffer },
-  jwkOptions: { kid?: string; alg?: string; kty?: string; use?: string } = {}
-) {
-  jwkOptions = {
-    kid: jwkOptions.kid ?? "testkid",
-    alg: jwkOptions.alg ?? "RS256",
-    kty: jwkOptions.kty ?? "RSA",
-    use: jwkOptions.use ?? "sig",
-  };
-  const { n, e } = deconstructPublicKeyInDerFormat(
-    publicKey.export({ format: "der", type: "spki" })
-  );
-  const res = {
-    ...(jwkOptions as Required<typeof jwkOptions>),
-    n: base64url(removeLeadingZero(n)),
-    e: base64url(removeLeadingZero(e)),
-  };
-  return res as {
-    kid: string;
-    alg?: string;
-    kty: string;
-    use: string;
-    n: string;
-    e: string;
-    [key: string]: any;
-  };
-}
-
-function removeLeadingZero(positiveInteger: Buffer) {
-  return positiveInteger[0] === 0
-    ? positiveInteger.subarray(1)
-    : positiveInteger;
-}
-
+/**
+ * Enum to map supported JWT signature algorithms with OpenSSL message digest algorithm names
+ */
 enum JwtSignatureAlgorithms {
   RS256 = "RSA-SHA256",
   RS384 = "RSA-SHA384",
   RS512 = "RSA-SHA512",
+  ES256 = RS256,
+  ES384 = RS384,
+  ES512 = RS512,
 }
 
+/**
+ * Create a signed JWT with the given header and payload.
+ * The signature algorithm will be taken from the "alg" in the header that you provide, and will default to RS256 if not given.
+ * @param header
+ * @param payload
+ * @param privateKey
+ * @param produceValidSignature
+ * @returns
+ */
 export function signJwt(
   header: { kid?: string; alg?: string; [key: string]: any },
   payload: { [key: string]: any },
@@ -111,36 +108,26 @@ export function signJwt(
 ) {
   header = {
     ...header,
-    alg: Object.keys(header).includes("alg") ? header.alg : "RS256",
+    alg: "alg" in header ? header.alg : "RS256",
   };
   payload = { exp: Math.floor(Date.now() / 1000 + 100), ...payload };
   const toSign = [
-    base64url(JSON.stringify(header)),
-    base64url(JSON.stringify(payload)),
+    Buffer.from(JSON.stringify(header)).toString("base64url"),
+    Buffer.from(JSON.stringify(payload)).toString("base64url"),
   ].join(".");
-  const sign = createSign(
-    JwtSignatureAlgorithms[header.alg as keyof typeof JwtSignatureAlgorithms] ??
-      "RSA-SHA256"
-  );
+  const digestFunction =
+    JwtSignatureAlgorithms[
+      (header.alg as keyof typeof JwtSignatureAlgorithms) ?? "RS256"
+    ];
+  const sign = createSign(digestFunction);
   sign.write(toSign);
   sign.end();
   const signature = sign.sign(privateKey);
   if (!produceValidSignature) {
     signature[0] = ~signature[0]; // swap first byte
   }
-  const signedJwt = [toSign, base64url(signature)].join(".");
+  const signedJwt = [toSign, Buffer.from(signature).toString("base64url")].join(
+    "."
+  );
   return signedJwt;
-}
-
-export function base64url(x: string | Buffer) {
-  // Note: since Node.js 14.18 you can just do Buffer.from(x).toString("base64url")
-  // That's pretty recent still, and CI environments might run older Node14, so we'll do it ourselves for a while longer
-  if (typeof x === "string") {
-    x = Buffer.from(x);
-  }
-  return x
-    .toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
 }
