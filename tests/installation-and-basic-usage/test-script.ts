@@ -1,7 +1,7 @@
 import { JwtVerifier } from "aws-jwt-verify";
 import { generateKeyPair, signJwt } from "../util/util";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
-import { SimpleJsonFetcher } from "aws-jwt-verify/https";
+import { SimpleFetcher } from "aws-jwt-verify/https";
 import { createServer } from "https";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -26,7 +26,7 @@ const verifier = JwtVerifier.create(
   },
   {
     jwksCache: new SimpleJwksCache({
-      fetcher: new SimpleJsonFetcher({
+      fetcher: new SimpleFetcher({
         defaultRequestOptions: {
           rejectUnauthorized: false, // ignore SSL errors because we use a self-signed cert for the test
         },

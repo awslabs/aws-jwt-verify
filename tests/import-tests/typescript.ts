@@ -27,7 +27,8 @@ awsJwtModule.JwtVerifier.create({
   issuer: "https://example.com/",
 });
 
-if (typeof https.fetchJson !== "function") {
+if (typeof https.fetch !== "function") {
+  console.error("TypeScript import: https.fetch is not a function");
   process.exit(1);
 }
 

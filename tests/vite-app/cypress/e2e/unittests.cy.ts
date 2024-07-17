@@ -158,7 +158,7 @@ describe("unit tests", () => {
 
       expect(payload).to.not.exist;
     } catch (ex) {
-      expect(ex.message).to.include("Failed to fetch /notexample-JWKS.json");
+      expect(ex.message).to.include(`JWKS could not be parsed as JSON`);
     }
   });
 

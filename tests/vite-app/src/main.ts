@@ -9,13 +9,22 @@ const button = document.querySelector<HTMLButtonElement>("#verifyrsa");
 const result = document.querySelector<HTMLSpanElement>("#result");
 const prettyprint = document.querySelector<HTMLPreElement>("#prettyprint");
 
+function setInnerHtml(el: HTMLElement, value: string) {
+  el.innerHTML = value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 if (inputjwt) {
   inputjwt.onkeyup = () => {
     if (inputjwt && button) {
       button.disabled = inputjwt.value === "";
     }
     if (result) {
-      result.innerHTML = "Unverified";
+      setInnerHtml(result, "Unverified");
     }
   };
 }
@@ -33,16 +42,16 @@ if (button) {
         const payload = await verifier.verify(inputjwt.value);
         console.log("Token is valid. Payload:", payload);
 
-        result.innerHTML = "Verified";
+        setInnerHtml(result, "Verified");
 
         if (prettyprint) {
-          prettyprint.innerHTML = JSON.stringify(payload, null, 2);
+          setInnerHtml(prettyprint, JSON.stringify(payload, null, 2));
         }
       } catch (ex) {
         console.log(ex);
         console.log("Token not valid!");
 
-        result.innerHTML = (ex as Error).message;
+        setInnerHtml(result, (ex as Error).toString());
       }
     }
   };

@@ -25,7 +25,7 @@ export function mockHttpsUri(
     | {
         responseStatus?: number;
         responseHeaders?: { [key: string]: string };
-        responsePayload?: string | Buffer | Uint8Array;
+        responsePayload?: string | Buffer | ArrayBuffer;
         delayBody?: number;
       }
     | Error
@@ -35,16 +35,6 @@ export function mockHttpsUri(
   if (propsOrError instanceof Error) {
     scope.replyWithError(propsOrError);
   } else {
-    const defaults = {
-      responseStatus: 200,
-      responseHeaders: {
-        "Content-Type": "application/json",
-        "Content-Length": propsOrError?.responsePayload
-          ? propsOrError.responsePayload.length.toString()
-          : "0",
-      },
-    };
-    propsOrError = { ...defaults, ...propsOrError };
     if (propsOrError.delayBody) {
       scope.delayBody(propsOrError.delayBody);
     }
