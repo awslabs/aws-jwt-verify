@@ -3,7 +3,6 @@
 //
 // Utilities for fetching the JWKS URI, to get the public keys with which to verify JWTs
 
-import { Json } from "./safe-json-parse.js";
 import { NonRetryableFetchError } from "./error.js";
 import { nodeWebCompat } from "#node-web-compat";
 
@@ -12,27 +11,35 @@ import { nodeWebCompat } from "#node-web-compat";
  * @param uri - The URI
  * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
  * @param data - Data to send to the URI (e.g. POST data)
- * @returns - The response as parsed JSON
+ * @returns - The response body as ArrayBuffer
  */
-export const fetchJson = nodeWebCompat.fetchJson;
+export const fetch = nodeWebCompat.fetch.bind(undefined);
 
 type FetchRequestOptions = Record<string, unknown>;
 
-/** Interface for JS objects that can be used with the SimpleJsonFetcher */
-export interface JsonFetcher<ResultType extends Json = Json> {
+/** Interface for JS objects that can be used as Fetcher */
+export interface Fetcher {
+  /**
+   * Execute a HTTPS request
+   * @param uri - The URI
+   * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
+   * @param data - Data to send to the URI (e.g. POST data)
+   * @returns - The response body as ArrayBuffer
+   */
   fetch: (
     uri: string,
     requestOptions?: FetchRequestOptions,
     data?: Buffer
-  ) => Promise<ResultType>;
+  ) => Promise<ArrayBuffer>;
 }
 
 /**
- * HTTPS Fetcher for URIs with JSON body
+ * HTTPS Fetcher. The fetch implementation has 1 immediate retry in case of errors
  *
  * @param defaultRequestOptions - The default RequestOptions to use on individual HTTPS requests
+ *   (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
  */
-export class SimpleJsonFetcher implements JsonFetcher {
+export class SimpleFetcher implements Fetcher {
   defaultRequestOptions: FetchRequestOptions;
   constructor(props?: { defaultRequestOptions?: FetchRequestOptions }) {
     this.defaultRequestOptions = {
@@ -45,24 +52,24 @@ export class SimpleJsonFetcher implements JsonFetcher {
   /**
    * Execute a HTTPS request (with 1 immediate retry in case of errors)
    * @param uri - The URI
-   * @param requestOptions - The RequestOptions to use
+   * @param requestOptions - The RequestOptions to use (depending on the runtime context, either Node.js RequestOptions or Web Fetch init)
    * @param data - Data to send to the URI (e.g. POST data)
-   * @returns - The response as parsed JSON
+   * @returns - The response body as ArrayBuffer
    */
-  public async fetch<ResultType extends Json>(
+  public async fetch(
     uri: string,
     requestOptions?: FetchRequestOptions,
-    data?: Uint8Array
-  ): Promise<ResultType> {
+    data?: ArrayBuffer
+  ): Promise<ArrayBuffer> {
     requestOptions = { ...this.defaultRequestOptions, ...requestOptions };
     try {
-      return await fetchJson<ResultType>(uri, requestOptions, data);
+      return await fetch(uri, requestOptions, data);
     } catch (err) {
       if (err instanceof NonRetryableFetchError) {
         throw err;
       }
       // Retry once, immediately
-      return fetchJson<ResultType>(uri, requestOptions, data);
+      return fetch(uri, requestOptions, data);
     }
   }
 }

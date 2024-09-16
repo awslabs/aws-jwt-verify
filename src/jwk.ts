@@ -1,9 +1,14 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { SimpleJsonFetcher, JsonFetcher, fetchJson } from "./https.js";
+import { SimpleFetcher, Fetcher, fetch } from "./https.js";
 import { JwtHeader, JwtPayload } from "./jwt-model.js";
-import { Json, JsonObject, isJsonObject } from "./safe-json-parse.js";
+import {
+  Json,
+  JsonObject,
+  isJsonObject,
+  safeJsonParse,
+} from "./safe-json-parse.js";
 import {
   JwkValidationError,
   JwksNotAvailableInCacheError,
@@ -89,10 +94,35 @@ export interface JwksCache {
   getJwks(jwksUri: string): Promise<Jwks>;
 }
 
-export async function fetchJwks(jwksUri: string): Promise<Jwks> {
-  const jwks = await fetchJson(jwksUri);
+/**
+ * UTF-8 decode binary data and then JSON parse it, and ensure it is a JWKS
+ * @param jwksBin
+ * @returns Jwks
+ */
+export type JwksParser = (jwksBin: ArrayBuffer) => Jwks;
+
+/**
+ * UTF-8 decode binary data and then JSON parse it
+ * @param jwksBin
+ * @returns Jwks
+ */
+const parseJwks: JwksParser = function (jwksBin: ArrayBuffer) {
+  let jwks: Json;
+  try {
+    const jwksText = new TextDecoder("utf8", {
+      fatal: true,
+      ignoreBOM: true,
+    }).decode(jwksBin);
+    jwks = safeJsonParse(jwksText);
+  } catch (err) {
+    throw new JwksValidationError(`JWKS could not be parsed as JSON: ${err}`);
+  }
   assertIsJwks(jwks);
   return jwks;
+};
+
+export async function fetchJwks(jwksUri: string): Promise<Jwks> {
+  return fetch(jwksUri).then(parseJwks);
 }
 
 export async function fetchJwk(
@@ -268,14 +298,20 @@ export class SimplePenaltyBox implements PenaltyBox {
 }
 
 export class SimpleJwksCache implements JwksCache {
-  fetcher: JsonFetcher;
+  fetcher: Fetcher;
   penaltyBox: PenaltyBox;
+  jwksParser: JwksParser;
   private jwksCache: Map<JwksUri, Jwks> = new Map();
   private fetchingJwks: Map<JwksUri, Promise<Jwks>> = new Map();
 
-  constructor(props?: { penaltyBox?: PenaltyBox; fetcher?: JsonFetcher }) {
+  constructor(props?: {
+    penaltyBox?: PenaltyBox;
+    fetcher?: Fetcher;
+    jwksParser?: JwksParser;
+  }) {
     this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
-    this.fetcher = props?.fetcher ?? new SimpleJsonFetcher();
+    this.fetcher = props?.fetcher ?? new SimpleFetcher();
+    this.jwksParser = props?.jwksParser ?? parseJwks;
   }
 
   public addJwks(jwksUri: string, jwks: Jwks): void {
@@ -287,10 +323,7 @@ export class SimpleJwksCache implements JwksCache {
     if (existingFetch) {
       return existingFetch;
     }
-    const jwksPromise = this.fetcher.fetch(jwksUri).then((res) => {
-      assertIsJwks(res);
-      return res;
-    });
+    const jwksPromise = this.fetcher.fetch(jwksUri).then(this.jwksParser);
     this.fetchingJwks.set(jwksUri, jwksPromise);
     let jwks: Jwks;
     try {

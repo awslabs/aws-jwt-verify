@@ -5,7 +5,7 @@
 
 import { createPublicKey, createVerify, KeyObject } from "crypto";
 import { SignatureJwk } from "./jwk.js";
-import { fetchJson } from "./https-node.js";
+import { fetch } from "./https-node.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 
 /**
@@ -21,7 +21,7 @@ enum JwtSignatureAlgorithms {
 }
 
 export const nodeWebCompat: NodeWebCompat = {
-  fetchJson,
+  fetch,
   transformJwkToKeyObjectSync: (jwk: SignatureJwk) =>
     createPublicKey({
       key: jwk,
@@ -50,8 +50,8 @@ export const nodeWebCompat: NodeWebCompat = {
       .update(jwsSigningInput)
       .verify(keyObject as KeyObject, signature, "base64"),
   defaultFetchTimeouts: {
-    socketIdle: 500,
-    response: 1500,
+    socketIdle: 1500,
+    response: 3000,
   },
   setTimeoutUnref: (...args: Parameters<typeof setTimeout>) =>
     setTimeout(...args).unref(),
