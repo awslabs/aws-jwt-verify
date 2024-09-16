@@ -22,7 +22,7 @@ type FetchRequestOptions = RequestOptions & {
  * @param uri - The URI
  * @param requestOptions - The RequestOptions to use
  * @param data - Data to send to the URI (e.g. POST data)
- * @returns - The response body as a Uit8Array
+ * @returns - The response body
  */
 export async function fetch(
   uri: string,
