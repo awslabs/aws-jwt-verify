@@ -1,4 +1,4 @@
-# AWS JWT Verify
+# AWS JWT Verify.
 
 **JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512** / **ES256** / **ES384** / **ES512**.
 
