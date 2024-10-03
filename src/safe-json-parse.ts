@@ -4,7 +4,7 @@
 // Utility to parse JSON safely
 
 /** JSON type */
-export type Json = null | string | number | boolean | Json[] | JsonObject;
+export type Json = null | string | number | boolean | Json[] | JsonObject | undefined;
 
 /** JSON Object type */
 export type JsonObject = { [name: string]: Json };
