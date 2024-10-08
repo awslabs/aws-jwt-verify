@@ -99,7 +99,7 @@ export interface JwksCache {
  * @param jwksBin
  * @returns Jwks
  */
-export type JwksParser = (jwksBin: ArrayBuffer) => Jwks;
+export type JwksParser = (jwksBin: ArrayBuffer, jwksUri: string) => Jwks;
 
 /**
  * UTF-8 decode binary data and then JSON parse it
@@ -122,7 +122,7 @@ const parseJwks: JwksParser = function (jwksBin: ArrayBuffer) {
 };
 
 export async function fetchJwks(jwksUri: string): Promise<Jwks> {
-  return fetch(jwksUri).then(parseJwks);
+  return fetch(jwksUri).then((jwksBin) => parseJwks(jwksBin, jwksUri));
 }
 
 export async function fetchJwk(
@@ -323,7 +323,9 @@ export class SimpleJwksCache implements JwksCache {
     if (existingFetch) {
       return existingFetch;
     }
-    const jwksPromise = this.fetcher.fetch(jwksUri).then(this.jwksParser);
+    const jwksPromise = this.fetcher
+      .fetch(jwksUri)
+      .then((jwksBin) => this.jwksParser(jwksBin, jwksUri));
     this.fetchingJwks.set(jwksUri, jwksPromise);
     let jwks: Jwks;
     try {
