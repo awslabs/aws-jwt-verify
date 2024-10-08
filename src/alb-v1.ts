@@ -2,7 +2,6 @@ import { createPublicKey } from "crypto";
 import {
   JwtBaseError,
   JwtWithoutValidKidError,
-  KidNotFoundInJwksError,
 } from "./error";
 import {
   JwkWithKid,
@@ -49,8 +48,6 @@ const parseJwks: JwksParser = function (jwksBin: ArrayBuffer, jwksUri: string) {
   return jwks;
 };
 
-const KID_URI_VARIABLE = "{kid}";
-
 export class AwsAlbJwksCache implements JwksCache {
   simpleJwksCache: SimpleJwksCache;
 
@@ -63,16 +60,13 @@ export class AwsAlbJwksCache implements JwksCache {
 
   /**
    * 
-   * @param jwksUri should be a template URI with the kid expression. Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com/{kid}
+   * @param Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com
    * @param decomposedJwt 
    * @returns 
    */
   private expandWithKid(jwksUri: string, decomposedJwt: DecomposedJwt): string {
     const kid = this.getKid(decomposedJwt);
-    if (jwksUri.indexOf(KID_URI_VARIABLE) < 0) {
-      throw new KidNotFoundInJwksError("kid not found in URI");
-    }
-    return jwksUri.replace(KID_URI_VARIABLE, encodeURIComponent(kid));
+    return `${jwksUri}/${encodeURIComponent(kid)}`;
   }
 
   private getKid(decomposedJwt: DecomposedJwt): string {
@@ -95,7 +89,7 @@ export class AwsAlbJwksCache implements JwksCache {
   
   /**
    * 
-   * @param jwksUri should be a template URI with the kid expression. Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com/{kid}
+   * @param Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com
    * @param decomposedJwt 
    * @returns 
    */

@@ -1,7 +1,7 @@
 import {
   JwtWithoutValidKidError,
 } from "../../src/error";
-import { AwsAlbJwksCache } from "../../src/alb";
+import { AwsAlbJwksCache } from "../../src/alb-v1";
 import {
   allowAllRealNetworkTraffic,
   disallowAllRealNetworkTraffic,
@@ -12,8 +12,8 @@ import { join } from "path";
 
 describe("unit tests https", () => {
   const kid = "abcdefgh-1234-ijkl-5678-mnopqrstuvwx";
-  const jwksUriTemplate = "https://public-keys.auth.elb.eu-west-1.amazonaws.com/{kid}";
-  const jwksUri = `https://public-keys.auth.elb.eu-west-1.amazonaws.com/${kid}`;
+  const jwksUri = "https://public-keys.auth.elb.eu-west-1.amazonaws.com";
+  const jwksUriWithKid = `https://public-keys.auth.elb.eu-west-1.amazonaws.com/${kid}`;
 
   const albResponse = readFileSync(join(__dirname, "alb-jwks-test.pem"));
   const jwk = {
@@ -46,7 +46,7 @@ describe("unit tests https", () => {
     const jwksCache = new AwsAlbJwksCache();
     expect.assertions(1);
     return expect(
-      jwksCache.getJwk(jwksUriTemplate, { header: { alg: "EC256" }, payload: {} })
+      jwksCache.getJwk(jwksUri, { header: { alg: "EC256" }, payload: {} })
     ).rejects.toThrow(JwtWithoutValidKidError);
   });
 
@@ -70,7 +70,7 @@ describe("unit tests https", () => {
      * be made to the JWKS URI.
      */
     
-    mockHttpsUri(jwksUri, {
+    mockHttpsUri(jwksUriWithKid, {
       responsePayload: albResponse,
     });
 
@@ -78,8 +78,8 @@ describe("unit tests https", () => {
 
     const fetch = jest.spyOn(jwksCache.simpleJwksCache.fetcher,"fetch");
 
-    const promise1 = jwksCache.getJwk(jwksUriTemplate, getDecomposedJwt());
-    const promise2 = jwksCache.getJwk(jwksUriTemplate, getDecomposedJwt());
+    const promise1 = jwksCache.getJwk(jwksUri, getDecomposedJwt());
+    const promise2 = jwksCache.getJwk(jwksUri, getDecomposedJwt());
     expect.assertions(2);
     expect(promise1).toEqual(promise2);
     await Promise.all([promise1, promise2]);
