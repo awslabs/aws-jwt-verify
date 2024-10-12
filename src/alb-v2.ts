@@ -8,6 +8,8 @@ import {
   JwkWithKid,
   Jwks,
   JwksCache,
+  PenaltyBox,
+  SimplePenaltyBox,
 } from "./jwk";
 import { JwtHeader, JwtPayload } from "./jwt-model";
 import { Fetcher, SimpleFetcher } from "./https";
@@ -30,13 +32,16 @@ export class AlbUriError extends JwtBaseError {}
 export class AwsAlbJwksCache implements JwksCache {
 
   fetcher: Fetcher;
+  penaltyBox:PenaltyBox;
 
   private jwkCache: SimpleLruCache<JwksUri,CacheValue> = new SimpleLruCache(2);
 
   constructor(props?: {
     fetcher?: Fetcher;
+    penaltyBox?: PenaltyBox;
   }) {
     this.fetcher = props?.fetcher ?? new SimpleFetcher();
+    this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
   }
 
 
@@ -51,13 +56,26 @@ export class AwsAlbJwksCache implements JwksCache {
   }
 
   private getKid(decomposedJwt: DecomposedJwt): string {
-    if (typeof decomposedJwt.header.kid !== "string") {
+    const kid = decomposedJwt.header.kid;
+    if (typeof kid !== "string" || !this.isValidAlbKid(kid)) {
       throw new JwtWithoutValidKidError(
         "JWT header does not have valid kid claim"
       );
     }
-    return decomposedJwt.header.kid;
+    return kid;
   }
+
+  private isValidAlbKid(kid:string) {
+    // for (let i = 0; i < kid.length; i++) {
+    //   const code = kid.charCodeAt(i);
+    //   if (!(code > 47 && code < 58) && // 0-9
+    //       !(code > 64 && code < 91) && // A-Z
+    //       !(code > 96 && code < 123)) { // a-z
+    //     return false;
+    //   }
+    // }
+    return true;
+  };
 
   public async getJwk(
     jwksUri: string,
@@ -68,24 +86,32 @@ export class AwsAlbJwksCache implements JwksCache {
     const cacheValue = this.jwkCache.get(jwksUriWithKid);
     if(cacheValue){
       //cache hit
-      if(cacheValue.jwk){
-        return cacheValue.jwk;
-      }else{
-        return cacheValue.promise;
-      }
+      return cacheValue.promise;
     }else{
       //cache miss
+
+      //TODO fetching with error will rotate cache
+
+      await this.penaltyBox.wait(jwksUriWithKid, kid);
+
       const cacheValue:CacheValue = {
         promise:this.fetcher
           .fetch(jwksUri)
           .then(pem =>this.pemToJwk(kid,pem))
-          .then(jwk=>cacheValue.jwk = jwk)
+          .then(jwk=>{
+            cacheValue.jwk = jwk;
+            this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
+            return jwk;
+          })
+          .catch(error=>{
+            this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
+            throw error;
+          })
       }
       
-      const jwkPromise = cacheValue.promise;
-      //TODO error and retry
       this.jwkCache.set(jwksUriWithKid,cacheValue);
-      return jwkPromise;
+
+      return cacheValue.promise;
     }
   }
   
