@@ -22,11 +22,6 @@ interface DecomposedJwt {
 
 type JwksUri = string;
 
-type CacheValue = {
-  jwk?:JwkWithKid;
-  promise:Promise<JwkWithKid>; 
-}
-
 export class AlbUriError extends JwtBaseError {}
 
 export class AwsAlbJwksCache implements JwksCache {
@@ -34,7 +29,8 @@ export class AwsAlbJwksCache implements JwksCache {
   fetcher: Fetcher;
   penaltyBox:PenaltyBox;
 
-  private jwkCache: SimpleLruCache<JwksUri,CacheValue> = new SimpleLruCache(2);
+  private jwkCache: SimpleLruCache<JwksUri,JwkWithKid> = new SimpleLruCache(2);
+  private fetchingJwks: Map<JwksUri,Promise<JwkWithKid>> = new Map();
 
   constructor(props?: {
     fetcher?: Fetcher;
@@ -43,7 +39,6 @@ export class AwsAlbJwksCache implements JwksCache {
     this.fetcher = props?.fetcher ?? new SimpleFetcher();
     this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
   }
-
 
   /**
    * 
@@ -83,35 +78,37 @@ export class AwsAlbJwksCache implements JwksCache {
   ): Promise<JwkWithKid> {
     const kid = this.getKid(decomposedJwt);
     const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
-    const cacheValue = this.jwkCache.get(jwksUriWithKid);
-    if(cacheValue){
+    const jwk = this.jwkCache.get(jwksUriWithKid);
+    if(jwk){
       //cache hit
-      return cacheValue.promise;
+      return jwk;
     }else{
       //cache miss
+      const fetchPromise = this.fetchingJwks.get(jwksUriWithKid);
+      if(fetchPromise){
+        return fetchPromise;
+      }else{
+        await this.penaltyBox.wait(jwksUriWithKid, kid);
 
-      //TODO fetching with error will rotate cache
-
-      await this.penaltyBox.wait(jwksUriWithKid, kid);
-
-      const cacheValue:CacheValue = {
-        promise:this.fetcher
-          .fetch(jwksUri)
-          .then(pem =>this.pemToJwk(kid,pem))
-          .then(jwk=>{
-            cacheValue.jwk = jwk;
-            this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
-            return jwk;
-          })
-          .catch(error=>{
-            this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
-            throw error;
-          })
+        const newFetchPromise = this.fetcher
+            .fetch(jwksUri)
+            .then(pem =>this.pemToJwk(kid,pem))
+            .then(jwk=>{
+              this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
+              this.jwkCache.set(jwksUriWithKid,jwk);
+              return jwk;
+            })
+            .catch(error=>{
+              this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
+              throw error;
+            }).finally(()=>{
+              this.fetchingJwks.delete(jwksUriWithKid);
+            });
+  
+        this.fetchingJwks.set(jwksUriWithKid,newFetchPromise)
+  
+        return newFetchPromise;
       }
-      
-      this.jwkCache.set(jwksUriWithKid,cacheValue);
-
-      return cacheValue.promise;
     }
   }
   
@@ -141,9 +138,9 @@ export class AwsAlbJwksCache implements JwksCache {
   ): JwkWithKid {
     const kid = this.getKid(decomposedJwt);
     const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
-    const cacheValue = this.jwkCache.get(jwksUriWithKid);
-    if(cacheValue?.jwk){
-      return cacheValue.jwk;
+    const jwk = this.jwkCache.get(jwksUriWithKid);
+    if(jwk){
+      return jwk;
     }else{
       throw new JwksNotAvailableInCacheError(
         `JWKS for uri ${jwksUri} not yet available in cache`
@@ -158,10 +155,7 @@ export class AwsAlbJwksCache implements JwksCache {
         const jwkWithKid = jwk as JwkWithKid;
         const kid = jwk.kid;
         const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
-        this.jwkCache.set(jwksUriWithKid,{
-          jwk:jwkWithKid,
-          promise:Promise.resolve(jwkWithKid)
-        });
+        this.jwkCache.set(jwksUriWithKid,jwkWithKid);
       }else{
         throw new Error("TODO");
       }
