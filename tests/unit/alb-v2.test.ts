@@ -15,7 +15,7 @@ describe("alb", () => {
  
   const decomposedJwt ={
     header: {
-      alg: "EC256",
+      alg: "ES256",
       kid
     },
     payload: {},
@@ -43,7 +43,7 @@ describe("alb", () => {
 
     const promise1 = jwksCache.getJwk(jwksUri, decomposedJwt);
     const promise2 = jwksCache.getJwk(jwksUri, decomposedJwt);
-    expect.assertions(2);
+    expect.assertions(1);
     expect(promise1).toEqual(promise2);
     await Promise.all([promise1, promise2]);
   });

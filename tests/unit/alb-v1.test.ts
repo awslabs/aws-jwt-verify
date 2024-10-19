@@ -24,12 +24,9 @@ describe("unit tests https", () => {
     y: "oBuN90bW-AvxscoesVaE7ryPISjqseKgio6H5ZO5xmk",
     crv: "P-256",
   };
-  const jwks = {
-    keys: [jwk],
-  };
   const getDecomposedJwt = (kidParam?: string) => ({
     header: {
-      alg: "EC256",
+      alg: "ES256",
       kid: kidParam ?? kid,
     },
     payload: {},
@@ -46,7 +43,7 @@ describe("unit tests https", () => {
     const jwksCache = new AwsAlbJwksCache();
     expect.assertions(1);
     return expect(
-      jwksCache.getJwk(jwksUri, { header: { alg: "EC256" }, payload: {} })
+      jwksCache.getJwk(jwksUri, { header: { alg: "ES256" }, payload: {} })
     ).rejects.toThrow(JwtWithoutValidKidError);
   });
 

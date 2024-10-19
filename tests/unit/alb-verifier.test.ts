@@ -22,8 +22,6 @@ describe("unit tests alb verifier", () => {
     describe("verify", () => {
       test("happy flow with cached public key", async () => {
         
-        jest.useFakeTimers().setSystemTime(new Date(1727070000 * 1000));
-        
         const region = "us-east-1";
         const userPoolId = "us-east-1_123456";
         const loadBalancerArn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
@@ -31,6 +29,8 @@ describe("unit tests alb verifier", () => {
         const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
         const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
         const kid = keypair.jwk.kid;
+        const exp = 4000000000;// nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        
         const signedJwt = signJwt(
           {
             typ:"JWT",
@@ -39,11 +39,11 @@ describe("unit tests alb verifier", () => {
             iss:issuer,
             client:clientId,
             signer:loadBalancerArn,
-            exp:1727080000
+            exp
           },
           {
             hello: "world",
-            exp:1727080000,
+            exp,
             iss:issuer,
           },
           keypair.privateKey
@@ -63,8 +63,6 @@ describe("unit tests alb verifier", () => {
 
       test("happy flow with public key fetching", async () => {
         
-        jest.useFakeTimers().setSystemTime(new Date(1727070000 * 1000));
-        
         const region = "us-east-1";
         const userPoolId = "us-east-1_123456";
         const loadBalancerArn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
@@ -73,14 +71,15 @@ describe("unit tests alb verifier", () => {
         const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
         const jwk = keypair.jwk;
         const kid = jwk.kid;
-        
+        const exp = 4000000000;// nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
         const pem = createPublicKey({
             key: jwk,
             format: "jwk",
           }).export({
             format: "pem",
             type: "spki",
-          });
+          });//pem with -----BEGIN PUBLIC KEY----- and -----END PUBLIC KEY-----.
+
 
         mockHttpsUri(`${jwksUri}/${kid}`, {
           responsePayload: pem,
@@ -94,11 +93,11 @@ describe("unit tests alb verifier", () => {
             iss:issuer,
             client:clientId,
             signer:loadBalancerArn,
-            exp:1727080000
+            exp
           },
           {
             hello: "world",
-            exp:1727080000,
+            exp,
             iss:issuer,
           },
           keypair.privateKey

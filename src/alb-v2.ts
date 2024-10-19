@@ -39,12 +39,6 @@ export class AwsAlbJwksCache implements JwksCache {
     // this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
   }
 
-  /**
-   * 
-   * @param jwksUri should be a template URI with the kid expression. Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com/{kid}
-   * @param decomposedJwt 
-   * @returns 
-   */
   private expandWithKid(jwksUri: string, kid: string): string {
     return `${jwksUri}/${encodeURIComponent(kid)}`;
   }
@@ -130,6 +124,12 @@ export class AwsAlbJwksCache implements JwksCache {
     } as JwkWithKid
   }
 
+  /**
+   * 
+   * @param Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com
+   * @param decomposedJwt 
+   * @returns 
+   */
   public getCachedJwk(
     jwksUri: string,
     decomposedJwt: DecomposedJwt
