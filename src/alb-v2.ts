@@ -8,8 +8,6 @@ import {
   JwkWithKid,
   Jwks,
   JwksCache,
-  PenaltyBox,
-  SimplePenaltyBox,
 } from "./jwk";
 import { JwtHeader, JwtPayload } from "./jwt-model";
 import { Fetcher, SimpleFetcher } from "./https";
@@ -24,20 +22,21 @@ type JwksUri = string;
 
 export class AlbUriError extends JwtBaseError {}
 
+//TODO comment importance of safe architecture
 export class AwsAlbJwksCache implements JwksCache {
 
   fetcher: Fetcher;
-  penaltyBox:PenaltyBox;
+  // penaltyBox:PenaltyBox;
 
   private jwkCache: SimpleLruCache<JwksUri,JwkWithKid> = new SimpleLruCache(2);
   private fetchingJwks: Map<JwksUri,Promise<JwkWithKid>> = new Map();
 
   constructor(props?: {
     fetcher?: Fetcher;
-    penaltyBox?: PenaltyBox;
+    // penaltyBox?: PenaltyBox;
   }) {
     this.fetcher = props?.fetcher ?? new SimpleFetcher();
-    this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
+    // this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
   }
 
   /**
@@ -88,18 +87,17 @@ export class AwsAlbJwksCache implements JwksCache {
       if(fetchPromise){
         return fetchPromise;
       }else{
-        await this.penaltyBox.wait(jwksUriWithKid, kid);
-
+        // await this.penaltyBox.wait(jwksUriWithKid, kid);
         const newFetchPromise = this.fetcher
-            .fetch(jwksUri)
+            .fetch(jwksUriWithKid)
             .then(pem =>this.pemToJwk(kid,pem))
             .then(jwk=>{
-              this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
+              // this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
               this.jwkCache.set(jwksUriWithKid,jwk);
               return jwk;
             })
             .catch(error=>{
-              this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
+              // this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
               throw error;
             }).finally(()=>{
               this.fetchingJwks.delete(jwksUriWithKid);
