@@ -5,7 +5,7 @@ import {
   disallowAllRealNetworkTraffic,
   mockHttpsUri,
 } from "./test-util";
-import { AlbJwtVerifier } from "../../src/alb-verifier";
+import { AlbJwtVerifier } from "../../src/alb-verifier-v1";
 import { createPublicKey } from "crypto";
 
 describe("unit tests alb verifier", () => {
@@ -106,7 +106,7 @@ describe("unit tests alb verifier", () => {
           issuer,
           clientId,
           loadBalancerArn,
-          jwksUri
+          jwksUri,
         });
         expect.assertions(1);
         expect(

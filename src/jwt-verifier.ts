@@ -229,7 +229,7 @@ export async function verifyJwt(
  * @param transformJwkToKeyObjectFn A function that can transform a JWK into a crypto native key object
  * @returns Promise that resolves to the payload of the JWT––if the JWT is valid, otherwise the promise rejects
  */
-async function verifyDecomposedJwt(
+export async function verifyDecomposedJwt(
   decomposedJwt: DecomposedJwt,
   jwksUri: string,
   options: {
@@ -333,7 +333,7 @@ export function verifyJwtSync(
  * @param transformJwkToKeyObjectFn A function that can transform a JWK into a crypto native key object
  * @returns The (JSON parsed) payload of the JWT––if the JWT is valid, otherwise an error is thrown
  */
-function verifyDecomposedJwtSync(
+export function verifyDecomposedJwtSync(
   decomposedJwt: DecomposedJwt,
   jwkOrJwks: JsonObject,
   options: {
