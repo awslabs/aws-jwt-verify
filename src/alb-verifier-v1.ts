@@ -54,13 +54,6 @@ export type AlbJwtVerifierMultiProperties = {
 
 } & AlbVerifyProperties;
 
-export type AlbVerifierProperties = {
-  
-  loadBalancerArn: string;
-  
-
-} & Partial<AlbJwtVerifierProperties>;
-
 export type AlbJwtVerifierSingleAlb<
 T extends AlbJwtVerifierProperties,
 > = AlbJwtVerifier<
@@ -80,32 +73,24 @@ type AlbVerifyParameters<SpecificVerifyProperties> = {
 } extends SpecificVerifyProperties
   ? [jwt: string, props?: SpecificVerifyProperties]
   : [jwt: string, props: SpecificVerifyProperties];
+  
+export type AlbConfig = {
+  
+  loadBalancerArn: string;
 
+} & Partial<AlbJwtVerifierProperties>;
 
 type DataTokenPayload = {
   exp:number
   iss:string,
 } & JsonObject;
 
-
-/**
- * TODO rename JWT by Data
- * Differences between this and the Cognito JWT verifier:
- * 1. The issuer is the load balancer arn/Signer
- * 2. The JWT validation is different
- * 3. Hydrate is not supported
- * 
- * Pro: No hydratemethod
- * Con: Code duplicated
- * 
- * Con v2 dont inforce loadBalancerArn not null
- */
 export class AlbJwtVerifier<
   SpecificVerifyProperties extends Partial<AlbVerifyProperties>,
   MultiAlb extends boolean,
 > {
 
-  private readonly albConfigMap: Map<LoadBalancerArn, AlbVerifierProperties> = new Map();
+  private readonly albConfigMap: Map<LoadBalancerArn, AlbConfig> = new Map();
   private readonly publicKeyCache = new KeyObjectCache();
   private readonly jwksCache: JwksCache = new AwsAlbJwksCache();
   private readonly defaultJwksUri;
@@ -151,7 +136,7 @@ export class AlbJwtVerifier<
     return new this(verifyProperties);
   }
  
-  public async verify<T extends SpecificVerifyProperties>(
+  public async verify(
     ...[jwt, properties]: AlbVerifyParameters<SpecificVerifyProperties>): Promise<DataTokenPayload>{
     const { decomposedJwt, jwksUri, verifyProperties } = this.getVerifyParameters(jwt, properties);
     await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
@@ -169,7 +154,7 @@ export class AlbJwtVerifier<
     return decomposedJwt.payload as DataTokenPayload;
   }
 
-  public verifySync<T extends SpecificVerifyProperties>( ...[jwt, properties]: AlbVerifyParameters<SpecificVerifyProperties>): DataTokenPayload {
+  public verifySync( ...[jwt, properties]: AlbVerifyParameters<SpecificVerifyProperties>): DataTokenPayload {
     const { decomposedJwt, jwksUri, verifyProperties } = this.getVerifyParameters(jwt, properties);
     this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
     try {
@@ -227,16 +212,15 @@ export class AlbJwtVerifier<
       ? [jwks: Jwks, loadBalancerArn?: string]
       : [jwks: Jwks, loadBalancerArn: string]
   ): void {
-    // const albConfig = this.getAlbConfig(loadBalancerArn);
-    // this.jwksCache.addJwks(albConfig.jwksUri, jwks);
-    // this.publicKeyCache.clearCache(albConfig.issuer);
-    //TODO
+    const albConfig = this.getAlbConfig(loadBalancerArn);
+    this.jwksCache.addJwks(albConfig.jwksUri ?? this.defaultJwksUri, jwks);
+    this.publicKeyCache.clearCache(albConfig.loadBalancerArn);
   }
 
   //Duplicate from JwtVerifier
   protected getAlbConfig(
       loadBalancerArn?: string
-    ): AlbJwtVerifierProperties {
+    ): AlbConfig {
     if (!loadBalancerArn) {
       if (this.albConfigMap.size !== 1) {
         throw new ParameterValidationError("loadBalancerArn must be provided");
@@ -270,7 +254,11 @@ export class AlbJwtVerifier<
         audience:null
       },
       this.jwksCache.getJwk.bind(this.jwksCache),
-      this.publicKeyCache.transformJwkToKeyObjectAsync.bind(this.publicKeyCache)
+      (jwk, alg, _issuer) => {
+        // Use the load balancer ARN instead of the issuer for the public key cache
+        const loadBalancerArn = decomposedJwt.header.signer as string;
+        return this.publicKeyCache.transformJwkToKeyObjectAsync(jwk, alg, loadBalancerArn);
+      }
     );
   }
 
@@ -289,7 +277,11 @@ export class AlbJwtVerifier<
         issuer: verifyProperties.issuer,
         audience:null
       },
-      this.publicKeyCache.transformJwkToKeyObjectSync.bind(this.publicKeyCache)
+      (jwk, alg, _issuer) => {
+        // Use the load balancer ARN instead of the issuer for the public key cache
+        const loadBalancerArn = decomposedJwt.header.signer as string;
+        return this.publicKeyCache.transformJwkToKeyObjectSync(jwk, alg, loadBalancerArn);
+      }
     );
   }
 }
