@@ -5,7 +5,7 @@ import {
   disallowAllRealNetworkTraffic,
   mockHttpsUri,
 } from "./test-util";
-import { AlbJwtInvalidClientIdError, AlbJwtInvalidSignerError, AlbDataVerifier } from "../../src/alb-verifier-v1";
+import { AlbJwtInvalidClientIdError, AlbJwtInvalidSignerError, AlbDataVerifier } from "../../src/alb-verifier";
 import { createPublicKey } from "crypto";
 import { JwtInvalidIssuerError } from "../../src/error";
 
