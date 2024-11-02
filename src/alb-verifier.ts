@@ -1,7 +1,7 @@
 import { AwsAlbJwksCache } from "./alb-v2";
 import { assertStringArrayContainsString } from "./assert";
-import { JwtInvalidClaimError, ParameterValidationError } from "./error";
-import { Jwk, Jwks, JwksCache } from "./jwk";
+import { JwtInvalidClaimError, JwtInvalidSignatureAlgorithmError, ParameterValidationError } from "./error";
+import { Jwks, JwksCache } from "./jwk";
 import { DecomposedJwt, decomposeUnverifiedJwt } from "./jwt";
 import { JwtHeader, JwtPayload } from "./jwt-model";
 import { KeyObjectCache, verifyDecomposedJwt, verifyDecomposedJwtSync } from "./jwt-verifier";
@@ -10,7 +10,12 @@ import { Properties } from "./typing-util";
 
 type LoadBalancerArn = string;
 
-export class JwtInvalidSignerError extends JwtInvalidClaimError {}
+export const supportedSignatureAlgorithms = [
+  "ES256",
+] as const;
+
+export class AlbJwtInvalidSignerError extends JwtInvalidClaimError {}
+export class AlbJwtInvalidClientIdError extends JwtInvalidClaimError {}
 
 export interface AlbVerifyProperties {
 
@@ -54,16 +59,16 @@ export type AlbJwtVerifierMultiProperties = {
 
 } & AlbVerifyProperties;
 
-export type AlbJwtVerifierSingleAlb<
+export type AlbDataVerifierSingleAlb<
 T extends AlbJwtVerifierProperties,
-> = AlbJwtVerifier<
+> = AlbDataVerifier<
   Properties<AlbVerifyProperties, T>,
   false
 >;
 
-export type AlbJwtVerifierMultiAlb<
+export type AlbDataVerifierMultiAlb<
 T extends AlbJwtVerifierProperties,
-> = AlbJwtVerifier<
+> = AlbDataVerifier<
   Properties<AlbVerifyProperties, T>,
   true
 >;
@@ -85,7 +90,7 @@ type DataTokenPayload = {
   iss:string,
 } & JsonObject;
 
-export class AlbJwtVerifier<
+export class AlbDataVerifier<
   SpecificVerifyProperties extends Partial<AlbVerifyProperties>,
   MultiAlb extends boolean,
 > {
@@ -121,12 +126,12 @@ export class AlbJwtVerifier<
 
   static create<T extends AlbJwtVerifierProperties>(
     verifyProperties: T & Partial<AlbJwtVerifierProperties>
-  ): AlbJwtVerifierSingleAlb<T>;
+  ): AlbDataVerifierSingleAlb<T>;
 
 
   static create<T extends AlbJwtVerifierMultiProperties>(
     props: (T & Partial<AlbJwtVerifierMultiProperties>)[]
-  ): AlbJwtVerifierMultiAlb<T>;
+  ): AlbDataVerifierMultiAlb<T>;
 
   static create(
     verifyProperties:
@@ -141,7 +146,7 @@ export class AlbJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } = this.getVerifyParameters(jwt, properties);
     await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
     try {
-      this.validateDataJwtFields(decomposedJwt.header, decomposedJwt.payload, verifyProperties);
+      this.validateDataJwtFields(decomposedJwt.header, verifyProperties);
     } catch (err) {
       if (
         verifyProperties.includeRawJwtInErrors &&
@@ -158,7 +163,7 @@ export class AlbJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } = this.getVerifyParameters(jwt, properties);
     this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
     try {
-      this.validateDataJwtFields(decomposedJwt.header, decomposedJwt.payload, verifyProperties);
+      this.validateDataJwtFields(decomposedJwt.header, verifyProperties);
     } catch (err) {
       if (
         verifyProperties.includeRawJwtInErrors &&
@@ -184,7 +189,7 @@ export class AlbJwtVerifier<
         "Signer",
         decomposedJwt.header.signer,
         this.expectedLoadBalancerArn,
-        JwtInvalidSignerError
+        AlbJwtInvalidSignerError
       );
       const albConfig = this.getAlbConfig(decomposedJwt.header.signer);
       return {
@@ -199,12 +204,35 @@ export class AlbJwtVerifier<
 
   private validateDataJwtFields(
     header:JwtHeader,
-    payload: JwtPayload,
     options: {
+      loadBalancerArn: string;
+      issuer?: string;
       clientId?: string | string[] | null;
     }
   ): void {
-    //TODO  check client header, signer header, iss payload
+
+    // Check JWT signature algorithm is one of the supported signature algorithms
+    assertStringArrayContainsString(
+      "JWT signature algorithm",
+      header.alg,
+      supportedSignatureAlgorithms,
+      JwtInvalidSignatureAlgorithmError
+    );
+    
+    // Check client ID header
+    if (options.clientId !== null) {
+      if (options.clientId === undefined) {
+        throw new ParameterValidationError(
+          "clientId must be provided or set to null explicitly"
+        );
+      }
+      assertStringArrayContainsString(
+        "Client ID",
+        header.client,
+        options.clientId,
+        AlbJwtInvalidClientIdError
+      );
+    }
   }
   
   public cacheJwks(

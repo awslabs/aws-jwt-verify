@@ -1,3 +1,7 @@
+/**
+ * NOT USED. NEED TO BE REMOVED
+ */
+
 import { createPublicKey } from "crypto";
 import {
   JwtBaseError,

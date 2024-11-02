@@ -5,13 +5,18 @@ import {
   disallowAllRealNetworkTraffic,
   mockHttpsUri,
 } from "./test-util";
-import { AlbJwtVerifier } from "../../src/alb-verifier-v1";
+import { AlbJwtInvalidClientIdError, AlbJwtInvalidSignerError, AlbDataVerifier } from "../../src/alb-verifier-v1";
 import { createPublicKey } from "crypto";
+import { JwtInvalidIssuerError } from "../../src/error";
 
 describe("unit tests alb verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
   beforeAll(() => {
-    keypair = generateKeyPair();
+    keypair = generateKeyPair({
+      kid:"00000000-0000-0000-0000-000000000000",
+      kty:"EC",
+      alg:"ES256",
+    });
     disallowAllRealNetworkTraffic();
   });
   afterAll(() => {
@@ -35,7 +40,7 @@ describe("unit tests alb verifier", () => {
           {
             typ:"JWT",
             kid,
-            alg:"RS256",//ES256.
+            alg:"ES256",
             iss:issuer,
             client:clientId,
             signer:loadBalancerArn,
@@ -48,7 +53,7 @@ describe("unit tests alb verifier", () => {
           },
           keypair.privateKey
         );
-        const albVerifier = AlbJwtVerifier.create({
+        const albVerifier = AlbDataVerifier.create({
           issuer,
           clientId,
           loadBalancerArn,
@@ -89,7 +94,7 @@ describe("unit tests alb verifier", () => {
           {
             typ:"JWT",
             kid,
-            alg:"RS256",//ES256.
+            alg:"ES256",
             iss:issuer,
             client:clientId,
             signer:loadBalancerArn,
@@ -102,7 +107,7 @@ describe("unit tests alb verifier", () => {
           },
           keypair.privateKey
         );
-        const albVerifier = AlbJwtVerifier.create({
+        const albVerifier = AlbDataVerifier.create({
           issuer,
           clientId,
           loadBalancerArn,
@@ -143,7 +148,7 @@ describe("unit tests alb verifier", () => {
           {
             typ:"JWT",
             kid,
-            alg:"RS256",//ES256.
+            alg:"ES256",
             iss:issuer,
             client:clientId,
             signer:loadBalancerArn,
@@ -156,7 +161,7 @@ describe("unit tests alb verifier", () => {
           },
           keypair.privateKey
         );
-        const albVerifier = AlbJwtVerifier.create({
+        const albVerifier = AlbDataVerifier.create({
           loadBalancerArn
         });
         expect.assertions(1);
@@ -198,7 +203,7 @@ describe("unit tests alb verifier", () => {
           {
             typ:"JWT",
             kid,
-            alg:"RS256",//ES256.
+            alg:"ES256",
             iss:issuer,
             client:clientId,
             signer:loadBalancerArn,
@@ -211,7 +216,7 @@ describe("unit tests alb verifier", () => {
           },
           keypair.privateKey
         );
-        const albVerifier = AlbJwtVerifier.create({
+        const albVerifier = AlbDataVerifier.create({
           issuer,
           clientId,
           loadBalancerArn,
@@ -224,8 +229,8 @@ describe("unit tests alb verifier", () => {
 
       test("happy flow with multi properties", async () => {
 
-        const keypair1 = generateKeyPair({kty:"EC",kid:"kid1"});
-        const keypair2 = generateKeyPair({kty:"EC",kid:"kid2"});
+        const keypair1 = generateKeyPair({kty:"EC",alg:"ES256",kid:"11111111-1111-1111-1111-111111111111"});
+        const keypair2 = generateKeyPair({kty:"EC",alg:"ES256",kid:"22222222-2222-2222-2222-222222222222"});
         
         const region = "us-east-1";
         const userPoolId = "us-east-1_123456";
@@ -291,7 +296,7 @@ describe("unit tests alb verifier", () => {
           },
           keypair2.privateKey
         );
-        const albVerifier = AlbJwtVerifier.create([{
+        const albVerifier = AlbDataVerifier.create([{
           issuer,
           clientId,
           loadBalancerArn:loadBalancerArn1,
@@ -314,28 +319,23 @@ describe("unit tests alb verifier", () => {
         ).toMatchObject({ hello: "world2" });
       });
 
-      test("flow with multi properties and no jwksUri", async () => {
+      test("happy flow with default jwksUri", async () => {
 
-        const keypair1 = generateKeyPair({kty:"EC",kid:"kid1"});
-        const keypair2 = generateKeyPair({kty:"EC",kid:"kid2"});
-        
         const region = "us-east-1";
         const userPoolId = "us-east-1_123456";
-        const loadBalancerArn1 = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/AAAAAAAAAAAAAAAA";
-        const loadBalancerArn2 = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/BBBBBBBBBBBBBBBB";
+        const loadBalancerArn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/AAAAAAAAAAAAAAAA";
         const clientId = "my-client-id";
         const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
         const exp = 4000000000;// nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
 
-        const signedJwt1 = signJwt(
+        const signedJwt = signJwt(
           {
             typ:"JWT",
-            kid:keypair1.jwk.kid,
+            kid:keypair.jwk.kid,
             alg:"ES256",
             iss:issuer,
             client:clientId,
-            signer:loadBalancerArn1,
+            signer:loadBalancerArn,
             exp
           },
           {
@@ -343,49 +343,201 @@ describe("unit tests alb verifier", () => {
             exp,
             iss:issuer,
           },
-          keypair1.privateKey
+          keypair.privateKey
         );
 
-        const signedJwt2 = signJwt(
+        const albVerifier = AlbDataVerifier.create({
+          issuer,
+          clientId,
+          loadBalancerArn:loadBalancerArn,
+        });
+
+        albVerifier.cacheJwks(keypair.jwks,loadBalancerArn);
+
+        expect.assertions(1);
+
+        expect(
+          await albVerifier.verify(signedJwt)
+        ).toMatchObject({ hello: "world1" });
+
+      });
+
+      test("invalid issuer", () => {
+        
+        const region = "us-east-1";
+        const userPoolId = "us-east-1_123456";
+        const loadBalancerArn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+        const clientId = "my-client-id";
+        const badIssuer = `https://badissuer.amazonaws.com`;
+        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const kid = keypair.jwk.kid;
+        const exp = 4000000000;// nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        
+        const signedJwt = signJwt(
           {
             typ:"JWT",
-            kid:keypair2.jwk.kid,
+            kid,
             alg:"ES256",
-            iss:issuer,
+            iss:badIssuer,
             client:clientId,
-            signer:loadBalancerArn2,
+            signer:loadBalancerArn,
             exp
           },
           {
-            hello: "world2",
+            hello: "world",
+            exp,
+            iss:badIssuer,
+          },
+          keypair.privateKey
+        );
+        const albVerifier = AlbDataVerifier.create({
+          issuer,
+          clientId,
+          loadBalancerArn,
+          jwksUri
+        });
+        
+        albVerifier.cacheJwks(keypair.jwks);
+
+        expect.assertions(1);
+        expect(
+          albVerifier.verify(signedJwt)
+        ).rejects.toThrow(JwtInvalidIssuerError);
+      });
+
+      test("invalid signer", () => {
+        
+        const region = "us-east-1";
+        const userPoolId = "us-east-1_123456";
+        const loadBalancerArn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+        const badSigner = "arn:aws:elasticloadbalancing:us-east-1:badaccount:loadbalancer/app/badloadbalancer/50dc6c495c0c9188";
+        const clientId = "my-client-id";
+        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const kid = keypair.jwk.kid;
+        const exp = 4000000000;// nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        
+        const signedJwt = signJwt(
+          {
+            typ:"JWT",
+            kid,
+            alg:"ES256",
+            iss:issuer,
+            client:clientId,
+            signer:badSigner,
+            exp
+          },
+          {
+            hello: "world",
             exp,
             iss:issuer,
           },
-          keypair2.privateKey
+          keypair.privateKey
         );
-        const albVerifier = AlbJwtVerifier.create([{
+        const albVerifier = AlbDataVerifier.create({
           issuer,
           clientId,
-          loadBalancerArn:loadBalancerArn1,
-        },{
-          issuer,
-          clientId,
-          loadBalancerArn:loadBalancerArn2,
-        }]);
+          loadBalancerArn,
+          jwksUri
+        });
+        
+        albVerifier.cacheJwks(keypair.jwks);
 
-        albVerifier.cacheJwks(keypair1.jwks,loadBalancerArn1);
-        albVerifier.cacheJwks(keypair2.jwks,loadBalancerArn2);
-
-        expect.assertions(2);
-
+        expect.assertions(1);
         expect(
-          await albVerifier.verify(signedJwt1)
-        ).toMatchObject({ hello: "world1" });
-
-        expect(
-          await albVerifier.verify(signedJwt2)
-        ).toMatchObject({ hello: "world2" });
+          albVerifier.verify(signedJwt)
+        ).rejects.toThrow(AlbJwtInvalidSignerError);
       });
+
+      
+      test("invalid client id", () => {
+        
+        const region = "us-east-1";
+        const userPoolId = "us-east-1_123456";
+        const loadBalancerArn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+        const clientId = "my-client-id";
+        const badClientId = "bad-client-id";
+        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const kid = keypair.jwk.kid;
+        const exp = 4000000000;// nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        
+        const signedJwt = signJwt(
+          {
+            typ:"JWT",
+            kid,
+            alg:"ES256",
+            iss:issuer,
+            client:badClientId,
+            signer:loadBalancerArn,
+            exp
+          },
+          {
+            hello: "world",
+            exp,
+            iss:issuer,
+          },
+          keypair.privateKey
+        );
+        const albVerifier = AlbDataVerifier.create({
+          issuer,
+          clientId,
+          loadBalancerArn,
+          jwksUri
+        });
+        
+        albVerifier.cacheJwks(keypair.jwks);
+
+        expect.assertions(1);
+        expect(
+          albVerifier.verify(signedJwt)
+        ).rejects.toThrow(AlbJwtInvalidClientIdError);
+      });
+
+      test("null client id", async () => {
+        
+        const region = "us-east-1";
+        const userPoolId = "us-east-1_123456";
+        const loadBalancerArn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+        const clientId = "my-client-id";
+        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const kid = keypair.jwk.kid;
+        const exp = 4000000000;// nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        
+        const signedJwt = signJwt(
+          {
+            typ:"JWT",
+            kid,
+            alg:"ES256",
+            iss:issuer,
+            client:clientId,
+            signer:loadBalancerArn,
+            exp
+          },
+          {
+            hello: "world",
+            exp,
+            iss:issuer,
+          },
+          keypair.privateKey
+        );
+        const albVerifier = AlbDataVerifier.create({
+          issuer,
+          clientId:null,
+          loadBalancerArn,
+          jwksUri
+        });
+        
+        albVerifier.cacheJwks(keypair.jwks);
+
+        expect.assertions(1);
+        expect(
+          await albVerifier.verify(signedJwt)
+        ).toMatchObject({ hello: "world" });
+      });
+
     });
   });
 });

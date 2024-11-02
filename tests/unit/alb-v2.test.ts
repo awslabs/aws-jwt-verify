@@ -1,4 +1,5 @@
 import { AwsAlbJwksCache } from "../../src/alb-v2";
+import { JwtWithoutValidKidError } from "../../src/error";
 import {
   allowAllRealNetworkTraffic,
   disallowAllRealNetworkTraffic,
@@ -8,7 +9,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("alb", () => {
-  const kid = "abcdefgh-1234-ijkl-5678-mnopqrstuvwx";
+  const kid = "00000000-0000-0000-0000-000000000000";
   const jwksUri = "https://public-keys.auth.elb.eu-west-1.amazonaws.com";
 
   const albResponse = readFileSync(join(__dirname, "alb-jwks-test.pem"));
@@ -46,6 +47,22 @@ describe("alb", () => {
     expect.assertions(1);
     expect(promise1).toEqual(promise2);
     await Promise.all([promise1, promise2]);
+  });
+
+  test("Invalid kid", () => {
+    
+    const decomposedJwt ={
+      header: {
+        alg: "ES256",
+        kid: "invalid-kid"
+      },
+      payload: {},
+    };
+
+    const jwksCache = new AwsAlbJwksCache();
+
+    expect.assertions(1);
+    expect(()=>jwksCache.getJwk(jwksUri, decomposedJwt)).rejects.toThrow(JwtWithoutValidKidError);
   });
 
 });

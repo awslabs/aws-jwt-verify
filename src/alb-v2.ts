@@ -1,5 +1,6 @@
 import { createPublicKey } from "crypto";
 import {
+  JwkInvalidKtyError,
   JwksNotAvailableInCacheError,
   JwtBaseError,
   JwtWithoutValidKidError,
@@ -12,6 +13,7 @@ import {
 import { JwtHeader, JwtPayload } from "./jwt-model";
 import { Fetcher, SimpleFetcher } from "./https";
 import { SimpleLruCache } from "./cache";
+import { assertStringEquals } from "./assert";
 
 interface DecomposedJwt {
   header: JwtHeader;
@@ -22,7 +24,13 @@ type JwksUri = string;
 
 export class AlbUriError extends JwtBaseError {}
 
-//TODO comment importance of safe architecture
+/**
+ * 
+ * Security considerations:  
+ * It's important that the application protected by this library run in a secure environment. This application should be behind the ALB and deployed in a private subnet, or a public subnet but with no access from a untrusted network.
+ * This security requierement is essential to be respected otherwise the application is exposed to several security risks. This class can be subject to a DoS attack if the attacker can control the kid.
+ * 
+ */
 export class AwsAlbJwksCache implements JwksCache {
 
   fetcher: Fetcher;
@@ -54,15 +62,33 @@ export class AwsAlbJwksCache implements JwksCache {
   }
 
   private isValidAlbKid(kid:string) {
-    // for (let i = 0; i < kid.length; i++) {
-    //   const code = kid.charCodeAt(i);
-    //   if (!(code > 47 && code < 58) && // 0-9
-    //       !(code > 64 && code < 91) && // A-Z
-    //       !(code > 96 && code < 123)) { // a-z
-    //     return false;
-    //   }
-    // }
-    return true;
+    if (kid.length !== 36) {
+      return false;
+    }
+
+    const part1 = kid.slice(0, 8);
+    const part2 = kid.slice(9, 13);
+    const part3 = kid.slice(14, 18);
+    const part4 = kid.slice(19, 23);
+    const part5 = kid.slice(24, 36);
+
+    if (kid[8] !== '-' || kid[13] !== '-' || kid[18] !== '-' || kid[23] !== '-') {
+      return false;
+    }
+
+    const isHex = (str: string) => {
+      for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (!(code >= 48 && code <= 57) && // 0-9
+        !(code >= 97 && code <= 102) && // a-f
+        !(code >= 65 && code <= 70)) { // A-F
+        return false;
+      }
+      }
+      return true;
+    };
+
+    return isHex(part1) && isHex(part2) && isHex(part3) && isHex(part4) && isHex(part5);
   };
 
   public async getJwk(
@@ -113,9 +139,7 @@ export class AwsAlbJwksCache implements JwksCache {
       format: "jwk",
     });
 
-    if(!jwk.kty){
-      throw new Error("todo");
-    }
+    assertStringEquals("JWK kty", jwk.kty, "EC", JwkInvalidKtyError);
 
     return { 
       kid: kid,
