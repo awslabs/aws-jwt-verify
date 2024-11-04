@@ -82,6 +82,7 @@ type AlbVerifyParameters<SpecificVerifyProperties> = {
 export type AlbConfig = {
   
   loadBalancerArn: string;
+  defaultJwksUri: string;//Managing multi region ALB even if not possible (ALB target group are single region)
 
 } & Partial<AlbJwtVerifierProperties>;
 
@@ -95,10 +96,9 @@ export class AlbDataVerifier<
   MultiAlb extends boolean,
 > {
 
-  private readonly albConfigMap: Map<LoadBalancerArn, AlbConfig> = new Map();
-  private readonly publicKeyCache = new KeyObjectCache();
-  private readonly jwksCache: JwksCache = new AwsAlbJwksCache();
-  private readonly defaultJwksUri;
+  readonly albConfigMap: Map<LoadBalancerArn, AlbConfig> = new Map();
+  // private readonly publicKeyCache = new KeyObjectCache();
+  readonly jwksCache: JwksCache = new AwsAlbJwksCache();
 
   private constructor(
       props: AlbJwtVerifierProperties | AlbJwtVerifierMultiProperties[],
@@ -115,14 +115,31 @@ export class AlbDataVerifier<
               `loadBalancerArn ${albProps.loadBalancerArn} supplied multiple times`
             );
           }
-          this.albConfigMap.set(albProps.loadBalancerArn, albProps);
+          this.albConfigMap.set(albProps.loadBalancerArn, {
+            ...albProps,
+            defaultJwksUri: this.defaultJwksUri(albProps),
+          });
         }
       }else {
-        this.albConfigMap.set(props.loadBalancerArn,  props);
+        this.albConfigMap.set(props.loadBalancerArn,  {
+          ...props,
+          defaultJwksUri: this.defaultJwksUri(props),
+        });
       }
-      const region = "us-east-1";//TODO extract region
-      this.defaultJwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
     }
+
+  private extractRegionFromLoadBalancerArn(loadBalancerArn: string): string {
+    const arnParts = loadBalancerArn.split(":");
+    if (arnParts.length < 4) {
+      throw new ParameterValidationError(`Invalid load balancer ARN: ${loadBalancerArn}`);
+    }
+    return arnParts[3];
+  }
+
+  private defaultJwksUri(params:{loadBalancerArn: string}): string {
+    const region = this.extractRegionFromLoadBalancerArn(params.loadBalancerArn);
+    return `https://public-keys.auth.elb.${region}.amazonaws.com`;
+  }
 
   static create<T extends AlbJwtVerifierProperties>(
     verifyProperties: T & Partial<AlbJwtVerifierProperties>
@@ -194,7 +211,7 @@ export class AlbDataVerifier<
       const albConfig = this.getAlbConfig(decomposedJwt.header.signer);
       return {
         decomposedJwt,
-        jwksUri: verifyProperties?.jwksUri ?? this.defaultJwksUri,
+        jwksUri: verifyProperties?.jwksUri ?? albConfig.defaultJwksUri,
         verifyProperties: {
           ...albConfig,
           ...verifyProperties,
@@ -241,11 +258,10 @@ export class AlbDataVerifier<
       : [jwks: Jwks, loadBalancerArn: string]
   ): void {
     const albConfig = this.getAlbConfig(loadBalancerArn);
-    this.jwksCache.addJwks(albConfig.jwksUri ?? this.defaultJwksUri, jwks);
-    this.publicKeyCache.clearCache(albConfig.loadBalancerArn);
+    this.jwksCache.addJwks(albConfig.jwksUri ?? albConfig.defaultJwksUri, jwks);
+    // this.publicKeyCache.clearCache(albConfig.loadBalancerArn);
   }
 
-  //Duplicate from JwtVerifier
   protected getAlbConfig(
       loadBalancerArn?: string
     ): AlbConfig {
@@ -262,12 +278,10 @@ export class AlbDataVerifier<
     return config;
   }
   
-  //Duplicate from JwtVerifier
   protected get expectedLoadBalancerArn(): string[] {
     return Array.from(this.albConfigMap.keys());
   }
 
-  //Duplicate from JwtVerifier
   protected verifyDecomposedJwt(
     decomposedJwt: DecomposedJwt,
     jwksUri: string,
@@ -282,15 +296,14 @@ export class AlbDataVerifier<
         audience:null
       },
       this.jwksCache.getJwk.bind(this.jwksCache),
-      (jwk, alg, _issuer) => {
-        // Use the load balancer ARN instead of the issuer for the public key cache
-        const loadBalancerArn = decomposedJwt.header.signer as string;
-        return this.publicKeyCache.transformJwkToKeyObjectAsync(jwk, alg, loadBalancerArn);
-      }
+      // (jwk, alg, _issuer) => {
+      //   // Use the load balancer ARN instead of the issuer for the public key cache
+      //   const loadBalancerArn = decomposedJwt.header.signer as string;
+      //   return this.publicKeyCache.transformJwkToKeyObjectAsync(jwk, alg, loadBalancerArn);
+      // }
     );
   }
 
-  //Duplicate from JwtVerifier
   protected verifyDecomposedJwtSync(
     decomposedJwt: DecomposedJwt,
     jwksUri: string,
@@ -305,11 +318,11 @@ export class AlbDataVerifier<
         issuer: verifyProperties.issuer,
         audience:null
       },
-      (jwk, alg, _issuer) => {
-        // Use the load balancer ARN instead of the issuer for the public key cache
-        const loadBalancerArn = decomposedJwt.header.signer as string;
-        return this.publicKeyCache.transformJwkToKeyObjectSync(jwk, alg, loadBalancerArn);
-      }
+      // (jwk, alg, _issuer) => {
+      //   // Use the load balancer ARN instead of the issuer for the public key cache
+      //   const loadBalancerArn = decomposedJwt.header.signer as string;
+      //   return this.publicKeyCache.transformJwkToKeyObjectSync(jwk, alg, loadBalancerArn);
+      // }
     );
   }
 }

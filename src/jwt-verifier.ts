@@ -348,7 +348,7 @@ export function verifyDecomposedJwtSync(
     }) => void;
     includeRawJwtInErrors?: boolean;
   },
-  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerSync
+  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerSync = nodeWebCompat.transformJwkToKeyObjectSync
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
     decomposedJwt;
