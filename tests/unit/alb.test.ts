@@ -1,4 +1,4 @@
-import { AwsAlbJwksCache } from "../../src/alb-v2";
+import { AwsAlbJwksCache } from "../../src/alb";
 import { JwtWithoutValidKidError } from "../../src/error";
 import {
   allowAllRealNetworkTraffic,

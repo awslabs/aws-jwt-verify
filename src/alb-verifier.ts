@@ -1,10 +1,10 @@
-import { AwsAlbJwksCache } from "./alb-v2";
+import { AwsAlbJwksCache } from "./alb";
 import { assertStringArrayContainsString } from "./assert";
 import { JwtInvalidClaimError, JwtInvalidSignatureAlgorithmError, ParameterValidationError } from "./error";
 import { Jwks, JwksCache } from "./jwk";
 import { DecomposedJwt, decomposeUnverifiedJwt } from "./jwt";
 import { JwtHeader, JwtPayload } from "./jwt-model";
-import { KeyObjectCache, verifyDecomposedJwt, verifyDecomposedJwtSync } from "./jwt-verifier";
+import { verifyDecomposedJwt, verifyDecomposedJwtSync } from "./jwt-verifier";
 import { JsonObject } from "./safe-json-parse";
 import { Properties } from "./typing-util";
 
