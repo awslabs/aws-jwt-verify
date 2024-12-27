@@ -115,14 +115,16 @@ export function signJwt(
     Buffer.from(JSON.stringify(header)).toString("base64url"),
     Buffer.from(JSON.stringify(payload)).toString("base64url"),
   ].join(".");
-  const digestFunction =
-    JwtSignatureAlgorithms[
-      (header.alg as keyof typeof JwtSignatureAlgorithms) ?? "RS256"
-    ];
+  const alg = (header.alg as keyof typeof JwtSignatureAlgorithms) ?? "RS256";
+  // eslint-disable-next-line security/detect-object-injection
+  const digestFunction = JwtSignatureAlgorithms[alg];
   const sign = createSign(digestFunction);
   sign.write(toSign);
   sign.end();
-  const signature = sign.sign(privateKey);
+  const signature = sign.sign({
+    key: privateKey,
+    dsaEncoding: "ieee-p1363", // Signature format r || s (not used for RSA)
+  });
   if (!produceValidSignature) {
     signature[0] = ~signature[0]; // swap first byte
   }

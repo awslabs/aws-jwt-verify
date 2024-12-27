@@ -1,4 +1,17 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -euo pipefail
+
+VITE_PIDS=()
+
+cleanup() {
+    for pid in "${VITE_PIDS[@]}"; do
+        echo "Cleaning up VITE process $pid ..."
+        kill "$pid" 2>/dev/null || true
+    done
+}
+
+trap cleanup SIGINT SIGTERM EXIT
 
 run_test() {
     START_SERVER_CMD=$1
@@ -8,6 +21,7 @@ run_test() {
     echo "Starting Vite server in background ..."
     $START_SERVER_CMD &
     VITE_PID=$!
+    VITE_PIDS+=($VITE_PID)
     echo "Vite server launched as PID ${VITE_PID}"
     WAITED=0
     while ! nc -z localhost $SERVER_PORT; do
@@ -19,16 +33,13 @@ run_test() {
         echo "Waiting for Vite server to come on-line ($WAITED) ..."
         sleep 1
     done
-    if [ ! -z $CI ]; then
+    if [ "${CI+value}" = "value" ]; then
         export CYPRESS_VIDEO=false
     fi
     echo "Running cypress tests ..."
     if ! $START_CYPRESS_CMD; then
         echo "Cypress test failed :("
-        TEST_FAILED=true
-    fi
-    if [ ! -z $TEST_FAILED ]; then
-        return 1
+        exit 1
     fi
 }
 
@@ -48,9 +59,3 @@ main() {
 }
 
 main
-if [ -z $CI ]; then
-    # kill the backgrounded servers if we're not running in CI (e.g. on a developer laptop)
-    # note: might not run if the test fails - run "ps j" to find the PGID if you need to run pkill yourself
-    echo "Sending kill signal to (PGID $$) ..."
-    pkill -2 -g $$
-fi
