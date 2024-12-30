@@ -69,6 +69,7 @@ const tokendata = {
   NOT_YET_VALID_TOKEN: "",
   VALID_TOKEN_FOR_JWK_WITHOUT_ALG: "",
   VALID_TOKEN_ES256: "",
+  VALID_TOKEN_ES256_PADDED: "",
   VALID_TOKEN_ES512: "",
 };
 
@@ -115,6 +116,12 @@ const main = async () => {
     jwtHeaderEs256,
     validTokenPayload,
     privateKeyEs256
+  );
+  tokendata.VALID_TOKEN_ES256_PADDED = signJwt(
+    jwtHeaderEs256,
+    validTokenPayload,
+    privateKeyEs256,
+    { addBogusPadding: true }
   );
   tokendata.VALID_TOKEN_ES512 = signJwt(
     jwtHeaderEs512,

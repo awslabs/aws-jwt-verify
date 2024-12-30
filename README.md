@@ -608,7 +608,7 @@ const verifier = JwtVerifier.create([
 await verifier.hydrate();
 ```
 
-Note: it is only useful to call this method if your calling process has an idle time window, in which it might just as well fetch the JWKS. For example, during container start up, when the load balancer does not yet route traffic to the container. Calling this method inside API Gateway custom authorizers or Lambda@Edge has no benefit (in fact, awaiting the call as part of the Lambda handler would even hurt performance as it bypasses the existing cached JWKS).
+Note: it is only useful to call this method if your calling process has a time window, in which it might just as well fetch the JWKS. For example, during container start up, when the load balancer does not yet route traffic to the container. Calling this method in AWS Lambda functions only makes sense if you do it outside the Lambda handler, i.e. with a top-level await that is part of the code that runs during "cold starts". Awaiting `verifier.hydrate()` inside the Lambda handler will hurt performance as it always bypasses the existing cached JWKS.
 
 ### Clearing the JWKS cache
 
@@ -968,7 +968,7 @@ exports.handler = async (event) => {
 
 ### HTTP API Lambda Authorizer
 
-An example of a sample HTTP Lambda authorizer is included [here](tests/cognito/lib/lambda-authorizer/index.js) as part of the test suite for the solution ([format 2.0](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-lambda-authorizer.html#http-api-lambda-authorizer.payload-format-response)).
+An example of a sample HTTP Lambda authorizer is included [here](tests/cognito/lib/lambda-authorizer/index.mjs) as part of the test suite for the solution ([format 2.0](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-lambda-authorizer.html#http-api-lambda-authorizer.payload-format-response)).
 
 ### AppSync Lambda Authorizer
 

@@ -104,16 +104,20 @@ export function signJwt(
   header: { kid?: string; alg?: string; [key: string]: any },
   payload: { [key: string]: any },
   privateKey: KeyObject,
-  produceValidSignature = true
+  options?: {
+    produceValidSignature?: boolean;
+    addBogusPadding?: boolean;
+  }
 ) {
   header = {
     ...header,
     alg: "alg" in header ? header.alg : "RS256",
   };
   payload = { exp: Math.floor(Date.now() / 1000 + 100), ...payload };
+  const bogusPadding = options?.addBogusPadding ? "=" : "";
   const toSign = [
-    Buffer.from(JSON.stringify(header)).toString("base64url"),
-    Buffer.from(JSON.stringify(payload)).toString("base64url"),
+    Buffer.from(JSON.stringify(header)).toString("base64url") + bogusPadding,
+    Buffer.from(JSON.stringify(payload)).toString("base64url") + bogusPadding,
   ].join(".");
   const alg = (header.alg as keyof typeof JwtSignatureAlgorithms) ?? "RS256";
   // eslint-disable-next-line security/detect-object-injection
@@ -125,11 +129,15 @@ export function signJwt(
     key: privateKey,
     dsaEncoding: "ieee-p1363", // Signature format r || s (not used for RSA)
   });
-  if (!produceValidSignature) {
-    signature[0] = ~signature[0]; // swap first byte
+  if (options?.produceValidSignature === false) {
+    // Invert the bits of a random byte
+    const index = Math.floor(Math.random() * signature.length);
+    // eslint-disable-next-line security/detect-object-injection
+    signature[index] = ~signature[index];
   }
-  const signedJwt = [toSign, Buffer.from(signature).toString("base64url")].join(
-    "."
-  );
+  const signedJwt = [
+    toSign,
+    Buffer.from(signature).toString("base64url") + bogusPadding,
+  ].join(".");
   return signedJwt;
 }
