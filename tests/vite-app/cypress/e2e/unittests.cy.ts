@@ -81,7 +81,7 @@ describe("unit tests", () => {
     expect(payload).to.exist;
   });
 
-  // Note: Ed25519 is not yet supported in chrome
+  // Note: Ed25519 is not yet supported in chromium without enable-experimental-web-platform-features enabled
   it("valid token - Ed25519", async () => {
     const verifier = JwtVerifier.create({
       issuer: ISSUER,
