@@ -8,4 +8,7 @@ export default defineConfig({
       plugins: [resolve({ browser: true })],
     },
   },
+  server: {
+    host: "127.0.0.1",
+  },
 });
