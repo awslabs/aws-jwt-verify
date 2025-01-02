@@ -17,7 +17,9 @@ const jwtPayload = {
   exp: Math.floor(Date.now() / 1000 + 1000),
 };
 const validJwt = signJwt(jwtHeader, jwtPayload, privateKey);
-const invalidJwt = signJwt(jwtHeader, jwtPayload, privateKey, false);
+const invalidJwt = signJwt(jwtHeader, jwtPayload, privateKey, {
+  produceValidSignature: false,
+});
 const verifier = JwtVerifier.create(
   {
     issuer: "https://example.com/idp",

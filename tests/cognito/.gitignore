@@ -9,3 +9,5 @@ cdk.out
 
 # Stack outputs
 outputs.json
+
+.env

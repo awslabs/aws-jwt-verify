@@ -1,10 +1,17 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+import * as crypto from "node:crypto";
 import * as outputs from "../outputs.json";
-import { CognitoJwtVerifier } from "aws-jwt-verify";
-import { fetchJson } from "aws-jwt-verify/https";
+import { JwtVerifier, CognitoJwtVerifier } from "aws-jwt-verify";
+import { assertStringEquals } from "aws-jwt-verify/assert";
+import { decomposeUnverifiedJwt } from "aws-jwt-verify/jwt";
+import { Jwk } from "aws-jwt-verify/jwk";
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
+import * as alb from "./alb";
 
 const {
   AwsJwtCognitoTestStack: {
@@ -17,14 +24,27 @@ const {
     HostedUIUrl: hostedUIUrl,
     UserPoolClientWithSecretClientId: clientIdWithSecret,
     UserPoolClientWithSecretValue: clientIdWithSecretValue,
+    UserPoolClientIdAlb: clientIdAlb,
     HttpApiEndpoint: httpApiEndpoint,
+    ApplicationLoadBalancerArn: albArn,
   },
 } = outputs;
 
-let userSigninJWTs: Promise<{ access: string; id: string }>;
-let clientCredentialsJWTs: Promise<{ access: string }>;
+let userSigninJWTs: { access: string; id: string };
+let clientCredentialsJWTs: { access: string };
+let albSigninJWTs: Awaited<
+  ReturnType<(typeof alb)["callAlbAndSignInWithHostedUi"]>
+>;
 const cognitoVerifier = CognitoJwtVerifier.create({
   userPoolId,
+});
+const albJwtVerifier = JwtVerifier.create({
+  issuer: CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer,
+  audience: null,
+  customJwtCheck: ({ header }) => {
+    assertStringEquals("ALB arn", header.signer, albArn);
+    assertStringEquals("ALB client", header.client, clientIdAlb);
+  },
 });
 const CLIENT = new CognitoIdentityProviderClient({ region });
 const SIGN_IN_AS_USER = new InitiateAuthCommand({
@@ -35,9 +55,13 @@ const SIGN_IN_AS_USER = new InitiateAuthCommand({
     PASSWORD: password,
   },
 });
-beforeAll(() => {
-  userSigninJWTs = getJWTsForUser();
-  clientCredentialsJWTs = getAccessTokenForClientCredentials();
+beforeAll(async () => {
+  [userSigninJWTs, clientCredentialsJWTs, albSigninJWTs] = await Promise.all([
+    getJWTsForUser(),
+    getAccessTokenForClientCredentials(),
+    alb.callAlbAndSignInWithHostedUi(),
+    cognitoVerifier.hydrate(),
+  ]);
 });
 
 async function getJWTsForUser() {
@@ -49,27 +73,25 @@ async function getJWTsForUser() {
 }
 
 async function getAccessTokenForClientCredentials() {
-  return fetchJson<{ access_token: string }>(
-    `${hostedUIUrl}/oauth2/token`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        authorization: `Basic ${Buffer.from(
-          `${clientIdWithSecret}:${clientIdWithSecretValue}`
-        ).toString("base64")}`,
-      },
+  return fetch(`${hostedUIUrl}/oauth2/token`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      authorization: `Basic ${Buffer.from(
+        `${clientIdWithSecret}:${clientIdWithSecretValue}`
+      ).toString("base64")}`,
     },
-    Buffer.from(
+    body: Buffer.from(
       `grant_type=client_credentials&scope=${encodeURIComponent(scope)}`
-    )
-  ).then((res) => ({ access: res["access_token"] }));
+    ),
+  })
+    .then((res) => res.json())
+    .then(({ access_token }) => ({ access: access_token }));
 }
 
 test("Verify ID token for user: happy flow", async () => {
-  const JWTs = await userSigninJWTs;
   return expect(
-    cognitoVerifier.verify(JWTs.id, {
+    cognitoVerifier.verify(userSigninJWTs.id, {
       clientId: userPoolWebClientId,
       tokenUse: "id",
     })
@@ -77,9 +99,8 @@ test("Verify ID token for user: happy flow", async () => {
 });
 
 test("Verify ID token for user: expired token", async () => {
-  const JWTs = await userSigninJWTs;
   return expect(
-    cognitoVerifier.verify(JWTs.id, {
+    cognitoVerifier.verify(userSigninJWTs.id, {
       clientId: userPoolWebClientId,
       tokenUse: "id",
       graceSeconds: -3600 - 10, // token expires after 3600 seconds, subtract additional 10 seconds to account for any clock diff
@@ -88,9 +109,8 @@ test("Verify ID token for user: expired token", async () => {
 });
 
 test("Verify Access token for user: happy flow", async () => {
-  const JWTs = await userSigninJWTs;
   return expect(
-    cognitoVerifier.verify(JWTs.access, {
+    cognitoVerifier.verify(userSigninJWTs.access, {
       clientId: userPoolWebClientId,
       tokenUse: "access",
     })
@@ -98,9 +118,8 @@ test("Verify Access token for user: happy flow", async () => {
 });
 
 test("Verify Access token for user: scope check", async () => {
-  const JWTs = await userSigninJWTs;
   return expect(
-    cognitoVerifier.verify(JWTs.access, {
+    cognitoVerifier.verify(userSigninJWTs.access, {
       clientId: userPoolWebClientId,
       tokenUse: "access",
       scope: ["aws.cognito.signin.user.admin"],
@@ -109,9 +128,8 @@ test("Verify Access token for user: scope check", async () => {
 });
 
 test("Verify Access token for client credentials: scope check", async () => {
-  const JWTs = await clientCredentialsJWTs;
   return expect(
-    cognitoVerifier.verify(JWTs.access, {
+    cognitoVerifier.verify(clientCredentialsJWTs.access, {
       clientId: clientIdWithSecret,
       tokenUse: "access",
       scope,
@@ -120,23 +138,60 @@ test("Verify Access token for client credentials: scope check", async () => {
 });
 
 test("HTTP API Lambda authorizer allows access with valid token", async () => {
-  const JWTs = await userSigninJWTs;
   return expect(
-    fetchJson(httpApiEndpoint, {
+    fetch(httpApiEndpoint, {
       headers: {
-        authorization: JWTs.id,
+        authorization: userSigninJWTs.id,
       },
-    })
+    }).then((res) => res.json())
   ).resolves.toMatchObject({ private: "content!" });
 });
 
 test("HTTP API Lambda authorizer does not allow access with wrong token", async () => {
-  const JWTs = await userSigninJWTs;
   return expect(
-    fetchJson(httpApiEndpoint, {
+    fetch(httpApiEndpoint, {
       headers: {
-        authorization: JWTs.access,
+        authorization: userSigninJWTs.access,
       },
+    }).then((res) => {
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res;
     })
   ).rejects.toThrow("403");
+});
+
+test("Verify Cognito Access token from ALB", async () => {
+  return expect(
+    cognitoVerifier.verify(albSigninJWTs.cognitoAccessToken, {
+      clientId: clientIdAlb,
+      tokenUse: "access",
+    })
+  ).resolves.toMatchObject({ client_id: clientIdAlb });
+});
+
+test("Verify Data token from ALB", async () => {
+  const {
+    header: { kid },
+  } = decomposeUnverifiedJwt(albSigninJWTs.albToken);
+
+  const albRegion = albArn.split(":")[3];
+  const pem = await fetch(
+    `https://public-keys.auth.elb.${albRegion}.amazonaws.com/${kid}`
+  ).then((res) => res.text());
+
+  const keyObject = crypto.createPublicKey({
+    key: pem,
+    format: "pem",
+    type: "spki",
+  });
+
+  const jwk = keyObject.export({
+    format: "jwk",
+  });
+
+  albJwtVerifier.cacheJwks({ keys: [{ ...jwk, kid, alg: "ES256" } as Jwk] });
+
+  return expect(
+    albJwtVerifier.verify(albSigninJWTs.albToken)
+  ).resolves.toMatchObject({ email: username });
 });

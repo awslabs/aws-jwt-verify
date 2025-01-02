@@ -1,6 +1,5 @@
-"use strict";
-const { CognitoJwtVerifier } = require("aws-jwt-verify");
-const { assertStringEquals } = require("aws-jwt-verify/assert");
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { assertStringEquals } from "aws-jwt-verify/assert";
 
 const jwtVerifier = CognitoJwtVerifier.create({
   userPoolId: process.env.USER_POOL_ID,
@@ -11,7 +10,9 @@ const jwtVerifier = CognitoJwtVerifier.create({
   },
 });
 
-exports.handler = async (event) => {
+await jwtVerifier.hydrate();
+
+export const handler = async (event) => {
   console.log("request:", JSON.stringify(event, undefined, 2));
 
   const jwt = event.headers.authorization;

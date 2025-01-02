@@ -145,7 +145,11 @@ export function decomposeUnverifiedJwt(jwt: unknown): DecomposedJwt {
   if (typeof jwt !== "string") {
     throw new JwtParseError("JWT is not a string");
   }
-  if (!jwt.match(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)) {
+  if (
+    !jwt.match(
+      /^[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}$/
+    )
+  ) {
     throw new JwtParseError(
       "JWT string does not consist of exactly 3 parts (header, payload, signature)"
     );

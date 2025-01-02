@@ -1,23 +1,37 @@
-import * as apigw from "@aws-cdk/aws-apigatewayv2";
-import * as apigwauth from "@aws-cdk/aws-apigatewayv2-authorizers";
-import * as apigwint from "@aws-cdk/aws-apigatewayv2-integrations";
-import * as cognito from "@aws-cdk/aws-cognito";
-import * as lambda from "@aws-cdk/aws-lambda";
-import * as cdk from "@aws-cdk/core";
-import * as cr from "@aws-cdk/custom-resources";
-import * as path from "path";
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+import * as cdk from "aws-cdk-lib";
+import { Construct } from "constructs";
+import path = require("path");
 
 export class CognitoStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: {
+      hostedZoneId: string;
+      hostedZoneName: string;
+      albDomainName: string;
+    } & cdk.StackProps
+  ) {
     super(scope, id, props);
+
     new cdk.CfnOutput(this, "UserPoolRegion", {
       value: this.region,
     });
 
-    const cup = new cognito.UserPool(this, "AwsJwtTestUserPool", {
+    const cup = new cdk.aws_cognito.UserPool(this, "AwsJwtTestUserPool", {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       signInAliases: {
         email: true,
+      },
+      passwordPolicy: {
+        minLength: 20,
+        requireDigits: false,
+        requireLowercase: false,
+        requireSymbols: false,
+        requireUppercase: false,
       },
     });
     new cdk.CfnOutput(this, "UserPoolId", {
@@ -33,7 +47,7 @@ export class CognitoStack extends cdk.Stack {
       value: oauthDomain.baseUrl(),
     });
 
-    const user = new cognito.CfnUserPoolUser(this, "TestUser", {
+    const user = new cdk.aws_cognito.CfnUserPoolUser(this, "TestUser", {
       userPoolId: cup.userPoolId,
       messageAction: "SUPPRESS",
       desiredDeliveryMediums: ["EMAIL"],
@@ -57,8 +71,8 @@ export class CognitoStack extends cdk.Stack {
       value: user.username!,
     });
 
-    const password = "Testing1234@";
-    const setPasswordApiCall: cr.AwsSdkCall = {
+    const password = cdk.Fn.select(2, cdk.Fn.split("/", cdk.Aws.STACK_ID));
+    const setPasswordApiCall: cdk.custom_resources.AwsSdkCall = {
       service: "CognitoIdentityServiceProvider",
       action: "adminSetUserPassword",
       parameters: {
@@ -67,13 +81,15 @@ export class CognitoStack extends cdk.Stack {
         Password: password,
         Permanent: true,
       },
-      physicalResourceId: cr.PhysicalResourceId.of(user.username!),
+      physicalResourceId: cdk.custom_resources.PhysicalResourceId.of(
+        user.username!
+      ),
     };
-    new cr.AwsCustomResource(this, "PasswordSetter", {
+    new cdk.custom_resources.AwsCustomResource(this, "PasswordSetter", {
       resourceType: "Custom::PasswordSetter",
       onCreate: setPasswordApiCall,
       onUpdate: setPasswordApiCall,
-      policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
+      policy: cdk.custom_resources.AwsCustomResourcePolicy.fromSdkCalls({
         resources: [cup.userPoolArn],
       }),
     });
@@ -123,26 +139,26 @@ export class CognitoStack extends cdk.Stack {
       value: clientWithSecret.userPoolClientId,
     });
 
-    const clientSecretApiCall: cr.AwsSdkCall = {
+    const clientSecretApiCall: cdk.custom_resources.AwsSdkCall = {
       service: "CognitoIdentityServiceProvider",
       action: "describeUserPoolClient",
       parameters: {
         UserPoolId: cup.userPoolId,
         ClientId: clientWithSecret.userPoolClientId,
       },
-      physicalResourceId: cr.PhysicalResourceId.of(
+      physicalResourceId: cdk.custom_resources.PhysicalResourceId.of(
         clientWithSecret.userPoolClientId
       ),
       outputPaths: ["UserPoolClient.ClientSecret"],
     };
-    const clientSecretGetter = new cr.AwsCustomResource(
+    const clientSecretGetter = new cdk.custom_resources.AwsCustomResource(
       this,
       "ClientSecretGetter",
       {
         resourceType: "Custom::ClientSecretGetter",
         onCreate: clientSecretApiCall,
         onUpdate: clientSecretApiCall,
-        policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
+        policy: cdk.custom_resources.AwsCustomResourcePolicy.fromSdkCalls({
           resources: [cup.userPoolArn],
         }),
       }
@@ -152,21 +168,23 @@ export class CognitoStack extends cdk.Stack {
     });
 
     // Deploy HTTP API with custom authorizer:
-    const mock = new lambda.Function(this, "MockEndpoint", {
-      runtime: lambda.Runtime.NODEJS_14_X,
-      code: lambda.Code.fromInline(`exports.handler = async () => ({
+    const mock = new cdk.aws_lambda.Function(this, "MockEndpoint", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      code: cdk.aws_lambda.Code.fromInline(`exports.handler = async () => ({
         statusCode: 200,
         headers: { "Content-Type": "application/json" },
         body: "{\\"private\\":\\"content!\\"}"
       })`),
       handler: "index.handler",
     });
-    const lambdaAuthorizer = new lambda.Function(
+    const lambdaAuthorizer = new cdk.aws_lambda.Function(
       this,
       "LambdaAuthorizerHandler",
       {
-        runtime: lambda.Runtime.NODEJS_14_X,
-        code: lambda.Code.fromAsset(path.join(__dirname, "lambda-authorizer")),
+        runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+        code: cdk.aws_lambda.Code.fromAsset(
+          path.join(__dirname, "lambda-authorizer")
+        ),
         handler: "index.handler",
         environment: {
           USER_POOL_ID: cup.userPoolId,
@@ -175,24 +193,143 @@ export class CognitoStack extends cdk.Stack {
         },
       }
     );
-    const apiAuthorizer = new apigwauth.HttpLambdaAuthorizer(
-      "LambdaAuthorizer",
-      lambdaAuthorizer,
-      {
-        authorizerName: "LambdaAuthorizer",
-        responseTypes: [apigwauth.HttpLambdaResponseType.SIMPLE],
-      }
-    );
-    const httpApi = new apigw.HttpApi(this, "HttpApi");
+    const apiAuthorizer =
+      new cdk.aws_apigatewayv2_authorizers.HttpLambdaAuthorizer(
+        "LambdaAuthorizer",
+        lambdaAuthorizer,
+        {
+          authorizerName: "LambdaAuthorizer",
+          responseTypes: [
+            cdk.aws_apigatewayv2_authorizers.HttpLambdaResponseType.SIMPLE,
+          ],
+        }
+      );
+    const httpApi = new cdk.aws_apigatewayv2.HttpApi(this, "HttpApi");
     httpApi.addRoutes({
       path: "/mock",
-      methods: [apigw.HttpMethod.GET],
-      integration: new apigwint.HttpLambdaIntegration("MockIntegration", mock),
+      methods: [cdk.aws_apigatewayv2.HttpMethod.GET],
+      integration: new cdk.aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "MockIntegration",
+        mock
+      ),
       authorizer: apiAuthorizer,
     });
 
     new cdk.CfnOutput(this, "HttpApiEndpoint", {
       value: `${httpApi.url}mock`,
+    });
+
+    /**
+     * AWS ALB
+     */
+
+    const vpc = new cdk.aws_ec2.Vpc(this, "VPC", {
+      maxAzs: 2,
+      natGateways: 0,
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: "public",
+          subnetType: cdk.aws_ec2.SubnetType.PUBLIC,
+        },
+      ],
+    });
+
+    const alb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+      this,
+      "ALB",
+      {
+        vpc,
+        internetFacing: true,
+      }
+    );
+    new cdk.CfnOutput(this, "ApplicationLoadBalancerArn", {
+      value: alb.loadBalancerArn,
+    });
+
+    const scopes = [cdk.aws_cognito.OAuthScope.OPENID];
+    const albClient = cup.addClient("AlbClient", {
+      generateSecret: true,
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+        },
+        scopes,
+        callbackUrls: [`https://${props.albDomainName}/oauth2/idpresponse`],
+      },
+    });
+    new cdk.CfnOutput(this, "UserPoolClientIdAlb", {
+      value: albClient.userPoolClientId,
+    });
+
+    const hostedZoneRef = cdk.aws_route53.HostedZone.fromHostedZoneAttributes(
+      this,
+      "HostedZone",
+      {
+        hostedZoneId: props.hostedZoneId,
+        zoneName: props.hostedZoneName,
+      }
+    );
+
+    const cert = new cdk.aws_certificatemanager.Certificate(
+      this,
+      "Certificate",
+      {
+        domainName: props.albDomainName,
+        validation:
+          cdk.aws_certificatemanager.CertificateValidation.fromDns(
+            hostedZoneRef
+          ),
+      }
+    );
+
+    const albMock = new cdk.aws_lambda.Function(this, "MockEndpointAlb", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      code: cdk.aws_lambda.Code
+        .fromInline(`exports.handler = async (event) => ({
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(event)
+      })`),
+      handler: "index.handler",
+    });
+
+    alb.addListener("Listener", {
+      open: true,
+      certificates: [cert],
+      protocol: cdk.aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
+      defaultAction:
+        new cdk.aws_elasticloadbalancingv2_actions.AuthenticateCognitoAction({
+          userPool: cup,
+          userPoolClient: albClient,
+          userPoolDomain: oauthDomain,
+          scope: scopes.map((s) => s.scopeName).join(" "),
+          next: cdk.aws_elasticloadbalancingv2.ListenerAction.forward([
+            new cdk.aws_elasticloadbalancingv2.ApplicationTargetGroup(
+              this,
+              "LambdaTarget",
+              {
+                targets: [
+                  new cdk.aws_elasticloadbalancingv2_targets.LambdaTarget(
+                    albMock
+                  ),
+                ],
+              }
+            ),
+          ]),
+        }),
+    });
+
+    new cdk.aws_route53.ARecord(this, "AliasRecord", {
+      zone: hostedZoneRef,
+      target: cdk.aws_route53.RecordTarget.fromAlias(
+        new cdk.aws_route53_targets.LoadBalancerTarget(alb)
+      ),
+      recordName: props.albDomainName,
+    });
+
+    new cdk.CfnOutput(this, "ApplicationLoadBalancerUrl", {
+      value: `https://${props.albDomainName}`,
     });
   }
 }

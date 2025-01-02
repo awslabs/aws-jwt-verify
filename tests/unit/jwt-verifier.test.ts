@@ -100,6 +100,23 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, es256keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
+      test("happy flow with jwk - ES256 padded", () => {
+        const es256keypair = generateKeyPair({
+          kty: "EC",
+          alg: "ES256",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "ES256", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          es256keypair.privateKey,
+          { addBogusPadding: true }
+        );
+        expect(
+          verifyJwtSync(signedJwt, es256keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
       test("happy flow with jwk - ES384", () => {
         const es384keypair = generateKeyPair({
           kty: "EC",
@@ -296,7 +313,9 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(ParameterValidationError);
       });
       test("invalid signature", () => {
-        const signedJwt = signJwt({}, {}, keypair.privateKey, false);
+        const signedJwt = signJwt({}, {}, keypair.privateKey, {
+          produceValidSignature: false,
+        });
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
             audience: null,
@@ -310,7 +329,7 @@ describe("unit tests jwt verifier", () => {
           { kid: keypair.jwk.kid },
           {},
           keypair.privateKey,
-          false
+          { produceValidSignature: false }
         );
         const statement = () =>
           verifyJwt(signedJwt, "https://example.com/path/to/jwks.json", {
@@ -1035,7 +1054,9 @@ describe("unit tests jwt verifier", () => {
         }
       });
       test("not included if flag not set", () => {
-        const signedJwt = signJwt({}, {}, keypair.privateKey, false);
+        const signedJwt = signJwt({}, {}, keypair.privateKey, {
+          produceValidSignature: false,
+        });
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
             audience: null,
@@ -1049,7 +1070,9 @@ describe("unit tests jwt verifier", () => {
         }
       });
       test("not included if flag set to false", () => {
-        const signedJwt = signJwt({}, {}, keypair.privateKey, false);
+        const signedJwt = signJwt({}, {}, keypair.privateKey, {
+          produceValidSignature: false,
+        });
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
             audience: null,
@@ -1064,7 +1087,9 @@ describe("unit tests jwt verifier", () => {
         }
       });
       test("never included on invalid signature", () => {
-        const signedJwt = signJwt({}, {}, keypair.privateKey, false);
+        const signedJwt = signJwt({}, {}, keypair.privateKey, {
+          produceValidSignature: false,
+        });
         const statement = () =>
           verifyJwtSync(signedJwt, keypair.jwk, {
             audience: null,
