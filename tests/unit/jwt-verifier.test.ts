@@ -1107,7 +1107,7 @@ describe("unit tests jwt verifier", () => {
   });
 
   describe("verify", () => {
-    test("happy flow", () => {
+    test("happy flow - RS256", () => {
       const issuer = "https://example.com";
       const audience = "1234";
       const signedJwt = signJwt(
@@ -1117,6 +1117,29 @@ describe("unit tests jwt verifier", () => {
       );
       mockHttpsUri("https://example.com/path/to/jwks.json", {
         responsePayload: JSON.stringify(keypair.jwks),
+      });
+      expect.assertions(1);
+      return expect(
+        verifyJwt(signedJwt, "https://example.com/path/to/jwks.json", {
+          issuer,
+          audience,
+        })
+      ).resolves.toMatchObject({ hello: "world" });
+    });
+    test("happy flow - ES256", () => {
+      const es256keypair = generateKeyPair({
+        kty: "EC",
+        alg: "ES256",
+      });
+      const issuer = "https://example.com";
+      const audience = "1234";
+      const signedJwt = signJwt(
+        { alg: "ES256", kid: keypair.jwk.kid },
+        { aud: audience, iss: issuer, hello: "world" },
+        es256keypair.privateKey
+      );
+      mockHttpsUri("https://example.com/path/to/jwks.json", {
+        responsePayload: JSON.stringify(es256keypair.jwks),
       });
       expect.assertions(1);
       return expect(
@@ -1941,8 +1964,19 @@ describe("unit tests jwt verifier", () => {
 
 describe("speed tests jwt", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
+  let keypairEs256: ReturnType<typeof generateKeyPair>;
+  const thresholdsInMillis = {
+    "verifyJwtSync()": 0.2, // max 200 microseconds per verifyJwtSync() call
+    "verifier.verifySync()": 0.12, // max 120 microseconds per verifier.verifySync() call
+  };
+  if (process.env.CI) {
+    // Increase thresholds on CI to reduce flakiness
+    thresholdsInMillis["verifyJwtSync()"] *= 2;
+    thresholdsInMillis["verifier.verifySync()"] *= 2;
+  }
   beforeAll(() => {
     keypair = generateKeyPair();
+    keypairEs256 = generateKeyPair({ kty: "EC", alg: "ES256" });
   });
   test("JWT verification is fast", () => {
     const issuer = "testissuer";
@@ -1965,7 +1999,11 @@ describe("speed tests jwt", () => {
       verifyJwtSync(jwt, keypair.jwk, { issuer, audience });
     }
     const totalTime = performance.now() - start;
-    expect(totalTime).toBeLessThan(testCount * 0.2); // Allowed: max 200 microseconds per verify call
+    const threshold = thresholdsInMillis["verifyJwtSync()"];
+    expect(totalTime).toBeLessThan(testCount * threshold);
+    console.log(
+      `RS256 verifyJwtSync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
+    );
   });
 
   test("JWT verification with caches is even faster", () => {
@@ -1997,6 +2035,74 @@ describe("speed tests jwt", () => {
       verifier.verifySync(jwt);
     }
     const totalTime = performance.now() - start;
-    expect(totalTime).toBeLessThan(testCount * 0.12); // Allowed: max 120 microseconds per verify call
+    const threshold = thresholdsInMillis["verifier.verifySync()"];
+    expect(totalTime).toBeLessThan(testCount * threshold);
+    console.log(
+      `RS256 verifier.verifySync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
+    );
+  });
+
+  test("JWT verification is fast -- ES256", () => {
+    const issuer = "testissuer";
+    const audience = "testaudience";
+    const createSignedJwtInMap = (_: undefined, index: number) =>
+      signJwt(
+        { kid: keypairEs256.jwk.kid, alg: "ES256" },
+        {
+          hello: `world ${index}`,
+          iss: issuer,
+          aud: audience,
+          now: performance.now(),
+        },
+        keypairEs256.privateKey
+      );
+    const testCount = 1000;
+    const aWholeLotOfJWTs = [...new Array(testCount)].map(createSignedJwtInMap);
+    const start = performance.now();
+    for (const jwt of aWholeLotOfJWTs) {
+      verifyJwtSync(jwt, keypairEs256.jwk, { issuer, audience });
+    }
+    const totalTime = performance.now() - start;
+    const threshold = thresholdsInMillis["verifyJwtSync()"];
+    expect(totalTime).toBeLessThan(testCount * threshold);
+    console.log(
+      `ES256 verifyJwtSync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
+    );
+  });
+
+  test("JWT verification with caches is even faster -- ES256", () => {
+    const issuer = "testissuer";
+    const audience = "testaudience";
+    const createSignedJwtCallbackInMap = (_: undefined, index: number) =>
+      signJwt(
+        { kid: keypairEs256.jwk.kid, alg: "ES256" },
+        {
+          hello: `world ${index}`,
+          iss: issuer,
+          aud: audience,
+          now: performance.now(),
+        },
+        keypairEs256.privateKey
+      );
+    const testCount = 1000;
+    const aWholeLotOfJWTs = [...new Array(testCount)].map(
+      createSignedJwtCallbackInMap
+    );
+    const verifier = JwtVerifier.create({
+      audience,
+      issuer,
+      jwksUri: "http://example.com/jwks.json",
+    });
+    verifier.cacheJwks(keypairEs256.jwks);
+    const start = performance.now();
+    for (const jwt of aWholeLotOfJWTs) {
+      verifier.verifySync(jwt);
+    }
+    const totalTime = performance.now() - start;
+    const threshold = thresholdsInMillis["verifier.verifySync()"];
+    expect(totalTime).toBeLessThan(testCount * threshold);
+    console.log(
+      `ES256 verifier.verifySync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
+    );
   });
 });

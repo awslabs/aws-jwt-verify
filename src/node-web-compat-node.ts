@@ -38,7 +38,14 @@ export const nodeWebCompat: NodeWebCompat = {
     // eslint-disable-next-line security/detect-object-injection
     createVerify(JwtSignatureAlgorithms[alg])
       .update(jwsSigningInput)
-      .verify(keyObject as KeyObject, signature, "base64"),
+      .verify(
+        {
+          key: keyObject as KeyObject,
+          dsaEncoding: "ieee-p1363", // Signature format r || s (not used for RSA)
+        },
+        signature,
+        "base64"
+      ),
   verifySignatureAsync: async ({
     alg,
     keyObject,
@@ -48,7 +55,14 @@ export const nodeWebCompat: NodeWebCompat = {
     // eslint-disable-next-line security/detect-object-injection
     createVerify(JwtSignatureAlgorithms[alg])
       .update(jwsSigningInput)
-      .verify(keyObject as KeyObject, signature, "base64"),
+      .verify(
+        {
+          key: keyObject as KeyObject,
+          dsaEncoding: "ieee-p1363", // Signature format r || s (not used for RSA)
+        },
+        signature,
+        "base64"
+      ),
   defaultFetchTimeouts: {
     socketIdle: 1500,
     response: 3000,

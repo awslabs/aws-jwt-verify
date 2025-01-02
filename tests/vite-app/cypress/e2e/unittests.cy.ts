@@ -13,6 +13,8 @@ import {
   JWKSURI,
   VALID_TOKEN,
   VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
+  VALID_TOKEN_ES256,
+  VALID_TOKEN_ES512,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
 } from "../fixtures/example-token-data.json";
@@ -39,6 +41,28 @@ describe("unit tests", () => {
       jwksUri: JWKSURI,
     });
     const payload = await verifier.verify(VALID_TOKEN);
+
+    expect(payload).to.exist;
+  });
+
+  it("valid token - es256", async () => {
+    const verifier = JwtVerifier.create({
+      issuer: ISSUER,
+      audience: AUDIENCE,
+      jwksUri: JWKSURI,
+    });
+    const payload = await verifier.verify(VALID_TOKEN_ES256);
+
+    expect(payload).to.exist;
+  });
+
+  it("valid token - es512", async () => {
+    const verifier = JwtVerifier.create({
+      issuer: ISSUER,
+      audience: AUDIENCE,
+      jwksUri: JWKSURI,
+    });
+    const payload = await verifier.verify(VALID_TOKEN_ES512);
 
     expect(payload).to.exist;
   });

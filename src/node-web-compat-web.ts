@@ -12,15 +12,6 @@ import {
 import { NodeWebCompat } from "./node-web-compat.js";
 
 /**
- * Enum to map supported JWT signature algorithms with WebCrypto message digest algorithm names
- */
-enum DigestFunctionsWebCrypto {
-  RS256 = "SHA-256",
-  RS384 = "SHA-384",
-  RS512 = "SHA-512",
-}
-
-/**
  * Enum to map supported JWT signature algorithms with WebCrypto curve names
  */
 enum NamedCurvesWebCrypto {
@@ -87,10 +78,7 @@ export const nodeWebCompat: NodeWebCompat = {
       alg.startsWith("RS")
         ? {
             name: "RSASSA-PKCS1-v1_5",
-            // eslint-disable-next-line security/detect-object-injection
-            hash: DigestFunctionsWebCrypto[
-              alg as keyof typeof DigestFunctionsWebCrypto
-            ],
+            hash: `SHA-${alg.slice(2)}`,
           }
         : {
             name: "ECDSA",
@@ -107,11 +95,16 @@ export const nodeWebCompat: NodeWebCompat = {
       "Synchronously verifying a JWT signature is not supported in the browser"
     );
   },
-  verifySignatureAsync: ({ jwsSigningInput, keyObject, signature }) =>
+  verifySignatureAsync: ({ jwsSigningInput, keyObject, signature, alg }) =>
     crypto.subtle.verify(
-      {
-        name: "RSASSA-PKCS1-v1_5",
-      },
+      alg.startsWith("RS")
+        ? {
+            name: "RSASSA-PKCS1-v1_5",
+          }
+        : {
+            name: "ECDSA",
+            hash: `SHA-${alg.slice(2)}`,
+          },
       keyObject as CryptoKey,
       bufferFromBase64url(signature),
       new TextEncoder().encode(jwsSigningInput)
