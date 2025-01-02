@@ -44,8 +44,7 @@ export const nodeWebCompat: NodeWebCompat = {
     }
     const response = await fetch(uri, { ...requestOptions, body: data }).catch(
       (err) => {
-        new FetchError(uri, err.message);
-        throw err;
+        throw new FetchError(uri, err.message);
       }
     );
     if (response.status !== 200) {
