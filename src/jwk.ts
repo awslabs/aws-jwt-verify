@@ -70,7 +70,14 @@ type EcSignatureJwk = Jwk & {
   y: string;
 };
 
-export type SignatureJwk = RsaSignatureJwk | EcSignatureJwk;
+type OkpSignatureJwk = Jwk & {
+  use?: "sig";
+  kty: "OKP";
+  crv: "Ed25519" | "Ed448";
+  x: string;
+};
+
+export type SignatureJwk = RsaSignatureJwk | EcSignatureJwk | OkpSignatureJwk;
 
 export type JwkWithKid = Jwk & {
   kid: string;
@@ -166,14 +173,32 @@ export function assertIsSignatureJwk(jwk: Jwk): asserts jwk is SignatureJwk {
   assertStringArrayContainsString(
     "JWK kty",
     jwk.kty,
-    ["EC", "RSA"],
+    ["EC", "RSA", "OKP"],
     JwkInvalidKtyError
   );
   if (jwk.kty === "EC") {
     assertIsEsSignatureJwk(jwk);
   } else if (jwk.kty === "RSA") {
     assertIsRsaSignatureJwk(jwk);
+  } else if (jwk.kty === "OKP") {
+    assertIsEdDSASignatureJwk(jwk);
   }
+}
+
+function assertIsEdDSASignatureJwk(jwk: Jwk): asserts jwk is OkpSignatureJwk {
+  // Check JWK use
+  if (jwk.use) {
+    assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  }
+
+  // Check JWK kty
+  assertStringEquals("JWK kty", jwk.kty, "OKP", JwkInvalidKtyError);
+
+  // Check Curve (crv) has a value
+  if (!jwk.crv) throw new JwkValidationError("Missing Curve (crv)");
+
+  // Check X Coordinate (x) has a value
+  if (!jwk.x) throw new JwkValidationError("Missing X Coordinate (x)");
 }
 
 function assertIsEsSignatureJwk(jwk: Jwk): asserts jwk is EcSignatureJwk {

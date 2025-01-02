@@ -8,6 +8,6 @@ export default defineConfig({
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       return require("./cypress/plugins/index.js")(on, config);
     },
-    baseUrl: "http://localhost:5173/",
+    baseUrl: "http://127.0.0.1:5173/",
   },
 });

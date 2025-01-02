@@ -149,6 +149,40 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, es512keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
+      test("happy flow with jwk - Ed25519", () => {
+        const ed25519keypair = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed25519",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "EdDSA", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          ed25519keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, ed25519keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with jwk - Ed448", () => {
+        const ed448keypair = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed448",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "EdDSA", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          ed448keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, ed448keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
       test("happy flow with jwk without alg", () => {
         const issuer = "https://example.com";
         const audience = "1234";
@@ -999,6 +1033,22 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow("Missing Curve (crv)");
         expect(statement).toThrow(JwkValidationError);
       });
+      test("missing crv on JWK - EdDSA", () => {
+        const { jwk, privateKey } = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed25519",
+        });
+        delete jwk.crv;
+        const signedJwt = signJwt({ alg: "EdDSA" }, {}, privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing Curve (crv)");
+        expect(statement).toThrow(JwkValidationError);
+      });
       test("missing x on JWK", () => {
         const { jwk, privateKey } = generateKeyPair({
           kty: "EC",
@@ -1006,6 +1056,22 @@ describe("unit tests jwt verifier", () => {
         });
         delete jwk.x;
         const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing X Coordinate (x)");
+        expect(statement).toThrow(JwkValidationError);
+      });
+      test("missing x on JWK - EdDSA", () => {
+        const { jwk, privateKey } = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed448",
+        });
+        delete jwk.x;
+        const signedJwt = signJwt({ alg: "EdDSA" }, {}, privateKey);
         const statement = () =>
           verifyJwtSync(signedJwt, jwk, {
             audience: null,

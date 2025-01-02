@@ -16,6 +16,8 @@ import {
   VALID_TOKEN_ES256,
   VALID_TOKEN_ES256_PADDED,
   VALID_TOKEN_ES512,
+  VALID_TOKEN_Ed25519,
+  // VALID_TOKEN_Ed448,
   EXPIRED_TOKEN,
   NOT_YET_VALID_TOKEN,
 } from "../fixtures/example-token-data.json";
@@ -78,6 +80,30 @@ describe("unit tests", () => {
 
     expect(payload).to.exist;
   });
+
+  // Note: Ed25519 is not yet supported in chrome
+  it("valid token - Ed25519", async () => {
+    const verifier = JwtVerifier.create({
+      issuer: ISSUER,
+      audience: AUDIENCE,
+      jwksUri: JWKSURI,
+    });
+    const payload = await verifier.verify(VALID_TOKEN_Ed25519);
+
+    expect(payload).to.exist;
+  });
+
+  // Note: Ed448 is not yet supported in chrome nor firefox
+  // it("valid token - Ed448", async () => {
+  //   const verifier = JwtVerifier.create({
+  //     issuer: ISSUER,
+  //     audience: AUDIENCE,
+  //     jwksUri: JWKSURI,
+  //   });
+  //   const payload = await verifier.verify(VALID_TOKEN_Ed448);
+
+  //   expect(payload).to.exist;
+  // });
 
   it("valid token for JWK without alg", async () => {
     const verifier = JwtVerifier.create({

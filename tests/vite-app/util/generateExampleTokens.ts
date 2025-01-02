@@ -71,6 +71,8 @@ const tokendata = {
   VALID_TOKEN_ES256: "",
   VALID_TOKEN_ES256_PADDED: "",
   VALID_TOKEN_ES512: "",
+  VALID_TOKEN_Ed25519: "",
+  VALID_TOKEN_Ed448: "",
 };
 
 const main = async () => {
@@ -91,13 +93,29 @@ const main = async () => {
     kid: randomUUID(),
     alg: "ES512",
   });
+  const { privateKey: privateKeyEd25519, jwk: jwkEd25519 } = generateKeyPair({
+    kty: "OKP",
+    kid: randomUUID(),
+    alg: "EdDSA",
+    crv: "Ed25519",
+  });
+  const { privateKey: privateKeyEd448, jwk: jwkEd448 } = generateKeyPair({
+    kty: "OKP",
+    kid: randomUUID(),
+    alg: "EdDSA",
+    crv: "Ed448",
+  });
 
-  const jwks = { keys: [jwk, jwkWithoutAlg, jwkEs256, jwkEs512] };
+  const jwks = {
+    keys: [jwk, jwkWithoutAlg, jwkEs256, jwkEs512, jwkEd25519, jwkEd448],
+  };
 
   const jwtHeader = { kid: jwk.kid, alg: "RS256" };
   const jwtHeaderForJwkWithoutAlg = { kid: jwkWithoutAlg.kid, alg: "RS256" };
   const jwtHeaderEs256 = { kid: jwkEs256.kid, alg: "ES256" };
   const jwtHeaderEs512 = { kid: jwkEs512.kid, alg: "ES512" };
+  const jwtHeaderEd25519 = { kid: jwkEd25519.kid, alg: "EdDSA" };
+  const jwtHeaderEd448 = { kid: jwkEd448.kid, alg: "EdDSA" };
 
   saveFile("public", JWKSFILE, jwks);
   saveFile(join("cypress", "fixtures"), JWKSFILE, jwks);
@@ -133,6 +151,16 @@ const main = async () => {
     jwtHeader,
     notYetValidTokenPayload,
     privateKey
+  );
+  tokendata.VALID_TOKEN_Ed25519 = signJwt(
+    jwtHeaderEd25519,
+    validTokenPayload,
+    privateKeyEd25519
+  );
+  tokendata.VALID_TOKEN_Ed448 = signJwt(
+    jwtHeaderEd448,
+    validTokenPayload,
+    privateKeyEd448
   );
 
   saveFile(join("cypress", "fixtures"), "example-token-data.json", tokendata);

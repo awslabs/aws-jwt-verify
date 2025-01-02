@@ -8,11 +8,11 @@
     "preview": "vite preview",
     "reinstall": "npm uninstall aws-jwt-verify && npm install --no-save --force --no-package-lock ../../aws-jwt-verify.tgz",
     "tokengen": "cd util && ts-node generateExampleTokens.ts",
-    "cypress:run": "cypress run",
-    "cypress:run:preview": "cypress run --config baseUrl=http://localhost:4173/",
+    "cypress:run": "cypress run --browser firefox",
+    "cypress:run:preview": "cypress run --config baseUrl=http://127.0.0.1:4173/ --browser firefox",
     "cypress:open": "cypress open",
     "cypress:open:webpack": "DEBUG=cypress:webpack cypress open",
-    "cypress:open:preview": "cypress open --config baseUrl=http://localhost:4173/",
+    "cypress:open:preview": "cypress open --config baseUrl=http://127.0.0.1:4173/",
     "postinstall": "npm run reinstall"
   },
   "devDependencies": {

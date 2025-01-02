@@ -45,6 +45,7 @@ export const supportedSignatureAlgorithms = [
   "ES256",
   "ES384",
   "ES512",
+  "EdDSA",
 ] as const;
 export type SupportedSignatureAlgorithm =
   (typeof supportedSignatureAlgorithms)[number];
