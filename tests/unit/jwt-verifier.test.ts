@@ -33,6 +33,7 @@ import { JwksCache, Jwks, Jwk, SignatureJwk } from "../../src/jwk";
 import { performance } from "perf_hooks";
 import { KeyObject } from "crypto";
 import { validateCognitoJwtFields } from "../../src/cognito-verifier";
+import { assertStringEquals } from "../../src/assert";
 
 describe("unit tests jwt verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
@@ -1356,17 +1357,21 @@ describe("unit tests jwt verifier", () => {
         ).resolves.toMatchObject({ hello: "world" });
       });
       test("jwt without iss claim", () => {
-        const signedJwt = signJwt({}, { hello: "world" }, keypair.privateKey);
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          { hello: "world", aud: "1234567890" },
+          keypair.privateKey
+        );
         const verifier = JwtVerifier.create({
-          issuer: "testissuer",
+          issuer: null,
           jwksUri: "https://example.com/keys/jwks.json",
           audience: "1234567890",
         });
         verifier.cacheJwks(keypair.jwks);
-        expect.assertions(2);
-        const statement = () => verifier.verify(signedJwt);
-        expect(statement).rejects.toThrow("iss");
-        expect(statement).rejects.toThrow(JwtInvalidIssuerError);
+        expect.assertions(1);
+        expect(verifier.verify(signedJwt)).resolves.toMatchObject({
+          hello: "world",
+        });
       });
       test("custom JWKS cache", () => {
         class CustomJwksCache implements JwksCache {
@@ -1687,6 +1692,41 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow(
           "Custom JWT checks must be synchronous but a promise was returned"
         );
+      });
+      test("issuer is null - non-standard iss field", () => {
+        const verifier = JwtVerifier.create({
+          issuer: null,
+          audience: null,
+          jwksUri: "https://example.com/keys/jwks.json",
+          customJwtCheck: ({ payload }) => {
+            assertStringEquals(
+              "Issuer",
+              payload.myIssFieldWithWeirdName,
+              "my issuer"
+            );
+          },
+        });
+        verifier.cacheJwks(keypair.jwks);
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          {
+            hello: "world",
+            myIssFieldWithWeirdName: "my issuer",
+          },
+          keypair.privateKey
+        );
+        expect(verifier.verifySync(signedJwt)).toMatchObject({
+          hello: "world",
+        });
+      });
+      test("issuer is null - no JWKS uri", () => {
+        const statement = () =>
+          JwtVerifier.create({
+            issuer: null,
+            audience: null,
+          });
+        expect(statement).toThrow(ParameterValidationError);
+        expect(statement).toThrow("jwksUri must be provided for issuer null");
       });
     });
   });
