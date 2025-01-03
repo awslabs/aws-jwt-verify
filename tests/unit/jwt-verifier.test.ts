@@ -2151,26 +2151,26 @@ describe("speed tests jwt", () => {
     [
       { kty: "EC", alg: "ES384" },
       {
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 4,
         "verifier.verifySync()":
           thresholdsInMillis["verifier.verifySync()"] * 4,
-        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 4,
       },
     ],
     [
       { kty: "EC", alg: "ES512" },
       {
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 10,
         "verifier.verifySync()":
           thresholdsInMillis["verifier.verifySync()"] * 10,
-        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 10,
       },
     ],
     [{ kty: "OKP", alg: "EdDSA", crv: "Ed25519" }, thresholdsInMillis],
     [
       { kty: "OKP", alg: "EdDSA", crv: "Ed448" },
       {
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 1.5,
         "verifier.verifySync()":
-          thresholdsInMillis["verifier.verifySync()"] * 1.5,
-        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 3,
+          thresholdsInMillis["verifier.verifySync()"] * 3,
       },
     ],
   ];
