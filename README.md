@@ -62,7 +62,7 @@ See all verify parameters for JWTs from any IDP [here](#JwtVerifier-verify-param
 For special cases you may want to use the library more raw:
 
 ```typescript
-import { verifyJwt } from "aws-jwt-verify/jwt-verifier"; // there is also verifySync() which requires you to already have the JWK(S)
+import { verifyJwt } from "aws-jwt-verify/jwt-verifier"; // there is also verifyJwtSync() for if you already have the JWK(S) ready
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 
 const jwksCache = new SimpleJwksCache();
