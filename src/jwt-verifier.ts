@@ -29,6 +29,7 @@ import {
 } from "./jwt.js";
 import {
   JwtInvalidClaimError,
+  JwtInvalidIssuerError,
   JwtInvalidSignatureAlgorithmError,
   JwtInvalidSignatureError,
   KidNotFoundInJwksError,
@@ -629,6 +630,14 @@ export abstract class JwtVerifierBase<
     verifyProperties: SpecificVerifyProperties;
   } {
     const decomposedJwt = decomposeUnverifiedJwt(jwt);
+    if (decomposedJwt.payload.iss != null) {
+      assertStringArrayContainsString(
+        "Issuer",
+        decomposedJwt.payload.iss,
+        this.expectedIssuers.filter((iss) => iss != null),
+        JwtInvalidIssuerError
+      );
+    }
     const issuerConfig = this.getIssuerConfig(decomposedJwt.payload.iss);
     return {
       decomposedJwt,
