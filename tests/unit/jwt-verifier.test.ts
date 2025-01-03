@@ -149,6 +149,40 @@ describe("unit tests jwt verifier", () => {
           verifyJwtSync(signedJwt, es512keypair.jwk, { issuer, audience })
         ).toMatchObject({ hello: "world" });
       });
+      test("happy flow with jwk - Ed25519", () => {
+        const ed25519keypair = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed25519",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "EdDSA", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          ed25519keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, ed25519keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
+      test("happy flow with jwk - Ed448", () => {
+        const ed448keypair = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed448",
+        });
+        const issuer = "https://example.com";
+        const audience = "1234";
+        const signedJwt = signJwt(
+          { alg: "EdDSA", kid: keypair.jwk.kid },
+          { aud: audience, iss: issuer, hello: "world" },
+          ed448keypair.privateKey
+        );
+        expect(
+          verifyJwtSync(signedJwt, ed448keypair.jwk, { issuer, audience })
+        ).toMatchObject({ hello: "world" });
+      });
       test("happy flow with jwk without alg", () => {
         const issuer = "https://example.com";
         const audience = "1234";
@@ -999,6 +1033,22 @@ describe("unit tests jwt verifier", () => {
         expect(statement).toThrow("Missing Curve (crv)");
         expect(statement).toThrow(JwkValidationError);
       });
+      test("missing crv on JWK - EdDSA", () => {
+        const { jwk, privateKey } = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed25519",
+        });
+        delete jwk.crv;
+        const signedJwt = signJwt({ alg: "EdDSA" }, {}, privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing Curve (crv)");
+        expect(statement).toThrow(JwkValidationError);
+      });
       test("missing x on JWK", () => {
         const { jwk, privateKey } = generateKeyPair({
           kty: "EC",
@@ -1006,6 +1056,22 @@ describe("unit tests jwt verifier", () => {
         });
         delete jwk.x;
         const signedJwt = signJwt({ alg: "ES256" }, {}, privateKey);
+        const statement = () =>
+          verifyJwtSync(signedJwt, jwk, {
+            audience: null,
+            issuer: null,
+          });
+        expect(statement).toThrow("Missing X Coordinate (x)");
+        expect(statement).toThrow(JwkValidationError);
+      });
+      test("missing x on JWK - EdDSA", () => {
+        const { jwk, privateKey } = generateKeyPair({
+          kty: "OKP",
+          alg: "EdDSA",
+          crv: "Ed448",
+        });
+        delete jwk.x;
+        const signedJwt = signJwt({ alg: "EdDSA" }, {}, privateKey);
         const statement = () =>
           verifyJwtSync(signedJwt, jwk, {
             audience: null,
@@ -1987,28 +2053,27 @@ describe("unit tests jwt verifier", () => {
   });
 });
 
-describe("speed tests jwt", () => {
-  let keypair: ReturnType<typeof generateKeyPair>;
-  let keypairEs256: ReturnType<typeof generateKeyPair>;
-  const thresholdsInMillis = {
-    "verifyJwtSync()": 0.2, // max 200 microseconds per verifyJwtSync() call
-    "verifier.verifySync()": 0.12, // max 120 microseconds per verifier.verifySync() call
-  };
-  if (process.env.CI) {
-    // Increase thresholds on CI to reduce flakiness
-    thresholdsInMillis["verifyJwtSync()"] *= 2;
-    thresholdsInMillis["verifier.verifySync()"] *= 2;
+function createSpeedTest(
+  options: NonNullable<Parameters<typeof generateKeyPair>[0]>,
+  thresholdsInMillis: {
+    "verifyJwtSync()": number;
+    "verifier.verifySync()": number;
   }
+) {
+  let keypair: ReturnType<typeof generateKeyPair>;
+
   beforeAll(() => {
-    keypair = generateKeyPair();
-    keypairEs256 = generateKeyPair({ kty: "EC", alg: "ES256" });
+    keypair = generateKeyPair(options);
   });
-  test("JWT verification is fast", () => {
+
+  const testIdentifier = "crv" in options ? options.crv : options.alg;
+
+  test(`JWT verification is fast –– ${testIdentifier}`, () => {
     const issuer = "testissuer";
     const audience = "testaudience";
     const createSignedJwtInMap = (_: undefined, index: number) =>
       signJwt(
-        { kid: keypair.jwk.kid },
+        { kid: keypair.jwk.kid, alg: keypair.jwk.alg },
         {
           hello: `world ${index}`,
           iss: issuer,
@@ -2027,16 +2092,16 @@ describe("speed tests jwt", () => {
     const threshold = thresholdsInMillis["verifyJwtSync()"];
     expect(totalTime).toBeLessThan(testCount * threshold);
     console.log(
-      `RS256 verifyJwtSync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
+      `${testIdentifier} verifyJwtSync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
     );
   });
 
-  test("JWT verification with caches is even faster", () => {
+  test(`JWT verification with caches is even faster –– ${testIdentifier}`, () => {
     const issuer = "testissuer";
     const audience = "testaudience";
     const createSignedJwtCallbackInMap = (_: undefined, index: number) =>
       signJwt(
-        { kid: keypair.jwk.kid },
+        { kid: keypair.jwk.kid, alg: keypair.jwk.alg },
         {
           hello: `world ${index}`,
           iss: issuer,
@@ -2063,71 +2128,51 @@ describe("speed tests jwt", () => {
     const threshold = thresholdsInMillis["verifier.verifySync()"];
     expect(totalTime).toBeLessThan(testCount * threshold);
     console.log(
-      `RS256 verifier.verifySync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
+      `${testIdentifier} verifier.verifySync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
     );
   });
+}
 
-  test("JWT verification is fast -- ES256", () => {
-    const issuer = "testissuer";
-    const audience = "testaudience";
-    const createSignedJwtInMap = (_: undefined, index: number) =>
-      signJwt(
-        { kid: keypairEs256.jwk.kid, alg: "ES256" },
-        {
-          hello: `world ${index}`,
-          iss: issuer,
-          aud: audience,
-          now: performance.now(),
-        },
-        keypairEs256.privateKey
-      );
-    const testCount = 1000;
-    const aWholeLotOfJWTs = [...new Array(testCount)].map(createSignedJwtInMap);
-    const start = performance.now();
-    for (const jwt of aWholeLotOfJWTs) {
-      verifyJwtSync(jwt, keypairEs256.jwk, { issuer, audience });
-    }
-    const totalTime = performance.now() - start;
-    const threshold = thresholdsInMillis["verifyJwtSync()"];
-    expect(totalTime).toBeLessThan(testCount * threshold);
-    console.log(
-      `ES256 verifyJwtSync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
-    );
-  });
-
-  test("JWT verification with caches is even faster -- ES256", () => {
-    const issuer = "testissuer";
-    const audience = "testaudience";
-    const createSignedJwtCallbackInMap = (_: undefined, index: number) =>
-      signJwt(
-        { kid: keypairEs256.jwk.kid, alg: "ES256" },
-        {
-          hello: `world ${index}`,
-          iss: issuer,
-          aud: audience,
-          now: performance.now(),
-        },
-        keypairEs256.privateKey
-      );
-    const testCount = 1000;
-    const aWholeLotOfJWTs = [...new Array(testCount)].map(
-      createSignedJwtCallbackInMap
-    );
-    const verifier = JwtVerifier.create({
-      audience,
-      issuer,
-      jwksUri: "http://example.com/jwks.json",
-    });
-    verifier.cacheJwks(keypairEs256.jwks);
-    const start = performance.now();
-    for (const jwt of aWholeLotOfJWTs) {
-      verifier.verifySync(jwt);
-    }
-    const totalTime = performance.now() - start;
-    const threshold = thresholdsInMillis["verifier.verifySync()"];
-    expect(totalTime).toBeLessThan(testCount * threshold);
-    console.log(
-      `ES256 verifier.verifySync(): time per verification: ${(totalTime / testCount).toFixed(3)} ms. (threshold: ${threshold.toFixed(3)})`
-    );
-  });
+describe("speed tests jwt", () => {
+  const thresholdsInMillis = {
+    "verifyJwtSync()": 0.2, // max 200 microseconds per verifyJwtSync() call
+    "verifier.verifySync()": 0.12, // max 120 microseconds per verifier.verifySync() call
+  };
+  if (process.env.CI) {
+    // Increase thresholds on CI to reduce flakiness
+    thresholdsInMillis["verifyJwtSync()"] *= 2;
+    thresholdsInMillis["verifier.verifySync()"] *= 2;
+  }
+  const tests: Parameters<typeof createSpeedTest>[] = [
+    [{ kty: "RSA", alg: "RS256" }, thresholdsInMillis],
+    [{ kty: "RSA", alg: "RS384" }, thresholdsInMillis],
+    [{ kty: "RSA", alg: "RS512" }, thresholdsInMillis],
+    [{ kty: "EC", alg: "ES256" }, thresholdsInMillis],
+    [
+      { kty: "EC", alg: "ES384" },
+      {
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 4,
+        "verifier.verifySync()":
+          thresholdsInMillis["verifier.verifySync()"] * 4,
+      },
+    ],
+    [
+      { kty: "EC", alg: "ES512" },
+      {
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 10,
+        "verifier.verifySync()":
+          thresholdsInMillis["verifier.verifySync()"] * 10,
+      },
+    ],
+    [{ kty: "OKP", alg: "EdDSA", crv: "Ed25519" }, thresholdsInMillis],
+    [
+      { kty: "OKP", alg: "EdDSA", crv: "Ed448" },
+      {
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 1.5,
+        "verifier.verifySync()":
+          thresholdsInMillis["verifier.verifySync()"] * 3,
+      },
+    ],
+  ];
+  tests.forEach((p) => createSpeedTest(...p));
 });

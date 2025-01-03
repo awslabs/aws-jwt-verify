@@ -2,7 +2,7 @@
  * Utility functions used by unit and integration tests
  */
 
-import { createSign, generateKeyPairSync, KeyObject } from "crypto";
+import { createSign, generateKeyPairSync, KeyObject, sign } from "crypto";
 import { Jwk } from "../../src/jwk";
 
 /** RSA keypair with its various manifestations as properties, for use in automated tests */
@@ -38,6 +38,13 @@ export function generateKeyPair(
         alg?: "ES256" | "ES384" | "ES512";
         kid?: string;
         use?: string;
+      }
+    | {
+        kty: "OKP";
+        alg: "EdDSA";
+        crv: "Ed25519" | "Ed448";
+        kid?: string;
+        use?: string;
       } = {
     kty: "RSA",
     alg: "RS256",
@@ -50,17 +57,27 @@ export function generateKeyPair(
           modulusLength: 4096,
           publicExponent: 0x10001,
         })
-      : generateKeyPairSync("ec", {
-          namedCurve: { ES256: "P-256", ES384: "P-384", ES512: "P-521" }[
-            options.alg ?? "ES256"
-          ],
-        });
+      : options.kty === "EC"
+        ? generateKeyPairSync("ec", {
+            namedCurve: { ES256: "P-256", ES384: "P-384", ES512: "P-521" }[
+              options.alg ?? "ES256"
+            ],
+          })
+        : options.crv === "Ed25519"
+          ? generateKeyPairSync("ed25519")
+          : generateKeyPairSync("ed448");
 
   const jwk = publicKey.export({
     format: "jwk",
   }) as Jwk;
   jwk.alg =
-    "alg" in options ? options.alg : options.kty === "RSA" ? "RS256" : "ES256";
+    "alg" in options
+      ? options.alg
+      : options.kty === "RSA"
+        ? "RS256"
+        : options.kty === "EC"
+          ? "ES256"
+          : "EdDSA";
   jwk.kid = "kid" in options ? options.kid : "testkid";
   jwk.use = "use" in options ? options.use : "sig";
 
@@ -82,7 +99,7 @@ export function generateKeyPair(
 /**
  * Enum to map supported JWT signature algorithms with OpenSSL message digest algorithm names
  */
-enum JwtSignatureAlgorithms {
+enum JwtSignatureAlgorithmHashNames {
   RS256 = "RSA-SHA256",
   RS384 = "RSA-SHA384",
   RS512 = "RSA-SHA512",
@@ -90,6 +107,10 @@ enum JwtSignatureAlgorithms {
   ES384 = RS384,
   ES512 = RS512,
 }
+
+type JwtSignatureAlgorithm =
+  | keyof typeof JwtSignatureAlgorithmHashNames
+  | "EdDSA";
 
 /**
  * Create a signed JWT with the given header and payload.
@@ -119,16 +140,21 @@ export function signJwt(
     Buffer.from(JSON.stringify(header)).toString("base64url") + bogusPadding,
     Buffer.from(JSON.stringify(payload)).toString("base64url") + bogusPadding,
   ].join(".");
-  const alg = (header.alg as keyof typeof JwtSignatureAlgorithms) ?? "RS256";
-  // eslint-disable-next-line security/detect-object-injection
-  const digestFunction = JwtSignatureAlgorithms[alg];
-  const sign = createSign(digestFunction);
-  sign.write(toSign);
-  sign.end();
-  const signature = sign.sign({
-    key: privateKey,
-    dsaEncoding: "ieee-p1363", // Signature format r || s (not used for RSA)
-  });
+  let signature: Buffer;
+  const alg = (header.alg as JwtSignatureAlgorithm) ?? "RS256";
+  if (alg === "EdDSA") {
+    signature = sign(null, Buffer.from(toSign), privateKey);
+  } else {
+    // eslint-disable-next-line security/detect-object-injection
+    const digestFunction = JwtSignatureAlgorithmHashNames[alg];
+    const sign = createSign(digestFunction);
+    sign.write(toSign);
+    sign.end();
+    signature = sign.sign({
+      key: privateKey,
+      dsaEncoding: "ieee-p1363", // Signature format r || s (not used for RSA)
+    });
+  }
   if (options?.produceValidSignature === false) {
     // Invert the bits of a random byte
     const index = Math.floor(Math.random() * signature.length);

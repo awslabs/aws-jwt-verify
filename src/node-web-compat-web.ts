@@ -3,6 +3,7 @@
 //
 // Web implementations for the node-web-compatibility layer
 
+import { SignatureJwk } from "jwk.js";
 import {
   FetchError,
   NotSupportedError,
@@ -18,6 +19,11 @@ enum NamedCurvesWebCrypto {
   ES256 = "P-256",
   ES384 = "P-384",
   ES512 = "P-521", // yes, 521
+}
+
+interface CryptoKeyWithJwk {
+  key: CryptoKey;
+  jwk: SignatureJwk;
 }
 
 export const nodeWebCompat: NodeWebCompat = {
@@ -71,23 +77,22 @@ export const nodeWebCompat: NodeWebCompat = {
         alg
       );
     }
-    return crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      alg.startsWith("RS")
+    const algIdentifier = alg.startsWith("RS")
+      ? {
+          name: "RSASSA-PKCS1-v1_5",
+          hash: `SHA-${alg.slice(2)}`,
+        }
+      : alg.startsWith("ES")
         ? {
-            name: "RSASSA-PKCS1-v1_5",
-            hash: `SHA-${alg.slice(2)}`,
-          }
-        : {
             name: "ECDSA",
             // eslint-disable-next-line security/detect-object-injection
             namedCurve:
               NamedCurvesWebCrypto[alg as keyof typeof NamedCurvesWebCrypto],
-          },
-      false,
-      ["verify"]
-    );
+          }
+        : jwk.crv!; // Ed25519 or Ed448
+    return crypto.subtle
+      .importKey("jwk", jwk, algIdentifier, false, ["verify"])
+      .then((key) => ({ key, jwk }));
   },
   verifySignatureSync: () => {
     throw new NotSupportedError(
@@ -100,11 +105,13 @@ export const nodeWebCompat: NodeWebCompat = {
         ? {
             name: "RSASSA-PKCS1-v1_5",
           }
-        : {
-            name: "ECDSA",
-            hash: `SHA-${alg.slice(2)}`,
-          },
-      keyObject as CryptoKey,
+        : alg.startsWith("ES")
+          ? {
+              name: "ECDSA",
+              hash: `SHA-${alg.slice(2)}`,
+            }
+          : { name: (keyObject as CryptoKeyWithJwk).jwk.crv! },
+      (keyObject as CryptoKeyWithJwk).key,
       bufferFromBase64url(signature),
       new TextEncoder().encode(jwsSigningInput)
     ),
