@@ -72,7 +72,13 @@ type EcSignatureJwk = Jwk & {
 
 type OkpSignatureJwk = Jwk & {
   use?: "sig";
+  /**
+   * Octet Key Pair: https://www.rfc-editor.org/rfc/rfc8037.html#section-2
+   */
   kty: "OKP";
+  /**
+   * Edwards-curves, for EdDSA: https://www.rfc-editor.org/rfc/rfc8037.html#section-3.1
+   */
   crv: "Ed25519" | "Ed448";
   x: string;
 };
