@@ -57,6 +57,32 @@ try {
 
 See all verify parameters for JWTs from any IDP [here](#JwtVerifier-verify-parameters).
 
+### Non-standard IDPs
+
+For special cases you may want to use the library more raw:
+
+```typescript
+import { verifyJwt } from "aws-jwt-verify/jwt-verifier"; // there is also verifySync() which requires you to already have the JWK(S)
+import { SimpleJwksCache } from "aws-jwt-verify/jwk";
+
+const jwksCache = new SimpleJwksCache();
+
+try {
+  const payload = await verifyJwt(
+    "eyJraWQeyJhdF9oYXNoIjoidk...", // the JWT as string
+    "https://example.com/.well-known/jwks.json", // set this to the JWKS uri from your OpenID configuration
+    {
+      issuer: "<iss>", // set this to the expected iss claim on the JWT
+      audience: "<aud>", // set this to the expected aud claim on the JWT
+    },
+    jwksCache.getJwk.bind(jwksCache) // use JWKS cache (optional)
+  );
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
