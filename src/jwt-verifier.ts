@@ -105,7 +105,7 @@ export type JwtVerifierProperties<VerifyProps> = {
    * The issuer of the JWTs you want to verify.
    * Set this to the expected value of the `iss` claim in the JWT.
    */
-  issuer: string;
+  issuer: Issuer;
 } & Partial<VerifyProps>;
 
 /**
@@ -123,7 +123,7 @@ export type JwtVerifierMultiProperties<T> = {
    * The issuer of the JWTs you want to verify.
    * Set this to the expected value of the `iss` claim in the JWT.
    */
-  issuer: string;
+  issuer: Issuer;
 } & T;
 
 /**
@@ -215,9 +215,20 @@ export async function verifyJwt(
       jwk: Jwk;
     }) => Promise<void> | void;
     includeRawJwtInErrors?: boolean;
-  }
+  },
+  jwkFetcher: (
+    jwksUri: string,
+    decomposedJwt: DecomposedJwt
+  ) => Promise<JwkWithKid> = fetchJwk,
+  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerAsync = nodeWebCompat.transformJwkToKeyObjectAsync
 ): Promise<JwtPayload> {
-  return verifyDecomposedJwt(decomposeUnverifiedJwt(jwt), jwksUri, options);
+  return verifyDecomposedJwt(
+    decomposeUnverifiedJwt(jwt),
+    jwksUri,
+    options,
+    jwkFetcher,
+    transformJwkToKeyObjectFn
+  );
 }
 
 /**
@@ -248,8 +259,8 @@ async function verifyDecomposedJwt(
   jwkFetcher: (
     jwksUri: string,
     decomposedJwt: DecomposedJwt
-  ) => Promise<JwkWithKid> = fetchJwk,
-  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerAsync = nodeWebCompat.transformJwkToKeyObjectAsync
+  ) => Promise<JwkWithKid>,
+  transformJwkToKeyObjectFn: JwkToKeyObjectTransformerAsync
 ) {
   const { header, headerB64, payload, payloadB64, signatureB64 } =
     decomposedJwt;
@@ -419,7 +430,7 @@ function verifyDecomposedJwtSync(
 }
 
 /** Type alias for better readability below */
-type Issuer = string;
+type Issuer = string | null;
 type Kid = string;
 
 /**
@@ -430,7 +441,6 @@ type Kid = string;
  * - Verification properties at verifier level, are used as default options for individual verify calls
  *
  * When instantiating this class, relevant type parameters should be provided, for your concrete case:
- * @param StillToProvide The verification options that you want callers of verify to provide on individual verify calls
  * @param SpecificVerifyProperties The verification options that you'll use
  * @param IssuerConfig The issuer config that you'll use (config options are used as default verification options)
  * @param MultiIssuer Verify multiple issuers (true) or just a single one (false)
@@ -469,12 +479,12 @@ export abstract class JwtVerifierBase<
     }
   }
 
-  protected get expectedIssuers(): string[] {
+  protected get expectedIssuers(): Issuer[] {
     return Array.from(this.issuersConfig.keys());
   }
 
   protected getIssuerConfig(
-    issuer?: string
+    issuer?: Issuer
   ): IssuerConfig & { jwksUri: string } {
     if (!issuer) {
       if (this.issuersConfig.size !== 1) {
@@ -502,8 +512,8 @@ export abstract class JwtVerifierBase<
    */
   public cacheJwks(
     ...[jwks, issuer]: MultiIssuer extends false
-      ? [jwks: Jwks, issuer?: string]
-      : [jwks: Jwks, issuer: string]
+      ? [jwks: Jwks, issuer?: Issuer]
+      : [jwks: Jwks, issuer: Issuer]
   ): void {
     const issuerConfig = this.getIssuerConfig(issuer);
     this.jwksCache.addJwks(issuerConfig.jwksUri, jwks);
@@ -514,7 +524,6 @@ export abstract class JwtVerifierBase<
    * Hydrate the JWKS cache for (all of) the configured issuer(s).
    * This will fetch and cache the latest and greatest JWKS for concerned issuer(s).
    *
-   * @param issuer The issuer to fetch the JWKS for
    * @returns void
    */
   async hydrate(): Promise<void> {
@@ -621,12 +630,14 @@ export abstract class JwtVerifierBase<
     verifyProperties: SpecificVerifyProperties;
   } {
     const decomposedJwt = decomposeUnverifiedJwt(jwt);
-    assertStringArrayContainsString(
-      "Issuer",
-      decomposedJwt.payload.iss,
-      this.expectedIssuers,
-      JwtInvalidIssuerError
-    );
+    if (decomposedJwt.payload.iss != null) {
+      assertStringArrayContainsString(
+        "Issuer",
+        decomposedJwt.payload.iss,
+        this.expectedIssuers.filter((iss) => iss != null),
+        JwtInvalidIssuerError
+      );
+    }
     const issuerConfig = this.getIssuerConfig(decomposedJwt.payload.iss);
     return {
       decomposedJwt,
@@ -650,10 +661,15 @@ export abstract class JwtVerifierBase<
     if (config.jwksUri) {
       return config as IssuerConfig & { jwksUri: string };
     }
-    const issuerUri = new URL(config.issuer).pathname.replace(/\/$/, "");
+    const issuer = config.issuer;
+    if (!issuer) {
+      throw new ParameterValidationError(
+        "jwksUri must be provided for issuer null"
+      );
+    }
+    const issuerUri = new URL(issuer).pathname.replace(/\/$/, "");
     return {
-      jwksUri: new URL(`${issuerUri}/.well-known/jwks.json`, config.issuer)
-        .href,
+      jwksUri: new URL(`${issuerUri}/.well-known/jwks.json`, issuer).href,
       ...config,
     };
   }
@@ -715,7 +731,7 @@ export class JwtVerifier<
 export type JwkToKeyObjectTransformerSync = (
   jwk: SignatureJwk,
   jwtHeaderAlg?: SupportedSignatureAlgorithm,
-  issuer?: string
+  issuer?: Issuer
 ) => GenericKeyObject;
 
 /**
@@ -758,7 +774,7 @@ export class KeyObjectCache {
   transformJwkToKeyObjectSync(
     jwk: SignatureJwk,
     jwtHeaderAlg?: SupportedSignatureAlgorithm,
-    issuer?: string
+    issuer?: Issuer
   ): GenericKeyObject {
     const alg = (jwk.alg as SupportedSignatureAlgorithm) ?? jwtHeaderAlg;
     if (!issuer || !jwk.kid || !alg) {
@@ -783,7 +799,7 @@ export class KeyObjectCache {
   async transformJwkToKeyObjectAsync(
     jwk: SignatureJwk,
     jwtHeaderAlg?: SupportedSignatureAlgorithm,
-    issuer?: string
+    issuer?: Issuer
   ): Promise<GenericKeyObject> {
     const alg = (jwk.alg as SupportedSignatureAlgorithm) ?? jwtHeaderAlg;
     if (!issuer || !jwk.kid || !alg) {
@@ -801,7 +817,7 @@ export class KeyObjectCache {
   }
 
   private putKeyObjectInCache(
-    issuer: string,
+    issuer: Issuer,
     kid: string,
     alg: SupportedSignatureAlgorithm,
     publicKey: GenericKeyObject
