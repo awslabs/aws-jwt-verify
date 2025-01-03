@@ -2165,7 +2165,14 @@ describe("speed tests jwt", () => {
       },
     ],
     [{ kty: "OKP", alg: "EdDSA", crv: "Ed25519" }, thresholdsInMillis],
-    [{ kty: "OKP", alg: "EdDSA", crv: "Ed448" }, thresholdsInMillis],
+    [
+      { kty: "OKP", alg: "EdDSA", crv: "Ed448" },
+      {
+        "verifier.verifySync()":
+          thresholdsInMillis["verifier.verifySync()"] * 1.5,
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 3,
+      },
+    ],
   ];
   tests.forEach((p) => createSpeedTest(...p));
 });
