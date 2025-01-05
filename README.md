@@ -66,6 +66,7 @@ import { verifyJwt } from "aws-jwt-verify/jwt-verifier"; // there is also verify
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 
 // E.g. use SimpleJwksCache to fetch and cache JSON Web Key Sets (JWKS)
+// SimpleJwksCache will deal with key rotations automatically
 const jwksCache = new SimpleJwksCache();
 
 try {
@@ -91,7 +92,7 @@ try {
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
 - **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512/ES256/ES384/ES512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI.
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp-02#section-3).
-- Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above). Other standard claims, such as `exp` and `nbf`, are checked as well.
+- Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above). Standard claims, such as `exp` and `nbf`, are checked automatically.
 
 Currently, signature algorithms **RS256** , **RS384** , **RS512** and **ES256** , **ES384** , **ES512** are supported.
 
