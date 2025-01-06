@@ -29,7 +29,6 @@ import {
 } from "./jwt.js";
 import {
   JwtInvalidClaimError,
-  JwtInvalidIssuerError,
   JwtInvalidSignatureAlgorithmError,
   JwtInvalidSignatureError,
   KidNotFoundInJwksError,
