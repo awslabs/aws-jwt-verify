@@ -104,6 +104,7 @@ export type JwtVerifierProperties<VerifyProps> = {
   /**
    * The issuer of the JWTs you want to verify.
    * Set this to the expected value of the `iss` claim in the JWT.
+   * Pass null explicitly to not check the JWT's issuer--if you know what you're doing
    */
   issuer: Issuer;
 } & Partial<VerifyProps>;
@@ -123,7 +124,7 @@ export type JwtVerifierMultiProperties<T> = {
    * The issuer of the JWTs you want to verify.
    * Set this to the expected value of the `iss` claim in the JWT.
    */
-  issuer: Issuer;
+  issuer: NonNullable<Issuer>;
 } & T;
 
 /**
@@ -450,7 +451,7 @@ export abstract class JwtVerifierBase<
   IssuerConfig extends JwtVerifierProperties<SpecificVerifyProperties>,
   MultiIssuer extends boolean,
 > {
-  private issuersConfig: Map<Issuer, IssuerConfig & { jwksUri: string }> =
+  protected issuersConfig: Map<Issuer, IssuerConfig & { jwksUri: string }> =
     new Map();
   private publicKeyCache = new KeyObjectCache();
   protected constructor(
@@ -463,14 +464,18 @@ export abstract class JwtVerifierBase<
           "Provide at least one issuer configuration"
         );
       }
-      for (const prop of verifyProperties) {
+      verifyProperties.forEach((prop, index) => {
         if (this.issuersConfig.has(prop.issuer)) {
           throw new ParameterValidationError(
             `issuer ${prop.issuer} supplied multiple times`
           );
+        } else if (prop.issuer === null && verifyProperties.length >= 2) {
+          throw new ParameterValidationError(
+            `issuer cannot be null when multiple issuers are supplied (at issuer: ${index})`
+          );
         }
         this.issuersConfig.set(prop.issuer, this.withJwksUri(prop));
-      }
+      });
     } else {
       this.issuersConfig.set(
         verifyProperties.issuer,
@@ -479,20 +484,16 @@ export abstract class JwtVerifierBase<
     }
   }
 
-  protected get expectedIssuers(): Issuer[] {
-    return Array.from(this.issuersConfig.keys());
-  }
-
   protected getIssuerConfig(
     issuer?: Issuer
   ): IssuerConfig & { jwksUri: string } {
-    if (!issuer) {
-      if (this.issuersConfig.size !== 1) {
-        throw new ParameterValidationError("issuer must be provided");
-      }
+    if (this.issuersConfig.size === 1) {
       issuer = this.issuersConfig.keys().next().value;
     }
-    const config = this.issuersConfig.get(issuer!);
+    if (issuer === undefined) {
+      throw new ParameterValidationError("issuer must be provided");
+    }
+    const config = this.issuersConfig.get(issuer);
     if (!config) {
       throw new ParameterValidationError(`issuer not configured: ${issuer}`);
     }
@@ -527,9 +528,9 @@ export abstract class JwtVerifierBase<
    * @returns void
    */
   async hydrate(): Promise<void> {
-    const jwksFetches = this.expectedIssuers
-      .map((issuer) => this.getIssuerConfig(issuer).jwksUri)
-      .map((jwksUri) => this.jwksCache.getJwks(jwksUri));
+    const jwksFetches = Array.from(this.issuersConfig.values()).map(
+      ({ jwksUri }) => this.jwksCache.getJwks(jwksUri)
+    );
     await Promise.all(jwksFetches);
   }
 
@@ -630,14 +631,6 @@ export abstract class JwtVerifierBase<
     verifyProperties: SpecificVerifyProperties;
   } {
     const decomposedJwt = decomposeUnverifiedJwt(jwt);
-    if (decomposedJwt.payload.iss != null) {
-      assertStringArrayContainsString(
-        "Issuer",
-        decomposedJwt.payload.iss,
-        this.expectedIssuers.filter((iss) => iss != null),
-        JwtInvalidIssuerError
-      );
-    }
     const issuerConfig = this.getIssuerConfig(decomposedJwt.payload.iss);
     return {
       decomposedJwt,

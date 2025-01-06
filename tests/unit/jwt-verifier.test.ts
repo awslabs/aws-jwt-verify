@@ -1356,7 +1356,7 @@ describe("unit tests jwt verifier", () => {
           verifier.verify(signedJwt, { audience: ["123", "1234"] })
         ).resolves.toMatchObject({ hello: "world" });
       });
-      test("jwt without iss claim", () => {
+      test("jwt without iss claim - verifier has issuer null", () => {
         const signedJwt = signJwt(
           { kid: keypair.jwk.kid },
           { hello: "world", aud: "1234567890" },
@@ -1373,6 +1373,44 @@ describe("unit tests jwt verifier", () => {
           hello: "world",
         });
       });
+      test("jwt with iss claim - verifier has issuer null", () => {
+        const issuer = "https://example.com/foo/bar";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          { hello: "world", iss: issuer, aud: "1234567890" },
+          keypair.privateKey
+        );
+        const verifier = JwtVerifier.create({
+          issuer: null,
+          jwksUri: "https://example.com/keys/jwks.json",
+          audience: "1234567890",
+        });
+        verifier.cacheJwks(keypair.jwks);
+        expect.assertions(1);
+        expect(verifier.verify(signedJwt)).resolves.toMatchObject({
+          hello: "world",
+        });
+      });
+      test("jwt with iss claim - multi verifier has issuer null", () => {
+        const statement = () =>
+          JwtVerifier.create([
+            {
+              issuer: "issuer",
+              jwksUri: "https://example.com/keys/jwks.json",
+              audience: "1234567890",
+            },
+            {
+              issuer: null as unknown as string,
+              jwksUri: "https://example.com/keys/jwks.json",
+              audience: "1234567890",
+            },
+          ]);
+        expect(statement).toThrow(ParameterValidationError);
+        expect(statement).toThrow(
+          "issuer cannot be null when multiple issuers are supplied (at issuer: 1)"
+        );
+      });
+
       test("custom JWKS cache", () => {
         class CustomJwksCache implements JwksCache {
           getJwks = jest

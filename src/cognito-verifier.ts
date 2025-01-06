@@ -382,7 +382,7 @@ export class CognitoJwtVerifier<
     let issuer: string | undefined;
     if (userPoolId !== undefined) {
       issuer = CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer;
-    } else if (this.expectedIssuers.length > 1) {
+    } else if ((Array.from(this.issuersConfig)).length > 1) {
       throw new ParameterValidationError("userPoolId must be provided");
     }
     const issuerConfig = this.getIssuerConfig(issuer);
