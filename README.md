@@ -57,6 +57,34 @@ try {
 
 See all verify parameters for JWTs from any IDP [here](#JwtVerifier-verify-parameters).
 
+### Non-standard IDPs
+
+To make special cases work, you can use lower level constructs directly:
+
+```typescript
+import { verifyJwt } from "aws-jwt-verify/jwt-verifier"; // there is also verifyJwtSync() for if you already have the JWK(S) at hand
+import { SimpleJwksCache } from "aws-jwt-verify/jwk";
+
+// E.g. use SimpleJwksCache to fetch and cache JSON Web Key Sets (JWKS)
+// SimpleJwksCache will deal with key rotations automatically
+const jwksCache = new SimpleJwksCache();
+
+try {
+  const payload = await verifyJwt(
+    "eyJraWQeyJhdF9oYXNoIjoidk...", // the JWT as string
+    "https://example.com/.well-known/jwks.json", // set this to the JWKS uri from your OpenID configuration
+    {
+      issuer: "<iss>", // set this to the expected iss claim on the JWT (or to null, to skip this check)
+      audience: "<aud>", // set this to the expected aud claim on the JWT (or to null, to skip this check)
+    },
+    jwksCache.getJwk.bind(jwksCache) // use JWKS cache (optional)
+  );
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
@@ -64,7 +92,7 @@ See all verify parameters for JWTs from any IDP [here](#JwtVerifier-verify-param
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
 - **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512/ES256/ES384/ES512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI.
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp-02#section-3).
-- Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above).
+- Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above). Standard claims, such as `exp` and `nbf`, are checked automatically.
 
 Currently, signature algorithms **RS256** , **RS384** , **RS512** and **ES256** , **ES384** , **ES512** are supported.
 
@@ -149,6 +177,7 @@ Except the User Pool ID, parameters provided when creating the `CognitoJwtVerifi
 
 Supported parameters are:
 
+- `userPoolId` (mandatory): the Cognito User Pool ID. The issuer (`iss`) and `jwksUri` will be determined from this.
 - `tokenUse` (mandatory): verify that the JWT's `token_use` claim matches your expectation. Set to either `id` or `access`. Set to `null` to skip checking `token_use`.
 - `clientId` (mandatory): verify that the JWT's `aud` (id token) or `client_id` (access token) claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these client ids must match the JWT). Set to `null` to skip checking client id (not recommended unless you know what you are doing).
 - `groups` (optional): verify that the JWT's `cognito:groups` claim matches your expectation. Provide a string, or an array of strings to allow multiple groups (i.e. one of these groups must match the JWT).
@@ -372,6 +401,7 @@ Except `issuer`, parameters provided when creating the `JwtVerifier` act as defa
 
 Supported parameters are:
 
+- `issuer` (mandatory): set this to the expected `iss` claim on the JWTs. Provide a single string, or set to `null` to skip checking issuer (not recommended unless you know what you are doing).
 - `jwksUri` (optional, can only be provided at verifier level): the URI where the JWKS can be downloaded from. To find this URI for your IDP, consult your IDP's OpenId configuration (e.g. by opening the OpenId configuration in your browser). Usually, it is `${issuer}/.well-known/jwks.json`, which is the default value that will be used if you don't explicitly provide `jwksUri`.
 - `audience` (mandatory): verify that the JWT's `aud` claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these audiences must match the JWT). Set to `null` to skip checking audience (not recommended unless you know what you are doing). Note that a JWT's `aud` claim might be an array of audiences. The `JwtVerifier` will in that case make sure that at least one of these audiences matches with at least one of the audiences that were provided to the verifier.
 - `scope` (optional): verify that the JWT's `scope` claim matches your expectation (only of use for access tokens). Provide a string, or an array of strings to allow multiple scopes (i.e. one of these scopes must match the JWT). See also [Checking scope](#checking-scope).
@@ -417,6 +447,8 @@ const verifier = CognitoJwtVerifier.create(
   }
 );
 ```
+
+Alternatively, you can code a [custom JWT check](#custom-jwt-and-jwk-checks) to enforce that the JWT's header `alg` value matches the `alg` you want to enforce.
 
 ## Peeking inside unverified JWTs
 

@@ -345,10 +345,22 @@ export class SimpleJwksCache implements JwksCache {
     this.jwksParser = props?.jwksParser ?? parseJwks;
   }
 
+  /**
+   * Add a JWKS to the cache explicitly. E.g. you may want to do this, if you have already downloaded the JWKS.
+   *
+   * @param jwksUri - The URI where your IDP exposes the JWKS, e.g. `https://example.com/my-idp/.well-known/jwks.json` (this is used as cache key)
+   * @param jwks - The JWKS
+   */
   public addJwks(jwksUri: string, jwks: Jwks): void {
     this.jwksCache.set(jwksUri, jwks);
   }
 
+  /**
+   * Fetch and cache the JWKS from the jwksUri
+   *
+   * @param jwksUri - The URI where your IDP exposes the JWKS, e.g. `https://example.com/my-idp/.well-known/jwks.json`
+   * @returns - The fetched jwks
+   */
   public async getJwks(jwksUri: string): Promise<Jwks> {
     const existingFetch = this.fetchingJwks.get(jwksUri);
     if (existingFetch) {
@@ -366,6 +378,13 @@ export class SimpleJwksCache implements JwksCache {
     return jwks;
   }
 
+  /**
+   * Get the JWKS from the cache (synchronously). Raises an error if the JWKS is not yet cached, or does not have the right JWK.
+   *
+   * @param jwksUri - The URI where your IDP exposes the JWKS, e.g. `https://example.com/my-idp/.well-known/jwks.json` (this is used as cache key)
+   * @param decomposedJwt - The decomposed JWT
+   * @returns - The previously cached JWKS
+   */
   public getCachedJwk(
     jwksUri: string,
     decomposedJwt: DecomposedJwt
@@ -392,6 +411,14 @@ export class SimpleJwksCache implements JwksCache {
     return jwk;
   }
 
+  /**
+   * Get the right JWK to verify the JWT with. This will fetch (and cache) the JWKS in case it's not yet been cached,
+   * or if the cached JWKS doesn't have the right JWK (to account for key rotations, based on `kid`).
+   *
+   * @param jwksUri
+   * @param decomposedJwt
+   * @returns  - The JWK
+   */
   public async getJwk(
     jwksUri: string,
     decomposedJwt: DecomposedJwt
