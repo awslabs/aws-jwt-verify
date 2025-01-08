@@ -1,6 +1,6 @@
 # AWS JWT Verify
 
-**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512** / **ES256** / **ES384** / **ES512**.
+**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512** / **ES256** / **ES384** / **ES512** / **Ed25519** / **Ed448**.
 
 ## Installation
 
@@ -94,7 +94,7 @@ try {
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp-02#section-3).
 - Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above). Standard claims, such as `exp` and `nbf`, are checked automatically.
 
-Currently, signature algorithms **RS256** , **RS384** , **RS512** and **ES256** , **ES384** , **ES512** are supported.
+Currently, signature algorithms **RS256** , **RS384** , **RS512** and **ES256** , **ES384** , **ES512**, **Ed25519**, **Ed448** are supported.
 
 ## Intended Usage
 
