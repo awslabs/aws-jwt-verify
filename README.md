@@ -6,7 +6,7 @@
 
 `npm install aws-jwt-verify`
 
-This library can be used with Node.js 14 or higher. If used with TypeScript, TypeScript 4 or higher is required.
+This library can be used with Node.js 16 or higher. If used with TypeScript, TypeScript 4 or higher is required.
 
 This library can also be used in Web browsers.
 
