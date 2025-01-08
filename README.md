@@ -1,6 +1,6 @@
 # AWS JWT Verify
 
-**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP** that signs JWTs with **RS256** / **RS384** / **RS512** / **ES256** / **ES384** / **ES512** / **Ed25519** / **Ed448**.
+**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP**.
 
 ## Installation
 
@@ -90,19 +90,30 @@ try {
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
 - Pure **TypeScript** library that can be used in **Node.js** v16 and above (both CommonJS and ESM supported), as well in the modern evergreen Web browser.
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
-- **0** runtime dependencies, batteries included. This library includes all necessary code to validate RS256/RS384/RS512/ES256/ES384/ES512-signed JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI.
+- **0** runtime dependencies, batteries included. This library includes all necessary code to verify JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI.
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp-02#section-3).
 - Make it **easy** for users to use this library in a **secure** way. For example, this library requires users to specify `issuer` and `audience`, as these should be checked for (see best practices linked to above). Standard claims, such as `exp` and `nbf`, are checked automatically.
 
-Currently, signature algorithms **RS256** , **RS384** , **RS512** and **ES256** , **ES384** , **ES512**, **Ed25519**, **Ed448** are supported.
+Currently, the following signature algorithms are supported:
+
+- **`RS256` (RSA)**
+- **`RS384` (RSA)**
+- **`RS512` (RSA)**
+- **`ES256` (ECDSA)**
+- **`ES384` (ECDSA)**
+- **`ES512` (ECDSA)**
+- **`Ed25519` (EdDSA)**
+- **`Ed448` (EdDSA)**
+
+Please leave us a GitHub issue if you need another algorithm.
 
 ## Intended Usage
 
 This library was specifically designed to be easy to use in:
 
-- [API Gateway Lambda authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html)
-- [AppSync Lambda authorizers](https://docs.aws.amazon.com/appsync/latest/devguide/security-authz.html#aws-lambda-authorization)
-- [CloudFront Lambda@Edge](https://docs.aws.amazon.com/lambda/latest/dg/lambda-edge.html)
+- [API Gateway Lambda authorizers](#api-gateway-lambda-authorizer---rest)
+- [AppSync Lambda authorizers](#appsync-lambda-authorizer)
+- [CloudFront Lambda@Edge](#cloudfront-lambdaedge)
 - Node.js APIs, e.g. running in AWS Fargate, that need to verify incoming JWTs
 
 ## Usage in the Web browser
