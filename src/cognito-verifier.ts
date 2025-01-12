@@ -221,7 +221,7 @@ export class CognitoJwtVerifier<
   },
   MultiIssuer extends boolean,
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
-  private static userPoolIdRegex =
+  private static USER_POOL_ID_REGEX =
     /^(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
@@ -251,7 +251,7 @@ export class CognitoJwtVerifier<
     issuer: string;
     jwksUri: string;
   } {
-    const match = userPoolId.match(this.userPoolIdRegex);
+    const match = userPoolId.match(this.USER_POOL_ID_REGEX);
     if (!match) {
       throw new ParameterValidationError(
         `Invalid Cognito User Pool ID: ${userPoolId}`
