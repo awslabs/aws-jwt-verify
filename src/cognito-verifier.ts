@@ -221,6 +221,8 @@ export class CognitoJwtVerifier<
   },
   MultiIssuer extends boolean,
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
+  private static USER_POOL_ID_REGEX =
+    /^(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
     jwksCache?: JwksCache
@@ -249,9 +251,7 @@ export class CognitoJwtVerifier<
     issuer: string;
     jwksUri: string;
   } {
-    // Disable safe regexp check as userPoolId is provided by developer, i.e. is not user input
-    // eslint-disable-next-line security/detect-unsafe-regex
-    const match = userPoolId.match(/^(?<region>(\w+-)?\w+-\w+-\d)+_\w+$/);
+    const match = userPoolId.match(this.USER_POOL_ID_REGEX);
     if (!match) {
       throw new ParameterValidationError(
         `Invalid Cognito User Pool ID: ${userPoolId}`

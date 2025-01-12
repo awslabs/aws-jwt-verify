@@ -123,6 +123,9 @@ function assertJwtPayload(
   }
 }
 
+const JWT_REGEX =
+  /^[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}$/;
+
 /**
  * Sanity check, decompose and JSON parse a JWT string into its constituent, and yet unverified, parts:
  * - header object
@@ -145,11 +148,7 @@ export function decomposeUnverifiedJwt(jwt: unknown): DecomposedJwt {
   if (typeof jwt !== "string") {
     throw new JwtParseError("JWT is not a string");
   }
-  if (
-    !jwt.match(
-      /^[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}$/
-    )
-  ) {
+  if (!JWT_REGEX.test(jwt)) {
     throw new JwtParseError(
       "JWT string does not consist of exactly 3 parts (header, payload, signature)"
     );
