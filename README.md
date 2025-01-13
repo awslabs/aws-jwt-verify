@@ -365,7 +365,7 @@ const verifier = JwtVerifier.create([
 
 ## Verifying JWTs from any OIDC-compatible IDP
 
-The generic `JwtVerifier` works for any OIDC-compatible IDP that signs JWTs with RS256/RS384/RS512/ES256/ES384/ES512:
+The generic `JwtVerifier` works for any OIDC-compatible IDP:
 
 ```typescript
 import { JwtVerifier } from "aws-jwt-verify";
@@ -424,7 +424,7 @@ Supported parameters are:
 
 `aws-jwt-verify` does not require users to specify the algorithm (`alg`) to verify JWT signatures with. Rather, the `alg` is selected automatically from the JWT header, and matched against the `alg` (if any) on the selected JWK. We believe this design decision makes it easier to use this library: one less parameter to provide, that developers potentially would not know which value to provide for.
 
-To readers who are intimately aware of how JWT verification in general should work, this design decision may seem dubious, because the JWT header, and thus the `alg` in it, would be under potential threat actor control. But this is mitigated because `aws-jwt-verify` only allows a limited set of algorithms anyway, all asymmetric: RS256, RS384, RS512, ES256, ES384, ES512. The egregious case of `alg` with value `none` is explicitly not supported, nor are symmetric algorithms, and such JWTs would be considered invalid.
+To readers who are intimately aware of how JWT verification in general should work, this design decision may seem dubious, because the JWT header, and thus the `alg` in it, would be under potential threat actor control. But this is mitigated because `aws-jwt-verify` only allows a limited set of algorithms anyway, all asymmetric (see [above](#philosophy-of-this-library)). The egregious case of `alg` with value `none` is explicitly not supported, nor are symmetric algorithms, and such JWTs would be considered invalid.
 
 If the JWK that's selected for verification (see [The JWKS cache](#the-jwks-cache)) has an `alg`, it must match the JWT header's `alg`, or the JWT is considered invalid. `alg` is an optional JWK field, but in practice present in most implementations (such as Amazon Cognito User Pools).
 
@@ -537,7 +537,7 @@ try {
 The `instanceof` check in the `catch` block above is crucial, because not all errors will include the rawJwt, only errors that subclass `JwtInvalidClaimError` will. In order to understand why this makes sense, you should know that this library verifies JWTs in 3 stages, that all must succeed for the JWT to be considered valid:
 
 - Stage 1: Verify JWT structure and JSON parse the JWT
-- Stage 2: Verify JWT cryptographic signature (i.e. RS256/RS384/RS512/ES256/ES384/ES512)
+- Stage 2: Verify JWT cryptographic signature (e.g. with algorithm ES256)
 - Stage 3: Verify JWT claims (such as e.g. its expiration)
 
 Only in case of stage 3 verification errors, will the raw JWT be included in the error (if you set `includeRawJwtInErrors` to `true`). This way, when you look at the invalid raw JWT in the error, you'll know that its structure and signature are at least valid (stages 1 and 2 succeeded).
