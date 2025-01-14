@@ -148,43 +148,19 @@ export class AlbJwtVerifier<
     props: AlbJwtVerifierProperties | AlbJwtVerifierMultiProperties[],
     jwksCache: JwksCache = new AwsAlbJwksCache()
   ) {
+    
     const issuerConfig = Array.isArray(props)
       ? (props.map((p) => ({
-          jwksUri: "TODO",
+          jwksUri: p.jwksUri ?? defaultJwksUri(p.albArn),
           ...p,
           audience: null,
         })) as IssuerConfig[])
       : ({
-          jwksUri: "TODO",
+          jwksUri: props.jwksUri ?? defaultJwksUri(props.albArn),
           ...props,
           audience: null,
         } as IssuerConfig);
     super(issuerConfig, jwksCache);
-  }
-
-  private defaultJwksUri(params:{albArn: string | string[] | null}): string {
-    let region: string;
-    if(params.albArn === null){
-        throw new ParameterValidationError("ALB ARN cannot be null");
-    }else if(Array.isArray(params.albArn)){
-        const regions = params.albArn.map(this.extractRegionFromLoadBalancerArn);
-        const uniqueRegions = Array.from(new Set(regions));
-        if (uniqueRegions.length > 2) {
-            throw new ParameterValidationError("More than 2 distinct regions found in ALB ARNs");
-        }
-        region = uniqueRegions[0];
-    }else {
-        region = this.extractRegionFromLoadBalancerArn(params.albArn);
-    }
-    return `https://public-keys.auth.elb.${region}.amazonaws.com`;
-  }
-
-  private extractRegionFromLoadBalancerArn(albArn: string): string {
-    const arnParts = albArn.split(":");
-    if (arnParts.length < 4) {
-      throw new ParameterValidationError(`Invalid load balancer ARN: ${albArn}`);
-    }
-    return arnParts[3];
   }
 
   /**
@@ -281,6 +257,7 @@ export class AlbJwtVerifier<
     }
     return decomposedJwt.payload;
   }
+
 }
 
 export function validateAlbJwtFields(
@@ -318,4 +295,31 @@ export function validateAlbJwtFields(
       // todo create new error type
     );
   }
+}
+
+function defaultJwksUri(albArn: string | string[] | null): string {
+    if (albArn === null) {
+        throw new ParameterValidationError("ALB ARN cannot be null");
+    }
+
+    const extractRegion = (arn: string): string => {
+        const arnParts = arn.split(":");
+        if (arnParts.length < 4) {
+            throw new ParameterValidationError(`Invalid load balancer ARN: ${arn}`);
+        }
+        return arnParts[3];
+    };
+
+    if (Array.isArray(albArn)) {
+        const regions = albArn.map(extractRegion);
+        const uniqueRegions = Array.from(new Set(regions));
+        if (uniqueRegions.length > 1) {
+            throw new ParameterValidationError("Multiple regions found in ALB ARNs");
+        }
+        return `https://public-keys.auth.elb.${uniqueRegions[0]}.amazonaws.com`;
+    } else {
+        const region = extractRegion(albArn);
+        return `https://public-keys.auth.elb.${region}.amazonaws.com`;
+    }
+
 }
