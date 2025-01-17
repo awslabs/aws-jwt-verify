@@ -1,59 +1,55 @@
+export class SimpleLruCache<Key, Value> {
+  private index: Map<Key, Value>;
 
-export class SimpleLruCache<Key,Value> {
-
-    private index:Map<Key,Value>;
-    
-    constructor(public readonly capacity:number){
-        if(capacity<1){
-            throw new Error(`capacity must be greater than 0, but got ${capacity}`);
-        }
-        this.index = new Map<Key,Value>();
+  constructor(public readonly capacity: number) {
+    if (capacity < 1) {
+      throw new Error(`capacity must be greater than 0, but got ${capacity}`);
     }
-    
-    public get size(){
-        return this.index.size;
+    this.index = new Map<Key, Value>();
+  }
+
+  public get size() {
+    return this.index.size;
+  }
+
+  public get(key: Key): Value | undefined {
+    const value = this.index.get(key);
+    if (value) {
+      this.moveFirst(key, value);
+
+      return value;
+    } else {
+      return undefined;
     }
+  }
 
-    public get(key:Key):Value|undefined{
-        const value = this.index.get(key);
-        if(value){
-            this.moveFirst(key,value);
-
-            return value;
-        }else{
-            return undefined;
-        }
-    }
-
-    public set(key:Key, value:Value):this{
-        if(this.size>=this.capacity){
-            this.removeLast();
-        }
-
-        this.moveFirst(key,value);
-    
-        return this;
+  public set(key: Key, value: Value): this {
+    if (this.size >= this.capacity) {
+      this.removeLast();
     }
 
-    private moveFirst(key:Key, value:Value){
-        this.index.delete(key);
-        this.index.set(key,value);
-    }
+    this.moveFirst(key, value);
 
-    private removeLast(){
-        const last = this.index.keys().next().value;
-        if(last){
-            this.index.delete(last)
-        }
-    }
+    return this;
+  }
 
-    /**
-     * 
-     * @returns array ordered from the least recent to the most recent
-     */
-    public toArray():Array<[Key,Value]>{
-        return Array.from(this.index);
+  private moveFirst(key: Key, value: Value) {
+    this.index.delete(key);
+    this.index.set(key, value);
+  }
+
+  private removeLast() {
+    const last = this.index.keys().next().value;
+    if (last) {
+      this.index.delete(last);
     }
-    
+  }
+
+  /**
+   *
+   * @returns array ordered from the least recent to the most recent
+   */
+  public toArray(): Array<[Key, Value]> {
+    return Array.from(this.index);
+  }
 }
-

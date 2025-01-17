@@ -5,17 +5,14 @@ import {
   JwtBaseError,
   JwtWithoutValidKidError,
 } from "./error";
-import {
-  JwkWithKid,
-  Jwks,
-  JwksCache,
-} from "./jwk";
+import { JwkWithKid, Jwks, JwksCache } from "./jwk";
 import { JwtHeader, JwtPayload } from "./jwt-model";
 import { Fetcher, SimpleFetcher } from "./https";
 import { SimpleLruCache } from "./cache";
 import { assertStringEquals } from "./assert";
 
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidRegex =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface DecomposedJwt {
   header: JwtHeader;
@@ -27,19 +24,18 @@ type JwksUri = string;
 export class AlbUriError extends JwtBaseError {}
 
 /**
- * 
- * Security considerations:  
+ *
+ * Security considerations:
  * It's important that the application protected by this library run in a secure environment. This application should be behind the ALB and deployed in a private subnet, or a public subnet but with no access from a untrusted network.
  * This security requierement is essential to be respected otherwise the application is exposed to several security risks. This class can be subject to a DoS attack if the attacker can control the kid.
- * 
+ *
  */
 export class AwsAlbJwksCache implements JwksCache {
-
   fetcher: Fetcher;
   // penaltyBox:PenaltyBox;
 
-  private jwkCache: SimpleLruCache<JwksUri,JwkWithKid> = new SimpleLruCache(2);
-  private fetchingJwks: Map<JwksUri,Promise<JwkWithKid>> = new Map();
+  private jwkCache: SimpleLruCache<JwksUri, JwkWithKid> = new SimpleLruCache(2);
+  private fetchingJwks: Map<JwksUri, Promise<JwkWithKid>> = new Map();
 
   constructor(props?: {
     fetcher?: Fetcher;
@@ -63,9 +59,9 @@ export class AwsAlbJwksCache implements JwksCache {
     return kid;
   }
 
-private isValidAlbKid(kid: string): boolean {
+  private isValidAlbKid(kid: string): boolean {
     return uuidRegex.test(kid);
-}
+  }
 
   public async getJwk(
     jwksUri: string,
@@ -74,39 +70,40 @@ private isValidAlbKid(kid: string): boolean {
     const kid = this.getKid(decomposedJwt);
     const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
     const jwk = this.jwkCache.get(jwksUriWithKid);
-    if(jwk){
+    if (jwk) {
       //cache hit
       return jwk;
-    }else{
+    } else {
       //cache miss
       const fetchPromise = this.fetchingJwks.get(jwksUriWithKid);
-      if(fetchPromise){
+      if (fetchPromise) {
         return fetchPromise;
-      }else{
+      } else {
         // await this.penaltyBox.wait(jwksUriWithKid, kid);
         const newFetchPromise = this.fetcher
-            .fetch(jwksUriWithKid)
-            .then(pem =>this.pemToJwk(kid,pem))
-            .then(jwk=>{
-              // this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
-              this.jwkCache.set(jwksUriWithKid,jwk);
-              return jwk;
-            })
-            .catch(error=>{
-              // this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
-              throw error;
-            }).finally(()=>{
-              this.fetchingJwks.delete(jwksUriWithKid);
-            });
-  
-        this.fetchingJwks.set(jwksUriWithKid,newFetchPromise)
-  
+          .fetch(jwksUriWithKid)
+          .then((pem) => this.pemToJwk(kid, pem))
+          .then((jwk) => {
+            // this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
+            this.jwkCache.set(jwksUriWithKid, jwk);
+            return jwk;
+          })
+          .catch((error) => {
+            // this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
+            throw error;
+          })
+          .finally(() => {
+            this.fetchingJwks.delete(jwksUriWithKid);
+          });
+
+        this.fetchingJwks.set(jwksUriWithKid, newFetchPromise);
+
         return newFetchPromise;
       }
     }
   }
-  
-  private pemToJwk(kid:string, pem:ArrayBuffer):JwkWithKid{
+
+  private pemToJwk(kid: string, pem: ArrayBuffer): JwkWithKid {
     const jwk = createPublicKey({
       key: Buffer.from(pem),
       format: "pem",
@@ -117,18 +114,18 @@ private isValidAlbKid(kid: string): boolean {
 
     assertStringEquals("JWK kty", jwk.kty, "EC", JwkInvalidKtyError);
 
-    return { 
+    return {
       kid: kid,
       use: "sig",
       ...jwk,
-    } as JwkWithKid
+    } as JwkWithKid;
   }
 
   /**
-   * 
+   *
    * @param Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com
-   * @param decomposedJwt 
-   * @returns 
+   * @param decomposedJwt
+   * @returns
    */
   public getCachedJwk(
     jwksUri: string,
@@ -137,9 +134,9 @@ private isValidAlbKid(kid: string): boolean {
     const kid = this.getKid(decomposedJwt);
     const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
     const jwk = this.jwkCache.get(jwksUriWithKid);
-    if(jwk){
+    if (jwk) {
       return jwk;
-    }else{
+    } else {
       throw new JwksNotAvailableInCacheError(
         `JWKS for uri ${jwksUri} not yet available in cache`
       );
@@ -147,17 +144,17 @@ private isValidAlbKid(kid: string): boolean {
   }
 
   public addJwks(jwksUri: string, jwks: Jwks): void {
-    if(jwks.keys.length===1){
+    if (jwks.keys.length === 1) {
       const jwk = jwks.keys[0];
-      if(jwk.kid){
+      if (jwk.kid) {
         const jwkWithKid = jwk as JwkWithKid;
         const kid = jwk.kid;
         const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
-        this.jwkCache.set(jwksUriWithKid,jwkWithKid);
-      }else{
+        this.jwkCache.set(jwksUriWithKid, jwkWithKid);
+      } else {
         throw new Error("TODO");
       }
-    }else{
+    } else {
       throw new Error("TODO");
     }
   }
@@ -165,5 +162,4 @@ private isValidAlbKid(kid: string): boolean {
   async getJwks(): Promise<Jwks> {
     throw new Error("Method not implemented.");
   }
-
 }

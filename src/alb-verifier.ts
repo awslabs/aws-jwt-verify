@@ -148,7 +148,6 @@ export class AlbJwtVerifier<
     props: AlbJwtVerifierProperties | AlbJwtVerifierMultiProperties[],
     jwksCache: JwksCache = new AwsAlbJwksCache()
   ) {
-    
     const issuerConfig = Array.isArray(props)
       ? (props.map((p) => ({
           jwksUri: p.jwksUri ?? defaultJwksUri(p.albArn),
@@ -257,7 +256,6 @@ export class AlbJwtVerifier<
     }
     return decomposedJwt.payload;
   }
-
 }
 
 export function validateAlbJwtFields(
@@ -298,28 +296,27 @@ export function validateAlbJwtFields(
 }
 
 function defaultJwksUri(albArn: string | string[] | null): string {
-    if (albArn === null) {
-        throw new ParameterValidationError("ALB ARN cannot be null");
+  if (albArn === null) {
+    throw new ParameterValidationError("ALB ARN cannot be null");
+  }
+
+  const extractRegion = (arn: string): string => {
+    const arnParts = arn.split(":");
+    if (arnParts.length < 4) {
+      throw new ParameterValidationError(`Invalid load balancer ARN: ${arn}`);
     }
+    return arnParts[3];
+  };
 
-    const extractRegion = (arn: string): string => {
-        const arnParts = arn.split(":");
-        if (arnParts.length < 4) {
-            throw new ParameterValidationError(`Invalid load balancer ARN: ${arn}`);
-        }
-        return arnParts[3];
-    };
-
-    if (Array.isArray(albArn)) {
-        const regions = albArn.map(extractRegion);
-        const uniqueRegions = Array.from(new Set(regions));
-        if (uniqueRegions.length > 1) {
-            throw new ParameterValidationError("Multiple regions found in ALB ARNs");
-        }
-        return `https://public-keys.auth.elb.${uniqueRegions[0]}.amazonaws.com`;
-    } else {
-        const region = extractRegion(albArn);
-        return `https://public-keys.auth.elb.${region}.amazonaws.com`;
+  if (Array.isArray(albArn)) {
+    const regions = albArn.map(extractRegion);
+    const uniqueRegions = Array.from(new Set(regions));
+    if (uniqueRegions.length > 1) {
+      throw new ParameterValidationError("Multiple regions found in ALB ARNs");
     }
-
+    return `https://public-keys.auth.elb.${uniqueRegions[0]}.amazonaws.com`;
+  } else {
+    const region = extractRegion(albArn);
+    return `https://public-keys.auth.elb.${region}.amazonaws.com`;
+  }
 }
