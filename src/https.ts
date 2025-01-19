@@ -29,7 +29,7 @@ export interface Fetcher {
   fetch: (
     uri: string,
     requestOptions?: FetchRequestOptions,
-    data?: Buffer
+    data?: ArrayBuffer
   ) => Promise<ArrayBuffer>;
 }
 
