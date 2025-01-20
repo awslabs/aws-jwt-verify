@@ -13,19 +13,14 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: "16"
+          node-version: "18"
       - name: install
         run: |
           npm install -g npm@9
           npm install
       - name: test
         run: |
-          npm run prettier:check
-          npm run lint:check
-          npm run test:unit
           npm run pack-for-tests
-          npm run test:install
-          npm run test:import
-          npm run test:speed
+          npm run test:browser
         env:
           CI: "true"
