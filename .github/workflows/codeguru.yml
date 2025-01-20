@@ -1,8 +1,8 @@
-name: CodeGuru Security
+name: codeguru
 on:
   push:
     branches:
-      - 'main'
+      - "main"
 
 permissions:
   id-token: write
@@ -11,9 +11,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout Respository
+      - name: Checkout Repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -28,17 +28,11 @@ jobs:
       - name: CodeGuru Security
         uses: aws-actions/codeguru-security@v1
         with:
-          source_path: .
+          source_path: src
           aws_region: eu-west-1
-          fail_on_severity: Critical
-      - name: Print findings
-        run: |
-          ls -l
-          cat codeguru-security-results.sarif.json
+          fail_on_severity: High
 
-      # If you want content in security scanning, you’ll need to enable codescanning by going into github.
-      # https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning-for-a-repository
       - name: Upload result
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: codeguru-security-results.sarif.json
