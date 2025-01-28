@@ -3,6 +3,7 @@
 
 export { JwtVerifier } from "./jwt-verifier.js";
 export { CognitoJwtVerifier } from "./cognito-verifier.js";
+export { AlbJwtVerifier } from "./alb-verifier.js";
 
 // Backward compatibility
 import { JwtVerifier } from "./jwt-verifier.js";

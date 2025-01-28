@@ -13,6 +13,7 @@
   "module": "dist/esm/index.js",
   "files": [
     "assert.d.ts",
+    "alb-verifier.d.ts",
     "cognito-verifier.d.ts",
     "dist",
     "error.d.ts",
@@ -37,6 +38,11 @@
       "import": "./dist/esm/assert.js",
       "require": "./dist/cjs/assert.js",
       "types": "./assert.d.ts"
+    },
+    "./alb-verifier": {
+      "import": "./dist/esm/alb-verifier.js",
+      "require": "./dist/cjs/alb-verifier.js",
+      "types": "./alb-verifier.d.ts"
     },
     "./cognito-verifier": {
       "import": "./dist/esm/cognito-verifier.js",

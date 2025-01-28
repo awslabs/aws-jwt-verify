@@ -1,10 +1,10 @@
 import { AwsAlbJwksCache } from "./alb-cache";
-import { assertStringArrayContainsString } from "./assert";
-import { JwtInvalidClaimError, ParameterValidationError } from "./error";
-import { Jwk, JwksCache } from "./jwk";
-import { JwtHeader, JwtPayload } from "./jwt-model"; // todo consider creating a specific type for AWS ALB JWT Payload
-import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier";
-import { Properties } from "./typing-util";
+import { assertStringArrayContainsString } from "./assert.js";
+import { JwtInvalidClaimError, ParameterValidationError } from "./error.js";
+import { Jwk, JwksCache } from "./jwk.js";
+import { JwtHeader, JwtPayload } from "./jwt-model.js"; // todo consider creating a specific type for AWS ALB JWT Payload
+import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
+import { Properties } from "./typing-util.js";
 
 export interface AlbVerifyProperties {
   /**

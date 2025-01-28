@@ -4,12 +4,12 @@ import {
   JwksNotAvailableInCacheError,
   JwtBaseError,
   JwtWithoutValidKidError,
-} from "./error";
-import { JwkWithKid, Jwks, JwksCache } from "./jwk";
-import { JwtHeader, JwtPayload } from "./jwt-model";
-import { Fetcher, SimpleFetcher } from "./https";
-import { SimpleLruCache } from "./cache";
-import { assertStringEquals } from "./assert";
+} from "./error.js";
+import { JwkWithKid, Jwks, JwksCache } from "./jwk.js";
+import { JwtHeader, JwtPayload } from "./jwt-model.js";
+import { Fetcher, SimpleFetcher } from "./https.js";
+import { SimpleLruCache } from "./cache.js";
+import { assertStringEquals } from "./assert.js";
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
