@@ -2,7 +2,7 @@ import { AwsAlbJwksCache } from "./alb-cache";
 import { assertStringArrayContainsString } from "./assert.js";
 import { JwtInvalidClaimError, ParameterValidationError } from "./error.js";
 import { Jwk, JwksCache } from "./jwk.js";
-import { JwtHeader, JwtPayload } from "./jwt-model.js"; // todo consider creating a specific type for AWS ALB JWT Payload
+import { AlbJwtHeader, AlbJwtPayload, JwtHeader } from "./jwt-model.js"; // todo consider creating a specific type for AWS ALB JWT Payload
 import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
 import { Properties } from "./typing-util.js";
 
@@ -29,8 +29,8 @@ export interface AlbVerifyProperties {
    * - the JWK that was used to verify the JWT's signature
    */
   customJwtCheck?: (props: {
-    header: JwtHeader;
-    payload: JwtPayload;
+    header: AlbJwtHeader;
+    payload: AlbJwtPayload;
     jwk: Jwk;
   }) => Promise<void> | void;
   /**
@@ -146,7 +146,7 @@ export class AlbJwtVerifier<
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
   private constructor(
     props: AlbJwtVerifierProperties | AlbJwtVerifierMultiProperties[],
-    jwksCache: JwksCache = new AwsAlbJwksCache()
+    jwksCache: JwksCache
   ) {
     const issuerConfig = Array.isArray(props)
       ? (props.map((p) => ({
@@ -197,7 +197,7 @@ export class AlbJwtVerifier<
   ) {
     return new this(
       verifyProperties,
-      additionalProperties?.jwksCache // todo by default we should select the ALB specific cache here
+      additionalProperties?.jwksCache ?? new AwsAlbJwksCache()
     );
   }
 
@@ -210,7 +210,7 @@ export class AlbJwtVerifier<
    */
   public verifySync(
     ...[jwt, properties]: AlbVerifyParameters<SpecificVerifyProperties>
-  ): JwtPayload {
+  ): AlbJwtPayload {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
@@ -225,7 +225,7 @@ export class AlbJwtVerifier<
       }
       throw err;
     }
-    return decomposedJwt.payload;
+    return decomposedJwt.payload as AlbJwtPayload;
   }
 
   /**
@@ -239,7 +239,7 @@ export class AlbJwtVerifier<
    */
   public async verify(
     ...[jwt, properties]: AlbVerifyParameters<SpecificVerifyProperties>
-  ): Promise<JwtPayload> {
+  ): Promise<AlbJwtPayload> {
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
@@ -254,7 +254,7 @@ export class AlbJwtVerifier<
       }
       throw err;
     }
-    return decomposedJwt.payload;
+    return decomposedJwt.payload as AlbJwtPayload;
   }
 }
 
