@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint @typescript-eslint/no-require-imports: "off" */
 const pkg = require("./package.json");
 const fs = require("fs");
 const path = require("path");

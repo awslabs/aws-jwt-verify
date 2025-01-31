@@ -85,7 +85,7 @@ export const nodeWebCompat: NodeWebCompat = {
       : alg.startsWith("ES")
         ? {
             name: "ECDSA",
-            // eslint-disable-next-line security/detect-object-injection
+
             namedCurve:
               NamedCurvesWebCrypto[alg as keyof typeof NamedCurvesWebCrypto],
           }

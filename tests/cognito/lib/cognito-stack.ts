@@ -3,7 +3,7 @@
 
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
-import path = require("path");
+import * as path from "node:path";
 
 export class CognitoStack extends cdk.Stack {
   constructor(

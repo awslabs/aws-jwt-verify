@@ -291,7 +291,6 @@ export class CognitoJwtVerifier<
     additionalProperties?: { jwksCache: JwksCache }
   ): CognitoJwtVerifierMultiUserPool<T>;
 
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   static create(
     verifyProperties:
       | CognitoJwtVerifierProperties
