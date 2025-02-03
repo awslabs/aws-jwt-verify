@@ -1,3 +1,4 @@
+/* eslint @typescript-eslint/no-require-imports: "off" */
 const { JwtVerifier } = require("aws-jwt-verify");
 const awsJwtModule = require("aws-jwt-verify");
 const https = require("aws-jwt-verify/https");

@@ -56,7 +56,7 @@ const saveFile = (
   }
   const fullPath = join(fullDir, filename);
   console.log(`writing ${fullPath}...`);
-  // eslint-disable-next-line security/detect-non-literal-fs-filename
+
   writeFileSync(fullPath, JSON.stringify(contents, null, 2) + "\n");
 };
 

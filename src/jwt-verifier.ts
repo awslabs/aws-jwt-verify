@@ -701,7 +701,6 @@ export class JwtVerifier<
     additionalProperties?: { jwksCache: JwksCache }
   ): JwtVerifierMultiIssuer<T>;
 
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   static create(
     verifyProperties:
       | JwtVerifierProperties<VerifyProperties>

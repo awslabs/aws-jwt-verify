@@ -22,8 +22,7 @@ import { AsAsync } from "./typing-util.js";
 /**
  * Type for a generic key object, at runtime either the Node.js or WebCrypto concrete key object is used
  */
-// eslint-disable-next-line @typescript-eslint/ban-types
-export type GenericKeyObject = Object;
+export type GenericKeyObject = object;
 
 /**
  * Verify (synchronously) the JSON Web Signature (JWS) of a JWT
