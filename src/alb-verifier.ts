@@ -1,6 +1,6 @@
 import { AwsAlbJwksCache } from "./alb-cache";
 import { assertStringArrayContainsString } from "./assert.js";
-import { JwtInvalidClaimError, ParameterValidationError } from "./error.js";
+import { AlbJwtInvalidClientIdError, AlbJwtInvalidSignerError, JwtInvalidClaimError, ParameterValidationError } from "./error.js";
 import { Jwk, JwksCache } from "./jwk.js";
 import { AlbJwtHeader, AlbJwtPayload, JwtHeader } from "./jwt-model.js"; // todo consider creating a specific type for AWS ALB JWT Payload
 import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
@@ -60,9 +60,8 @@ export type AlbJwtVerifierProperties = {
    * Set this to the expected value of the `signer` claim in the JWT (JWT header).
    * If you provide a string array, that means at least one of those ALB ARNs
    * must be present in the JWT's signer claim.
-   * Pass null explicitly to not check the JWT's signer--if you know what you're doing
    */
-  albArn: string | string[] | null;
+  albArn: string | string[];
 } & Partial<AlbVerifyProperties>;
 
 /**
@@ -86,9 +85,8 @@ export type AlbJwtVerifierMultiProperties = {
    * Set this to the expected value of the `signer` claim in the JWT (JWT header).
    * If you provide a string array, that means at least one of those ALB ARNs
    * must be present in the JWT's signer claim.
-   * Pass null explicitly to not check the JWT's signer--if you know what you're doing
    */
-  albArn: string | string[] | null;
+  albArn: string | string[];
 } & AlbVerifyProperties;
 
 /**
@@ -99,7 +97,7 @@ export type AlbJwtVerifierSingleUserPool<T extends AlbJwtVerifierProperties> =
     Properties<AlbVerifyProperties, T>,
     T &
       JwtVerifierProperties<AlbVerifyProperties> & {
-        albArn: string | string[] | null;
+        albArn: string | string[];
         audience: null;
       },
     false
@@ -114,7 +112,7 @@ export type AlbJwtVerifierMultiUserPool<
   Properties<AlbVerifyProperties, T>,
   T &
     JwtVerifierProperties<AlbVerifyProperties> & {
-      albArn: string | string[] | null;
+      albArn: string | string[];
       audience: null;
     },
   true
@@ -140,7 +138,7 @@ export class AlbJwtVerifier<
   SpecificVerifyProperties extends Partial<AlbVerifyProperties>,
   IssuerConfig extends JwtVerifierProperties<SpecificVerifyProperties> & {
     audience: null;
-    albArn: string | string[] | null;
+    albArn: string | string[];
   },
   MultiIssuer extends boolean,
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
@@ -262,23 +260,21 @@ export function validateAlbJwtFields(
   header: JwtHeader,
   options: {
     clientId?: string | string[] | null;
-    albArn?: string | string[] | null;
+    albArn?: string | string[];
   }
 ): void {
   // Check ALB ARN (signer)
-  if (options.albArn !== null) {
-    if (options.albArn === undefined) {
-      throw new ParameterValidationError(
-        "albArn must be provided or set to null explicitly"
-      );
-    }
-    assertStringArrayContainsString(
-      "ALB ARN",
-      header.signer,
-      options.albArn
-      // todo create new error type
+  if (options.albArn === undefined) {
+    throw new ParameterValidationError(
+      "albArn must be provided"
     );
   }
+  assertStringArrayContainsString(
+    "ALB ARN",
+    header.signer,
+    options.albArn,
+    AlbJwtInvalidSignerError
+  );
   // Check clientId
   if (options.clientId !== null) {
     if (options.clientId === undefined) {
@@ -289,16 +285,14 @@ export function validateAlbJwtFields(
     assertStringArrayContainsString(
       "Client ID",
       header.client,
-      options.clientId
-      // todo create new error type
+      options.clientId,
+      AlbJwtInvalidClientIdError
     );
   }
 }
 
-export function defaultJwksUri(albArn: string | string[] | null): string {
-  if (!albArn) {
-    throw new ParameterValidationError("ALB ARN cannot be null");
-  }
+export function defaultJwksUri(albArn: string | string[]): string {
+
   const regionRegex = /^[a-z]{2}-[a-z]+-\d{1}$/;
 
   const extractRegion = (arn: string): string => {

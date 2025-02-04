@@ -12,7 +12,8 @@ import {
   ParameterValidationError,
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
-  FailedAssertionError,
+  AlbJwtInvalidSignerError,
+  AlbJwtInvalidClientIdError,
 } from "../../src/error";
 import { createPublicKey } from "crypto";
 
@@ -327,87 +328,6 @@ describe("unit tests alb verifier", () => {
         ).toMatchObject({ hello: "world" });
       });
 
-      test("albArn null", () => {
-        const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
-        const albArn =
-          "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-        const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
-
-        const signedJwt = signJwt(
-          {
-            typ: "JWT",
-            kid,
-            alg: "ES256",
-            iss: issuer,
-            client: clientId,
-            signer: albArn,
-            exp,
-          },
-          {
-            hello: "world",
-            exp,
-            iss: issuer,
-          },
-          keypair.privateKey
-        );
-        const verifier = AlbJwtVerifier.create({
-          albArn: null,
-          issuer,
-          clientId,
-        });
-        verifier.cacheJwks(keypair.jwks);
-
-        expect.assertions(1);
-        expect(verifier.verifySync(signedJwt)).toMatchObject({
-          hello: "world",
-        });
-      });
-
-      test("albArn undefined", () => {
-        const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
-        const albArn =
-          "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-        const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
-
-        const signedJwt = signJwt(
-          {
-            typ: "JWT",
-            kid,
-            alg: "ES256",
-            iss: issuer,
-            client: clientId,
-            signer: albArn,
-            exp,
-          },
-          {
-            hello: "world",
-            exp,
-            iss: issuer,
-          },
-          keypair.privateKey
-        );
-        const verifier = AlbJwtVerifier.create({
-          albArn: undefined as unknown as null,
-          issuer,
-          clientId,
-        });
-        verifier.cacheJwks(keypair.jwks);
-
-        expect.assertions(2);
-        expect(() => verifier.verifySync(signedJwt)).toThrow(
-          "AlbArn must be provided or set to null explicitly"
-        );
-        expect(() => verifier.verifySync(signedJwt)).toThrow(
-          ParameterValidationError
-        );
-      });
-
       test("clientId null", async () => {
         const region = "us-east-1";
         const userPoolId = "us-east-1_123456";
@@ -578,7 +498,7 @@ describe("unit tests alb verifier", () => {
 
         expect.assertions(1);
         expect(() => albVerifier.verifySync(signedJwt)).toThrow(
-          FailedAssertionError
+          AlbJwtInvalidSignerError
         );
       });
 
@@ -622,7 +542,7 @@ describe("unit tests alb verifier", () => {
 
         expect.assertions(1);
         expect(() => albVerifier.verifySync(signedJwt)).toThrow(
-          FailedAssertionError
+          AlbJwtInvalidClientIdError
         );
       });
     });
@@ -730,20 +650,6 @@ describe("unit tests alb verifier", () => {
         });
       });
 
-      test("can't extract region when null albArn and undefined jwksUri", async () => {
-        const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
-        const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-
-        expect(() => {
-          AlbJwtVerifier.create({
-            issuer,
-            clientId,
-            albArn: null,
-          });
-        }).toThrow(ParameterValidationError);
-      });
     });
   });
 

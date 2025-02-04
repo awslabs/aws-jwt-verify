@@ -2,6 +2,8 @@ import { createPublicKey } from "crypto";
 import {
   JwkInvalidKtyError,
   JwksNotAvailableInCacheError,
+  JwksValidationError,
+  JwkValidationError,
   JwtBaseError,
   JwtWithoutValidKidError,
 } from "./error.js";
@@ -27,7 +29,7 @@ export class AlbUriError extends JwtBaseError {}
  *
  * Security considerations:
  * It's important that the application protected by this library run in a secure environment. This application should be behind the ALB and deployed in a private subnet, or a public subnet but with no access from a untrusted network.
- * This security requierement is essential to be respected otherwise the application is exposed to several security risks. This class can be subject to a DoS attack if the attacker can control the kid.
+ * This security requirement is mandatory otherwise the application is exposed to several security risks like DoS attack by injecting a forged kid.
  *
  */
 export class AwsAlbJwksCache implements JwksCache {
@@ -152,10 +154,10 @@ export class AwsAlbJwksCache implements JwksCache {
         const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
         this.jwkCache.set(jwksUriWithKid, jwkWithKid);
       } else {
-        throw new Error("TODO");
+        throw new JwkValidationError("JWK does not have a kid");
       }
     } else {
-      throw new Error("TODO");
+      throw new JwksValidationError("Only one JWK is expected in the JWKS");
     }
   }
 
