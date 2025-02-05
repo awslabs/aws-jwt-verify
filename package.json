@@ -130,6 +130,6 @@
     "url": "https://github.com/awslabs/aws-jwt-verify.git"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   }
 }
