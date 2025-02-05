@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
 
       - name: Configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::373508513302:role/CodeGuruSecurityGitHubAccessRole
           aws-region: eu-west-1
