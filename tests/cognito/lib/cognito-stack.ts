@@ -298,6 +298,7 @@ export class CognitoStack extends cdk.Stack {
       open: true,
       certificates: [cert],
       protocol: cdk.aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
+      sslPolicy: cdk.aws_elasticloadbalancingv2.SslPolicy.RECOMMENDED_TLS, // This enforces TLS 1.2 and higher
       defaultAction:
         new cdk.aws_elasticloadbalancingv2_actions.AuthenticateCognitoAction({
           userPool: cup,
