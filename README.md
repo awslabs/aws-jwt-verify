@@ -6,7 +6,7 @@
 
 `npm install aws-jwt-verify`
 
-This library can be used with Node.js 16 or higher. If used with TypeScript, TypeScript 4 or higher is required.
+This library can be used with Node.js 18 or higher. If used with TypeScript, TypeScript 4 or higher is required.
 
 This library can also be used in Web browsers.
 
@@ -88,7 +88,7 @@ try {
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
-- Pure **TypeScript** library that can be used in **Node.js** v16 and above (both CommonJS and ESM supported), as well in the modern evergreen Web browser.
+- Pure **TypeScript** library that can be used in **Node.js** v18 and above (both CommonJS and ESM supported), as well in the modern evergreen Web browser.
 - Support both **Amazon Cognito** as well as any other **OIDC-compatible IDP** as first class citizen.
 - **0** runtime dependencies, batteries included. This library includes all necessary code to verify JWTs. E.g. it contains a simple (and pluggable) **HTTP** helper to fetch the **JWKS** from the JWKS URI.
 - Opinionated towards the **best practices** as described by the IETF in [JSON Web Token Best Current Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp-02#section-3).
