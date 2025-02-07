@@ -119,6 +119,7 @@ export class AwsAlbJwksCache implements JwksCache {
     return {
       kid: kid,
       use: "sig",
+      alg: "ES256",
       ...jwk,
     } as JwkWithKid;
   }

@@ -1,5 +1,6 @@
 import { AwsAlbJwksCache } from "../../src/alb-cache";
 import {
+    JwksNotAvailableInCacheError,
     JwksValidationError,
     JwkValidationError,
     JwtWithoutValidKidError,
@@ -32,6 +33,17 @@ import {
         allowAllRealNetworkTraffic();
     });
 
+    test("ALB JWKS cache happy flow", () => {
+        const fetcher = {
+            fetch: jest.fn(async () => getAlbResponseArrayBuffer()),
+          };
+        const jwksCache = new AwsAlbJwksCache({ fetcher });
+        expect.assertions(1);
+        return expect(
+          jwksCache.getJwk(jwksUri, getDecomposedJwt())
+        ).resolves.toEqual(keypair.jwk);
+    });
+    
     test("ALB JWKS cache error flow: kid empty", () => {
       const jwksCache = new AwsAlbJwksCache();
       expect.assertions(1);
@@ -40,12 +52,34 @@ import {
       ).rejects.toThrow(JwtWithoutValidKidError);
     });
   
+    test("ALB JWKS cache error flow: fetcher error", () => {
+        const errorExpected = new Error("fetcher error");
+        const jwksCache = new AwsAlbJwksCache(
+            {
+                fetcher: {
+                    fetch: async () => {
+                        throw errorExpected;
+                    },
+                },
+            }
+        );
+        expect.assertions(1);
+        return expect(
+          jwksCache.getJwk(jwksUri, getDecomposedJwt())
+        ).rejects.toThrow(errorExpected);
+      });
+
     test("ALB JWKS cache returns cached JWK", () => {
         const jwksCache = new AwsAlbJwksCache();
         jwksCache.addJwks(jwksUri, keypair.jwks);
         expect(jwksCache.getCachedJwk(jwksUri, getDecomposedJwt())).toEqual(
             keypair.jwk
         );
+    });
+
+    test("ALB JWKS cache returns no JWK", () => {
+        const jwksCache = new AwsAlbJwksCache();
+        expect(()=>jwksCache.getCachedJwk(jwksUri, getDecomposedJwt())).toThrow(JwksNotAvailableInCacheError);
     });
 
     test("ALB JWKS add cache return multiple JWK exception", () => {
