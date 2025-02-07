@@ -1,4 +1,4 @@
-import { AwsAlbJwksCache } from "./alb-cache";
+import { AwsAlbJwksCache } from "./alb-cache.js";
 import { assertStringArrayContainsString } from "./assert.js";
 import { AlbJwtInvalidClientIdError, AlbJwtInvalidSignerError, JwtInvalidClaimError, ParameterValidationError } from "./error.js";
 import { Jwk, JwksCache } from "./jwk.js";
