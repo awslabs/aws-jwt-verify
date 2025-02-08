@@ -32,7 +32,7 @@ export class AlbUriError extends JwtBaseError {}
  * This security requirement is mandatory otherwise the application is exposed to several security risks like DoS attack by injecting a forged kid.
  *
  */
-export class AwsAlbJwksCache implements JwksCache {
+export class AlbJwksCache implements JwksCache {
   fetcher: Fetcher;
   // penaltyBox:PenaltyBox;
 

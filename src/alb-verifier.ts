@@ -1,4 +1,4 @@
-import { AwsAlbJwksCache } from "./alb-cache.js";
+import { AlbJwksCache } from "./alb-cache.js";
 import { assertStringArrayContainsString } from "./assert.js";
 import {
   AlbJwtInvalidClientIdError,
@@ -207,7 +207,7 @@ export class AlbJwtVerifier<
   ) {
     return new this(
       verifyProperties,
-      additionalProperties?.jwksCache ?? new AwsAlbJwksCache()
+      additionalProperties?.jwksCache ?? new AlbJwksCache()
     );
   }
 

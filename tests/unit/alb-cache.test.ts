@@ -1,4 +1,4 @@
-import { AwsAlbJwksCache } from "../../src/alb-cache";
+import { AlbJwksCache } from "../../src/alb-cache";
 import {
   JwksNotAvailableInCacheError,
   JwksValidationError,
@@ -11,7 +11,7 @@ import {
   generateKeyPair,
 } from "./test-util";
 
-describe("unit tests AwsAlbJwksCache", () => {
+describe("unit tests AlbJwksCache", () => {
   const jwksUri = "https://public-keys.auth.elb.eu-west-1.amazonaws.com";
   let keypair: ReturnType<typeof generateKeyPair>;
   const getDecomposedJwt = (kid?: string) => ({
@@ -41,7 +41,7 @@ describe("unit tests AwsAlbJwksCache", () => {
     const fetcher = {
       fetch: jest.fn(async () => getAlbResponseArrayBuffer()),
     };
-    const jwksCache = new AwsAlbJwksCache({ fetcher });
+    const jwksCache = new AlbJwksCache({ fetcher });
     expect.assertions(1);
     return expect(
       jwksCache.getJwk(jwksUri, getDecomposedJwt())
@@ -49,7 +49,7 @@ describe("unit tests AwsAlbJwksCache", () => {
   });
 
   test("ALB JWKS cache error flow: kid empty", () => {
-    const jwksCache = new AwsAlbJwksCache();
+    const jwksCache = new AlbJwksCache();
     expect.assertions(1);
     return expect(
       jwksCache.getJwk(jwksUri, { header: { alg: "EC256" }, payload: {} })
@@ -58,7 +58,7 @@ describe("unit tests AwsAlbJwksCache", () => {
 
   test("ALB JWKS cache error flow: fetcher error", () => {
     const errorExpected = new Error("fetcher error");
-    const jwksCache = new AwsAlbJwksCache({
+    const jwksCache = new AlbJwksCache({
       fetcher: {
         fetch: async () => {
           throw errorExpected;
@@ -72,7 +72,7 @@ describe("unit tests AwsAlbJwksCache", () => {
   });
 
   test("ALB JWKS cache returns cached JWK", () => {
-    const jwksCache = new AwsAlbJwksCache();
+    const jwksCache = new AlbJwksCache();
     jwksCache.addJwks(jwksUri, keypair.jwks);
     expect(jwksCache.getCachedJwk(jwksUri, getDecomposedJwt())).toEqual(
       keypair.jwk
@@ -80,14 +80,14 @@ describe("unit tests AwsAlbJwksCache", () => {
   });
 
   test("ALB JWKS cache returns no JWK", () => {
-    const jwksCache = new AwsAlbJwksCache();
+    const jwksCache = new AlbJwksCache();
     expect(() => jwksCache.getCachedJwk(jwksUri, getDecomposedJwt())).toThrow(
       JwksNotAvailableInCacheError
     );
   });
 
   test("ALB JWKS add cache return multiple JWK exception", () => {
-    const jwksCache = new AwsAlbJwksCache();
+    const jwksCache = new AlbJwksCache();
     expect(() =>
       jwksCache.addJwks(jwksUri, {
         keys: [keypair.jwk, keypair.jwk],
@@ -96,7 +96,7 @@ describe("unit tests AwsAlbJwksCache", () => {
   });
 
   test("ALB JWKS add cache return no kid", () => {
-    const jwksCache = new AwsAlbJwksCache();
+    const jwksCache = new AlbJwksCache();
     expect(() =>
       jwksCache.addJwks(jwksUri, {
         keys: [
@@ -110,7 +110,7 @@ describe("unit tests AwsAlbJwksCache", () => {
   });
 
   test("ALB JWKS get JWKS return not implemented exception", () => {
-    const jwksCache = new AwsAlbJwksCache();
+    const jwksCache = new AlbJwksCache();
     expect.assertions(1);
     return expect(jwksCache.getJwks()).rejects.toThrow(
       "Method not implemented."
@@ -126,7 +126,7 @@ describe("unit tests AwsAlbJwksCache", () => {
     const fetcher = {
       fetch: jest.fn(async () => getAlbResponseArrayBuffer()),
     };
-    const jwksCache = new AwsAlbJwksCache({
+    const jwksCache = new AlbJwksCache({
       fetcher,
     });
     const promise1 = jwksCache.getJwk(jwksUri, getDecomposedJwt());
