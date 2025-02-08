@@ -7,7 +7,10 @@ import {
 } from "./test-util";
 import { decomposeUnverifiedJwt } from "../../src/jwt";
 import { JwksCache, Jwks } from "../../src/jwk";
-import { AlbJwtVerifier } from "../../src/alb-verifier";
+import {
+  AlbJwtVerifier,
+  AlbJwtVerifierMultiProperties,
+} from "../../src/alb-verifier";
 import {
   ParameterValidationError,
   JwtInvalidClaimError,
@@ -16,6 +19,7 @@ import {
   AlbJwtInvalidClientIdError,
 } from "../../src/error";
 import { createPublicKey } from "crypto";
+import { KeyPair } from "../util/util";
 
 describe("unit tests alb verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
@@ -782,13 +786,17 @@ describe("unit tests alb verifier", () => {
       test("happy flow with 2 albs and 2 issuers", async () => {
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
 
-        const identityProviders = [
+        const identityProviders: {
+          config: AlbJwtVerifierMultiProperties;
+          keypair: KeyPair;
+        }[] = [
           {
             config: {
               albArn:
                 "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/60dc6c495c0c9188",
               issuer:
                 "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_qbc",
+
               clientId: "client1",
             },
             keypair: generateKeyPair({

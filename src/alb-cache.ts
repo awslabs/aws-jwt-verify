@@ -34,17 +34,12 @@ export class AlbUriError extends JwtBaseError {}
  */
 export class AlbJwksCache implements JwksCache {
   fetcher: Fetcher;
-  // penaltyBox:PenaltyBox;
 
   private jwkCache: SimpleLruCache<JwksUri, JwkWithKid> = new SimpleLruCache(2);
   private fetchingJwks: Map<JwksUri, Promise<JwkWithKid>> = new Map();
 
-  constructor(props?: {
-    fetcher?: Fetcher;
-    // penaltyBox?: PenaltyBox;
-  }) {
+  constructor(props?: { fetcher?: Fetcher }) {
     this.fetcher = props?.fetcher ?? new SimpleFetcher();
-    // this.penaltyBox = props?.penaltyBox ?? new SimplePenaltyBox();
   }
 
   private expandWithKid(jwksUri: string, kid: string): string {
@@ -81,18 +76,12 @@ export class AlbJwksCache implements JwksCache {
       if (fetchPromise) {
         return fetchPromise;
       } else {
-        // await this.penaltyBox.wait(jwksUriWithKid, kid);
         const newFetchPromise = this.fetcher
           .fetch(jwksUriWithKid)
           .then((pem) => this.pemToJwk(kid, pem))
           .then((jwk) => {
-            // this.penaltyBox.registerSuccessfulAttempt(jwksUriWithKid, kid);
             this.jwkCache.set(jwksUriWithKid, jwk);
             return jwk;
-          })
-          .catch((error) => {
-            // this.penaltyBox.registerFailedAttempt(jwksUriWithKid, kid);
-            throw error;
           })
           .finally(() => {
             this.fetchingJwks.delete(jwksUriWithKid);
