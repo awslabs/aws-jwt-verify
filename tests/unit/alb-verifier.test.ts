@@ -39,8 +39,7 @@ describe("unit tests alb verifier", () => {
     describe("verify", () => {
       test("happy flow", async () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -86,8 +85,7 @@ describe("unit tests alb verifier", () => {
     });
     describe("validateAlbJwtParams", () => {
       test("invalid load balancer ARN - too short", async () => {
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn = "arn:aws:elasticloadbalancing";
 
         expect(() =>
@@ -103,8 +101,7 @@ describe("unit tests alb verifier", () => {
       });
 
       test("invalid load balancer ARN - invalid region 1", async () => {
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:.:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
 
@@ -117,8 +114,7 @@ describe("unit tests alb verifier", () => {
       });
 
       test("invalid load balancer ARN - invalid region 2", async () => {
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:/:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
 
@@ -131,8 +127,7 @@ describe("unit tests alb verifier", () => {
       });
 
       test("invalid load balancer ARN - invalid region 3", async () => {
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:?:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
 
@@ -145,8 +140,7 @@ describe("unit tests alb verifier", () => {
       });
 
       test("invalid load balancer ARN - invalid region 4", async () => {
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:=:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
 
@@ -161,8 +155,7 @@ describe("unit tests alb verifier", () => {
     describe("includeRawJwtInErrors", () => {
       test("verify - flag set at statement level", () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -204,8 +197,7 @@ describe("unit tests alb verifier", () => {
       });
       test("verify - flag set at verifier level", () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -246,8 +238,7 @@ describe("unit tests alb verifier", () => {
       });
       test("verify - flag NOT set", () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -284,8 +275,7 @@ describe("unit tests alb verifier", () => {
       });
       test("verifySync - flag set at verifier level", () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -328,8 +318,7 @@ describe("unit tests alb verifier", () => {
       });
       test("verifySync - flag NOT set", () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -370,8 +359,7 @@ describe("unit tests alb verifier", () => {
     describe("verifySync", () => {
       test("happy flow", () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -408,11 +396,10 @@ describe("unit tests alb verifier", () => {
 
       test("clientId null", async () => {
         const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.${region}.amazonaws.com/us-east-1_123456`;
         const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
         const kid = keypair.jwk.kid;
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
@@ -451,8 +438,7 @@ describe("unit tests alb verifier", () => {
 
       test("clientId undefined", () => {
         const kid = keypair.jwk.kid;
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
@@ -492,14 +478,12 @@ describe("unit tests alb verifier", () => {
       });
 
       test("invalid issuer", () => {
-        const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
         const badIssuer = `https://badissuer.amazonaws.com`;
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+        const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const kid = keypair.jwk.kid;
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
 
@@ -536,15 +520,13 @@ describe("unit tests alb verifier", () => {
       });
 
       test("invalid signer", () => {
-        const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const badSigner =
           "arn:aws:elasticloadbalancing:us-east-1:badaccount:loadbalancer/app/badloadbalancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+        const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const kid = keypair.jwk.kid;
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
 
@@ -581,14 +563,12 @@ describe("unit tests alb verifier", () => {
       });
 
       test("invalid clientId", () => {
-        const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
         const badClientId = "bad-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+        const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const kid = keypair.jwk.kid;
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
 
@@ -626,13 +606,11 @@ describe("unit tests alb verifier", () => {
     });
     describe("jwksUri", () => {
       test("default jwksUri in us-east-1", async () => {
-        const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+        const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const jwk = keypair.jwk;
         const kid = jwk.kid;
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
@@ -677,13 +655,11 @@ describe("unit tests alb verifier", () => {
       });
 
       test("default jwksUri in eu-west-2", async () => {
-        const region = "eu-west-2";
-        const userPoolId = "eu-west-2_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const issuer = `https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_123456`;
+        const jwksUri = `https://public-keys.auth.elb.eu-west-2.amazonaws.com`;
         const jwk = keypair.jwk;
         const kid = jwk.kid;
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
@@ -728,12 +704,10 @@ describe("unit tests alb verifier", () => {
       });
 
       test("custom jwksUri", async () => {
-        const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const jwksUri = `https://s3-us-gov-west-1.amazonaws.com/aws-elb-public-keys-prod-us-gov-west-1`;
         const jwk = keypair.jwk;
         const kid = jwk.kid;
@@ -862,15 +836,13 @@ describe("unit tests alb verifier", () => {
           kid: "22222222-2222-2222-2222-222222222222",
         });
 
-        const region = "us-east-1";
-        const userPoolId = "us-east-1_123456";
         const albArn1 =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/AAAAAAAAAAAAAAAA";
         const albArn2 =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/BBBBBBBBBBBBBBBB";
         const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+        const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
 
         const signedJwt1 = signJwt(
@@ -991,8 +963,7 @@ describe("unit tests alb verifier", () => {
             );
         }
         const customJwksCache = new CustomJwksCache();
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
 
@@ -1013,10 +984,9 @@ describe("unit tests alb verifier", () => {
       });
     });
 
-    describe("validateAlbJwtParams", () => {
-      test("invalid load balancer ARN with multiple regions", async () => {
-        const userPoolId = "us-east-1_123456";
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+    describe("jwksUri", () => {
+      test("default jwksUri with alb arn in multiple regions error", async () => {
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn = [
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer-1/50dc6c495c0c9188",
           "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer-2/901e7c495c0c9188",
@@ -1028,7 +998,9 @@ describe("unit tests alb verifier", () => {
             issuer,
           })
         ).toThrow(
-          new ParameterValidationError("Multiple regions found in ALB ARNs")
+          new ParameterValidationError(
+            "Unable to generate default jwksUri because multiple regions in ALB ARNs parameters found"
+          )
         );
       });
     });

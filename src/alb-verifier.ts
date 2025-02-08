@@ -11,6 +11,12 @@ import { AlbJwtHeader, AlbJwtPayload, JwtHeader } from "./jwt-model.js"; // todo
 import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
 import { Properties } from "./typing-util.js";
 
+const regionRegex = /^[a-z]{2}-[a-z]+-\d{1}$/;
+
+type AlbArn = {
+  region: string;
+};
+
 export interface AlbVerifyProperties {
   /**
    * The client ID that you expect to be present in the JWT's client claim (in the JWT header).
@@ -154,12 +160,9 @@ export class AlbJwtVerifier<
     const transformPropertiesToIssuerConfig = (
       props: AlbJwtVerifierProperties
     ) => {
-      const paramsValidationResult = validateAlbJwtParams(props.albArn);
-      const region = paramsValidationResult.region;
+      const albArns = validateAndParseAlbArns(props.albArn);
       return {
-        jwksUri:
-          props.jwksUri ??
-          `https://public-keys.auth.elb.${region}.amazonaws.com`,
+        jwksUri: props.jwksUri ?? getDefaultJwksUri(albArns),
         ...props,
         audience: null,
       } as IssuerConfig;
@@ -301,41 +304,40 @@ export function validateAlbJwtFields(
   }
 }
 
-const regionRegex = /^[a-z]{2}-[a-z]+-\d{1}$/;
-
-export function validateAlbJwtParams(albArn: string | string[]): {
-  region: string;
-} {
+export function validateAndParseAlbArns(albArn: string | string[]): AlbArn[] {
   if (Array.isArray(albArn)) {
-    const regions = albArn.map(extractRegion);
-    const uniqueRegions = Array.from(new Set(regions));
-    if (uniqueRegions.length > 1) {
-      throw new ParameterValidationError("Multiple regions found in ALB ARNs");
-    }
-    return {
-      region: uniqueRegions[0],
-    };
+    return albArn.map(parseAlbArn);
   } else {
-    const region = extractRegion(albArn);
-    return {
-      region,
-    };
+    return [parseAlbArn(albArn)];
   }
 }
 
-export function extractRegion(arn: string): string {
-  const arnParts = arn.split(":");
+function parseAlbArn(albArn: string): AlbArn {
+  const arnParts = albArn.split(":");
   if (
     arnParts.length < 4 ||
     arnParts[0] !== "arn" ||
     arnParts[1] !== "aws" ||
     arnParts[2] !== "elasticloadbalancing"
   ) {
-    throw new ParameterValidationError(`Invalid load balancer ARN: ${arn}`);
+    throw new ParameterValidationError(`Invalid load balancer ARN: ${albArn}`);
   }
   const region = arnParts[3];
   if (!regionRegex.test(region)) {
     throw new ParameterValidationError(`Invalid AWS region in ARN: ${region}`);
   }
-  return region;
+  return {
+    region,
+  };
+}
+
+function getDefaultJwksUri(albArns: AlbArn[]): string {
+  const regions = albArns.map((arn) => arn.region);
+  const uniqueRegions = Array.from(new Set(regions));
+  if (uniqueRegions.length > 1) {
+    throw new ParameterValidationError(
+      "Unable to generate default jwksUri because multiple regions in ALB ARNs parameters found"
+    );
+  }
+  return `https://public-keys.auth.elb.${uniqueRegions[0]}.amazonaws.com`;
 }
