@@ -7,7 +7,7 @@ import {
 } from "./test-util";
 import { decomposeUnverifiedJwt } from "../../src/jwt";
 import { JwksCache, Jwks } from "../../src/jwk";
-import { AlbJwtVerifier, defaultJwksUri } from "../../src/alb-verifier";
+import { AlbJwtVerifier, validateAlbJwtFields, validateAlbJwtParams } from "../../src/alb-verifier";
 import {
   ParameterValidationError,
   JwtInvalidClaimError,
@@ -79,6 +79,64 @@ describe("unit tests alb verifier", () => {
           jwk: keypair.jwk,
         });
       });
+    });
+    describe("validateAlbJwtParams", () => {
+      test("invalid load balancer ARN - too short", async () => {
+        const userPoolId = "us-east-1_123456";
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const albArn = "arn:aws:elasticloadbalancing";
+
+        expect(() => AlbJwtVerifier.create({
+          albArn,
+          issuer,
+        })).toThrow(new ParameterValidationError(`Invalid load balancer ARN: arn:aws:elasticloadbalancing`))
+      });
+
+      test("invalid load balancer ARN - invalid region 1", async () => {
+        const userPoolId = "us-east-1_123456";
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const albArn = "arn:aws:elasticloadbalancing:.:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+
+        expect(() => AlbJwtVerifier.create({
+          albArn,
+          issuer,
+        })).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: .`))
+      });
+
+      
+      test("invalid load balancer ARN - invalid region 2", async () => {
+        const userPoolId = "us-east-1_123456";
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const albArn = "arn:aws:elasticloadbalancing:/:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+
+        expect(() => AlbJwtVerifier.create({
+          albArn,
+          issuer,
+        })).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: /`))
+      });
+
+      test("invalid load balancer ARN - invalid region 3", async () => {
+        const userPoolId = "us-east-1_123456";
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const albArn = "arn:aws:elasticloadbalancing:?:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+
+        expect(() => AlbJwtVerifier.create({
+          albArn,
+          issuer,
+        })).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: ?`))
+      });
+
+      test("invalid load balancer ARN - invalid region 4", async () => {
+        const userPoolId = "us-east-1_123456";
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const albArn = "arn:aws:elasticloadbalancing:=:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+
+        expect(() => AlbJwtVerifier.create({
+          albArn,
+          issuer,
+        })).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: =`))
+      });
+
     });
     describe("includeRawJwtInErrors", () => {
       test("verify - flag set at statement level", () => {
@@ -547,11 +605,62 @@ describe("unit tests alb verifier", () => {
       });
     });
     describe("jwksUri", () => {
-      test("default jwksUri", async () => {
+      test("default jwksUri in us-east-1", async () => {
         const region = "us-east-1";
         const userPoolId = "us-east-1_123456";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+        const clientId = "my-client-id";
+        const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const jwk = keypair.jwk;
+        const kid = jwk.kid;
+        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const pem = createPublicKey({
+          key: jwk,
+          format: "jwk",
+        }).export({
+          format: "pem",
+          type: "spki",
+        }); //pem with -----BEGIN PUBLIC KEY----- and -----END PUBLIC KEY-----.
+
+        mockHttpsUri(`${jwksUri}/${kid}`, {
+          responsePayload: pem,
+        });
+
+        const signedJwt = signJwt(
+          {
+            typ: "JWT",
+            kid,
+            alg: "ES256",
+            iss: issuer,
+            client: clientId,
+            signer: albArn,
+            exp,
+          },
+          {
+            hello: "world",
+            exp,
+            iss: issuer,
+          },
+          keypair.privateKey
+        );
+        const albVerifier = AlbJwtVerifier.create({
+          issuer,
+          clientId,
+          albArn,
+        });
+        expect.assertions(1);
+        expect(await albVerifier.verify(signedJwt)).toMatchObject({
+          hello: "world",
+        });
+      });
+
+      test("default jwksUri in eu-west-2", async () => {
+        const region = "eu-west-2";
+        const userPoolId = "eu-west-2_123456";
+        const albArn =
+          "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
         const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
         const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
@@ -880,74 +989,22 @@ describe("unit tests alb verifier", () => {
         );
       });
     });
-  });
 
-  describe("defaultJwksUri", () => {
-    test("happy flow with us-east-1 region", () => {
-      const albArn =
-        "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-      
-      expect(defaultJwksUri(albArn)).toBe("https://public-keys.auth.elb.us-east-1.amazonaws.com");
-    });
+    describe("validateAlbJwtParams", () => {
+      test("invalid load balancer ARN with multiple regions", async () => {
+        const userPoolId = "us-east-1_123456";
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/${userPoolId}`;
+        const albArn = [
+          "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer-1/50dc6c495c0c9188",
+          "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer-2/901e7c495c0c9188",
+        ]
 
-    test("happy flow with eu-west-2 region", () => {
-      const albArn =
-        "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-      
-      expect(defaultJwksUri(albArn)).toBe("https://public-keys.auth.elb.eu-west-2.amazonaws.com");
-    });
-
-    test("happy flow with multi ALB ARN", () => {
-      const albArns = [
-        "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer-1/50dc6c495c0c9188",
-        "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer-2/901e7c495c0c9188",
-      ]
-      
-      expect(defaultJwksUri(albArns)).toBe("https://public-keys.auth.elb.eu-west-2.amazonaws.com");
-    });
-
-    test("invalid load balancer ARN - too short", () => {
-      const albArn =
-        "arn:aws:elasticloadbalancing";
-      
-      expect(()=>defaultJwksUri(albArn)).toThrow(new ParameterValidationError(`Invalid load balancer ARN: arn:aws:elasticloadbalancing`));
-    });
-
-    test("invalid load balancer ARN - invalid region 1", () => {
-      const albArn =
-        "arn:aws:elasticloadbalancing:.:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-      
-      expect(()=>defaultJwksUri(albArn)).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: .`));
-    });
-
-    test("invalid load balancer ARN - invalid region 2", () => {
-      const albArn =
-        "arn:aws:elasticloadbalancing:/:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-      
-      expect(()=>defaultJwksUri(albArn)).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: /`));
-    });
-
-    test("invalid load balancer ARN - invalid region 3", () => {
-      const albArn =
-        "arn:aws:elasticloadbalancing:?:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-      
-      expect(()=>defaultJwksUri(albArn)).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: ?`));
-    });
-
-    test("invalid load balancer ARN - invalid region 4", () => {
-      const albArn =
-        "arn:aws:elasticloadbalancing:=:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-      
-      expect(()=>defaultJwksUri(albArn)).toThrow(new ParameterValidationError((`Invalid AWS region in ARN: =`)));
-    });
-
-    test("invalid load balancer ARN with multiple regions", () => {
-      const albArns = [
-        "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer-1/50dc6c495c0c9188",
-        "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/my-load-balancer-2/901e7c495c0c9188",
-      ]
-      
-      expect(()=>defaultJwksUri(albArns)).toThrow(new ParameterValidationError("Multiple regions found in ALB ARNs"));
+        expect(() => AlbJwtVerifier.create({
+          albArn,
+          issuer,
+        })).toThrow(new ParameterValidationError("Multiple regions found in ALB ARNs"))
+      });
     });
   });
+
 });
