@@ -103,7 +103,8 @@ export interface AlbJwtHeader extends JwtHeader {
 export type AlbJwtPayload = {
   exp: number;
   iss: string;
-} & JwtPayloadStandardFields & JsonObject;
+} & JwtPayloadStandardFields &
+  JsonObject;
 
 export interface AlbJwt {
   header: AlbJwtHeader;

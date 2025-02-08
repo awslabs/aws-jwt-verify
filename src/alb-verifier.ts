@@ -1,6 +1,11 @@
 import { AwsAlbJwksCache } from "./alb-cache.js";
 import { assertStringArrayContainsString } from "./assert.js";
-import { AlbJwtInvalidClientIdError, AlbJwtInvalidSignerError, JwtInvalidClaimError, ParameterValidationError } from "./error.js";
+import {
+  AlbJwtInvalidClientIdError,
+  AlbJwtInvalidSignerError,
+  JwtInvalidClaimError,
+  ParameterValidationError,
+} from "./error.js";
 import { Jwk, JwksCache } from "./jwk.js";
 import { AlbJwtHeader, AlbJwtPayload, JwtHeader } from "./jwt-model.js"; // todo consider creating a specific type for AWS ALB JWT Payload
 import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
@@ -146,18 +151,23 @@ export class AlbJwtVerifier<
     props: AlbJwtVerifierProperties | AlbJwtVerifierMultiProperties[],
     jwksCache: JwksCache
   ) {
-    
-    const transformPropertiesToIssuerConfig = (props: AlbJwtVerifierProperties) => {
+    const transformPropertiesToIssuerConfig = (
+      props: AlbJwtVerifierProperties
+    ) => {
       const paramsValidationResult = validateAlbJwtParams(props.albArn);
       const region = paramsValidationResult.region;
       return {
-          jwksUri: props.jwksUri ?? `https://public-keys.auth.elb.${region}.amazonaws.com`,
-          ...props,
-          audience: null,
-        } as IssuerConfig;
-    }
+        jwksUri:
+          props.jwksUri ??
+          `https://public-keys.auth.elb.${region}.amazonaws.com`,
+        ...props,
+        audience: null,
+      } as IssuerConfig;
+    };
 
-    let issuerConfig = Array.isArray(props) ? props.map(transformPropertiesToIssuerConfig) : transformPropertiesToIssuerConfig(props);
+    const issuerConfig = Array.isArray(props)
+      ? props.map(transformPropertiesToIssuerConfig)
+      : transformPropertiesToIssuerConfig(props);
 
     super(issuerConfig, jwksCache);
   }
@@ -267,9 +277,7 @@ export function validateAlbJwtFields(
 ): void {
   // Check ALB ARN (signer)
   if (options.albArn === undefined) {
-    throw new ParameterValidationError(
-      "albArn must be provided"
-    );
+    throw new ParameterValidationError("albArn must be provided");
   }
   assertStringArrayContainsString(
     "ALB ARN",
@@ -306,18 +314,23 @@ export function validateAlbJwtParams(albArn: string | string[]): {
     }
     return {
       region: uniqueRegions[0],
-    };  
+    };
   } else {
     const region = extractRegion(albArn);
     return {
       region,
-    }
+    };
   }
 }
 
 export function extractRegion(arn: string): string {
   const arnParts = arn.split(":");
-  if (arnParts.length < 4 || arnParts[0] !== "arn" || arnParts[1] !== "aws" || arnParts[2] !== "elasticloadbalancing") {
+  if (
+    arnParts.length < 4 ||
+    arnParts[0] !== "arn" ||
+    arnParts[1] !== "aws" ||
+    arnParts[2] !== "elasticloadbalancing"
+  ) {
     throw new ParameterValidationError(`Invalid load balancer ARN: ${arn}`);
   }
   const region = arnParts[3];
@@ -325,4 +338,4 @@ export function extractRegion(arn: string): string {
     throw new ParameterValidationError(`Invalid AWS region in ARN: ${region}`);
   }
   return region;
-};
+}

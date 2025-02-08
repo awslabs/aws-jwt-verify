@@ -106,7 +106,6 @@ export class CognitoJwtInvalidTokenUseError extends JwtInvalidClaimError {}
 
 export class CognitoJwtInvalidClientIdError extends JwtInvalidClaimError {}
 
-
 /**
  * Amazon ALB specific erros
  */
