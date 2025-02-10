@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
-import { AwsSolutionsChecks } from 'cdk-nag';
-import { Aspects } from 'aws-cdk-lib';
+import { AwsSolutionsChecks } from "cdk-nag";
+import { Aspects } from "aws-cdk-lib";
 import { CognitoStack } from "../lib/cognito-stack";
 import "dotenv/config";
 
