@@ -14,6 +14,7 @@
   "files": [
     "assert.d.ts",
     "alb-verifier.d.ts",
+    "cache.d.ts",
     "cognito-verifier.d.ts",
     "dist",
     "error.d.ts",
@@ -43,6 +44,11 @@
       "import": "./dist/esm/alb-verifier.js",
       "require": "./dist/cjs/alb-verifier.js",
       "types": "./alb-verifier.d.ts"
+    },
+    "./cache": {
+      "import": "./dist/esm/cache.js",
+      "require": "./dist/cjs/cache.js",
+      "types": "./cache.d.ts"
     },
     "./cognito-verifier": {
       "import": "./dist/esm/cognito-verifier.js",

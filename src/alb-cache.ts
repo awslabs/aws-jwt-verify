@@ -1,19 +1,19 @@
 import { createPublicKey } from "crypto";
 import {
+  AlbJwksNotExposedError,
   JwkInvalidKtyError,
   JwksNotAvailableInCacheError,
   JwksValidationError,
   JwkValidationError,
-  JwtBaseError,
   JwtWithoutValidKidError,
 } from "./error.js";
 import { JwkWithKid, Jwks, JwksCache } from "./jwk.js";
-import { JwtHeader, JwtPayload } from "./jwt-model.js";
 import { Fetcher, SimpleFetcher } from "./https.js";
 import { SimpleLruCache } from "./cache.js";
 import { assertStringEquals } from "./assert.js";
+import { JwtHeader, JwtPayload } from "./jwt-model.js";
 
-const uuidRegex =
+const UUID_REGEXP =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface DecomposedJwt {
@@ -23,15 +23,6 @@ interface DecomposedJwt {
 
 type JwksUri = string;
 
-export class AlbUriError extends JwtBaseError {}
-
-/**
- *
- * Security considerations:
- * It's important that the application protected by this library run in a secure environment. This application should be behind the ALB and deployed in a private subnet, or a public subnet but with no access from a untrusted network.
- * This security requirement is mandatory otherwise the application is exposed to several security risks like DoS attack by injecting a forged kid.
- *
- */
 export class AlbJwksCache implements JwksCache {
   fetcher: Fetcher;
 
@@ -57,7 +48,7 @@ export class AlbJwksCache implements JwksCache {
   }
 
   private isValidAlbKid(kid: string): boolean {
-    return uuidRegex.test(kid);
+    return UUID_REGEXP.test(kid);
   }
 
   public async getJwk(
@@ -106,19 +97,13 @@ export class AlbJwksCache implements JwksCache {
     assertStringEquals("JWK kty", jwk.kty, "EC", JwkInvalidKtyError);
 
     return {
+      ...jwk,
       kid: kid,
       use: "sig",
       alg: "ES256",
-      ...jwk,
     } as JwkWithKid;
   }
 
-  /**
-   *
-   * @param Ex: https://public-keys.auth.elb.eu-west-1.amazonaws.com
-   * @param decomposedJwt
-   * @returns
-   */
   public getCachedJwk(
     jwksUri: string,
     decomposedJwt: DecomposedJwt
@@ -139,10 +124,8 @@ export class AlbJwksCache implements JwksCache {
     if (jwks.keys.length === 1) {
       const jwk = jwks.keys[0];
       if (jwk.kid) {
-        const jwkWithKid = jwk as JwkWithKid;
-        const kid = jwk.kid;
-        const jwksUriWithKid = this.expandWithKid(jwksUri, kid);
-        this.jwkCache.set(jwksUriWithKid, jwkWithKid);
+        const jwksUriWithKid = this.expandWithKid(jwksUri, jwk.kid);
+        this.jwkCache.set(jwksUriWithKid, jwk as JwkWithKid);
       } else {
         throw new JwkValidationError("JWK does not have a kid");
       }
@@ -152,6 +135,6 @@ export class AlbJwksCache implements JwksCache {
   }
 
   async getJwks(): Promise<Jwks> {
-    throw new Error("Method not implemented.");
+    throw new AlbJwksNotExposedError("AWS ALB does not expose JWKS");
   }
 }

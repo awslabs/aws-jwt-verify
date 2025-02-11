@@ -7,11 +7,12 @@ import {
   ParameterValidationError,
 } from "./error.js";
 import { Jwk, JwksCache } from "./jwk.js";
-import { AlbJwtHeader, AlbJwtPayload, JwtHeader } from "./jwt-model.js"; // todo consider creating a specific type for AWS ALB JWT Payload
+import { AlbJwtHeader, AlbJwtPayload, JwtHeader } from "./jwt-model.js";
 import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
 import { Properties } from "./typing-util.js";
 
-const regionRegex = /^[a-z]{2}-[a-z]+-\d{1}$/;
+const ALB_ARN_REGEX =
+  /^arn:(?:aws|aws-cn):elasticloadbalancing:([a-z]{2}-(?:gov-)?[a-z]+-\d{1}):.+$/;
 
 type AlbArn = {
   region: string;
@@ -65,7 +66,7 @@ export type AlbJwtVerifierProperties = {
    * The issuer of the JWTs you want to verify.
    * Set this to the expected value of the `iss` claim in the JWT.
    */
-  issuer: string;
+  issuer: string | null;
   /**
    * The ARN of the Application Load Balancer (ALB) that signs the JWT.
    * Set this to the expected value of the `signer` claim in the JWT (JWT header).
@@ -90,7 +91,7 @@ export type AlbJwtVerifierMultiProperties = {
    * The issuer of the JWTs you want to verify.
    * Set this to the expected value of the `iss` claim in the JWT.
    */
-  issuer: string;
+  issuer: string | null;
   /**
    * The ARN of the Application Load Balancer (ALB) that signs the JWT.
    * Set this to the expected value of the `signer` claim in the JWT (JWT header).
@@ -201,7 +202,6 @@ export class AlbJwtVerifier<
     additionalProperties?: { jwksCache: JwksCache }
   ): AlbJwtVerifierMultiUserPool<T>;
 
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   static create(
     verifyProperties:
       | AlbJwtVerifierProperties
@@ -313,21 +313,12 @@ export function validateAndParseAlbArns(albArn: string | string[]): AlbArn[] {
 }
 
 function parseAlbArn(albArn: string): AlbArn {
-  const arnParts = albArn.split(":");
-  if (
-    arnParts.length < 4 ||
-    arnParts[0] !== "arn" ||
-    arnParts[1] !== "aws" ||
-    arnParts[2] !== "elasticloadbalancing"
-  ) {
+  const match = ALB_ARN_REGEX.exec(albArn);
+  if (!match) {
     throw new ParameterValidationError(`Invalid load balancer ARN: ${albArn}`);
   }
-  const region = arnParts[3];
-  if (!regionRegex.test(region)) {
-    throw new ParameterValidationError(`Invalid AWS region in ARN: ${region}`);
-  }
   return {
-    region,
+    region: match[1],
   };
 }
 

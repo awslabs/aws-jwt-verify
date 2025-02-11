@@ -1,5 +1,6 @@
 import { AlbJwksCache } from "../../src/alb-cache";
 import {
+  AlbJwksNotExposedError,
   JwksNotAvailableInCacheError,
   JwksValidationError,
   JwkValidationError,
@@ -113,7 +114,7 @@ describe("unit tests AlbJwksCache", () => {
     const jwksCache = new AlbJwksCache();
     expect.assertions(1);
     return expect(jwksCache.getJwks()).rejects.toThrow(
-      "Method not implemented."
+      new AlbJwksNotExposedError("AWS ALB does not expose JWKS")
     );
   });
 

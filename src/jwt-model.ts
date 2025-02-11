@@ -99,7 +99,6 @@ export interface AlbJwtHeader extends JwtHeader {
   exp: number;
 }
 
-//TODO more specifics fields when ALB auth is cognito or oidc
 export type AlbJwtPayload = {
   exp: number;
   iss: string;

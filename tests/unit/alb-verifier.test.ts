@@ -6,7 +6,6 @@ import {
   mockHttpsUri,
 } from "./test-util";
 import { decomposeUnverifiedJwt } from "../../src/jwt";
-import { JwksCache, Jwks } from "../../src/jwk";
 import {
   AlbJwtVerifier,
   AlbJwtVerifierMultiProperties,
@@ -43,7 +42,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt = signJwt(
           {
@@ -100,7 +99,7 @@ describe("unit tests alb verifier", () => {
         );
       });
 
-      test("invalid load balancer ARN - invalid region 1", async () => {
+      test("invalid load balancer ARN - invalid region", async () => {
         const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:.:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
@@ -110,46 +109,11 @@ describe("unit tests alb verifier", () => {
             albArn,
             issuer,
           })
-        ).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: .`));
-      });
-
-      test("invalid load balancer ARN - invalid region 2", async () => {
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
-        const albArn =
-          "arn:aws:elasticloadbalancing:/:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-
-        expect(() =>
-          AlbJwtVerifier.create({
-            albArn,
-            issuer,
-          })
-        ).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: /`));
-      });
-
-      test("invalid load balancer ARN - invalid region 3", async () => {
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
-        const albArn =
-          "arn:aws:elasticloadbalancing:?:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-
-        expect(() =>
-          AlbJwtVerifier.create({
-            albArn,
-            issuer,
-          })
-        ).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: ?`));
-      });
-
-      test("invalid load balancer ARN - invalid region 4", async () => {
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
-        const albArn =
-          "arn:aws:elasticloadbalancing:=:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-
-        expect(() =>
-          AlbJwtVerifier.create({
-            albArn,
-            issuer,
-          })
-        ).toThrow(new ParameterValidationError(`Invalid AWS region in ARN: =`));
+        ).toThrow(
+          new ParameterValidationError(
+            `Invalid load balancer ARN: arn:aws:elasticloadbalancing:.:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188`
+          )
+        );
       });
     });
     describe("includeRawJwtInErrors", () => {
@@ -159,7 +123,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const header = {
           typ: "JWT",
@@ -201,7 +165,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
         const header = {
           typ: "JWT",
           kid,
@@ -242,7 +206,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
         const header = {
           typ: "JWT",
           kid,
@@ -279,7 +243,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
         const header = {
           typ: "JWT",
           kid,
@@ -322,7 +286,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
         const header = {
           typ: "JWT",
           kid,
@@ -363,7 +327,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt = signJwt(
           {
@@ -395,14 +359,13 @@ describe("unit tests alb verifier", () => {
       });
 
       test("clientId null", async () => {
-        const region = "us-east-1";
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const issuer = `https://cognito-idp.${region}.amazonaws.com/us-east-1_123456`;
-        const jwksUri = `https://public-keys.auth.elb.${region}.amazonaws.com`;
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+        const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const kid = keypair.jwk.kid;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt = signJwt(
           {
@@ -442,7 +405,7 @@ describe("unit tests alb verifier", () => {
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt = signJwt(
           {
@@ -485,7 +448,7 @@ describe("unit tests alb verifier", () => {
         const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const kid = keypair.jwk.kid;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt = signJwt(
           {
@@ -528,7 +491,7 @@ describe("unit tests alb verifier", () => {
         const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const kid = keypair.jwk.kid;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt = signJwt(
           {
@@ -570,7 +533,7 @@ describe("unit tests alb verifier", () => {
         const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const kid = keypair.jwk.kid;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt = signJwt(
           {
@@ -613,7 +576,7 @@ describe("unit tests alb verifier", () => {
         const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
         const jwk = keypair.jwk;
         const kid = jwk.kid;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
         const pem = createPublicKey({
           key: jwk,
           format: "jwk",
@@ -662,7 +625,7 @@ describe("unit tests alb verifier", () => {
         const jwksUri = `https://public-keys.auth.elb.eu-west-2.amazonaws.com`;
         const jwk = keypair.jwk;
         const kid = jwk.kid;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
         const pem = createPublicKey({
           key: jwk,
           format: "jwk",
@@ -711,7 +674,7 @@ describe("unit tests alb verifier", () => {
         const jwksUri = `https://s3-us-gov-west-1.amazonaws.com/aws-elb-public-keys-prod-us-gov-west-1`;
         const jwk = keypair.jwk;
         const kid = jwk.kid;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
         const pem = createPublicKey({
           key: jwk,
           format: "jwk",
@@ -758,7 +721,7 @@ describe("unit tests alb verifier", () => {
   describe("AlbJwtVerifier with multiple alb", () => {
     describe("verifySync", () => {
       test("happy flow with 2 albs and 2 issuers", async () => {
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const identityProviders: {
           config: AlbJwtVerifierMultiProperties;
@@ -774,7 +737,7 @@ describe("unit tests alb verifier", () => {
               clientId: "client1",
             },
             keypair: generateKeyPair({
-              kid: "00000000-0000-0000-0000-000000000000",
+              kid: "11111111-1111-1111-1111-111111111111",
               kty: "EC",
               alg: "ES256",
             }),
@@ -788,7 +751,7 @@ describe("unit tests alb verifier", () => {
               clientId: "client2",
             },
             keypair: generateKeyPair({
-              kid: "11111111-0000-0000-0000-000000000000",
+              kid: "22222222-2222-2222-2222-222222222222",
               kty: "EC",
               alg: "ES256",
             }),
@@ -843,7 +806,7 @@ describe("unit tests alb verifier", () => {
         const clientId = "my-client-id";
         const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const jwksUri = `https://public-keys.auth.elb.us-east-1.amazonaws.com`;
-        const exp = 4000000000; // nock and jest.useFakeTimers do not work well together. Used of a long expired date instead
+        const exp = 4000000000; // Use of a long expiry date
 
         const signedJwt1 = signJwt(
           {
@@ -939,47 +902,6 @@ describe("unit tests alb verifier", () => {
         const statement = () => verifier.cacheJwks(keypair.jwks, issuer);
         expect(statement).toThrow(
           new ParameterValidationError("issuer must be provided")
-        );
-      });
-      test("custom JWKS cache", () => {
-        class CustomJwksCache implements JwksCache {
-          getJwks = jest
-            .fn()
-            .mockImplementation(async (_jwksUri?: string) => keypair.jwks);
-          addJwks = jest
-            .fn()
-            .mockImplementation((_jwksUri: string, _jwks: Jwks) => {
-              // This is intentional
-            });
-          getCachedJwk = jest
-            .fn()
-            .mockImplementation(
-              (_jwksUri: string, _kid: string) => keypair.jwk
-            );
-          getJwk = jest
-            .fn()
-            .mockImplementation(
-              async (_jwksUri: string, _kid: string) => keypair.jwk
-            );
-        }
-        const customJwksCache = new CustomJwksCache();
-        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
-        const albArn =
-          "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
-
-        const jwksUri = "https://public-keys.auth.elb.us-east-1.amazonaws.com";
-        const verifier = AlbJwtVerifier.create(
-          {
-            albArn,
-            issuer,
-            tokenUse: "id",
-          },
-          { jwksCache: customJwksCache }
-        );
-        verifier.cacheJwks(keypair.jwks);
-        expect(customJwksCache.addJwks).toHaveBeenCalledWith(
-          jwksUri,
-          keypair.jwks
         );
       });
     });

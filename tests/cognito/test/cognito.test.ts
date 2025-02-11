@@ -3,7 +3,6 @@
 
 import * as outputs from "../outputs.json";
 import { AlbJwtVerifier, CognitoJwtVerifier } from "aws-jwt-verify";
-import { assertStringEquals } from "aws-jwt-verify/assert";
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
@@ -38,10 +37,7 @@ const cognitoVerifier = CognitoJwtVerifier.create({
 const albJwtVerifier = AlbJwtVerifier.create({
   albArn,
   issuer: CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer,
-  customJwtCheck: ({ header }) => {
-    assertStringEquals("ALB arn", header.signer, albArn);
-    assertStringEquals("ALB client", header.client, clientIdAlb);
-  },
+  clientId: clientIdAlb,
 });
 const CLIENT = new CognitoIdentityProviderClient({ region });
 const SIGN_IN_AS_USER = new InitiateAuthCommand({
@@ -168,8 +164,6 @@ test("Verify Cognito Access token from ALB", async () => {
 
 test("Verify Data token from ALB", async () => {
   return expect(
-    albJwtVerifier.verify(albSigninJWTs.albToken, {
-      clientId: clientIdAlb,
-    })
+    albJwtVerifier.verify(albSigninJWTs.albToken)
   ).resolves.toMatchObject({ email: username });
 });

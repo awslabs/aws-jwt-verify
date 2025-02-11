@@ -114,6 +114,8 @@ export class AlbJwtInvalidSignerError extends JwtInvalidClaimError {}
 
 export class AlbJwtInvalidClientIdError extends JwtInvalidClaimError {}
 
+export class AlbJwksNotExposedError extends JwtBaseError {}
+
 /**
  * JWK errors
  */
