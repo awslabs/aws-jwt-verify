@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from "aws-cdk-lib";
+import { NagSuppressions } from "cdk-nag";
 import { Construct } from "constructs";
 import * as path from "node:path";
 
@@ -16,6 +17,32 @@ export class CognitoStack extends cdk.Stack {
     } & cdk.StackProps
   ) {
     super(scope, id, props);
+
+    NagSuppressions.addStackSuppressions(this, [
+      {
+        id: "AwsSolutions-L1",
+        reason: "Avoid workshop error when NODEJS runtime updates",
+      },
+      {
+        id: "AwsSolutions-IAM4",
+        reason: "Needs access to write to CloudWatch Logs",
+        appliesTo: [
+          "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+        ],
+      },
+      {
+        id: "AwsSolutions-ELB2",
+        reason: "Testing does not need access logging enabled",
+      },
+      {
+        id: "AwsSolutions-APIG1",
+        reason: "Testing does not need access logging enabled",
+      },
+      {
+        id: "AwsSolutions-VPC7",
+        reason: "Testing does not need flow logging enabled",
+      },
+    ]);
 
     new cdk.CfnOutput(this, "UserPoolRegion", {
       value: this.region,
@@ -37,6 +64,21 @@ export class CognitoStack extends cdk.Stack {
     new cdk.CfnOutput(this, "UserPoolId", {
       value: cup.userPoolId,
     });
+
+    NagSuppressions.addResourceSuppressions(cup, [
+      {
+        id: "AwsSolutions-COG1",
+        reason: "Testing does not need password policy.",
+      },
+      {
+        id: "AwsSolutions-COG2",
+        reason: "Testing does not use MFA.",
+      },
+      {
+        id: "AwsSolutions-COG3",
+        reason: "Testing does not use advanced security features.",
+      },
+    ]);
 
     const oauthDomain = cup.addDomain("OAuthDomain", {
       cognitoDomain: {
@@ -298,6 +340,7 @@ export class CognitoStack extends cdk.Stack {
       open: true,
       certificates: [cert],
       protocol: cdk.aws_elasticloadbalancingv2.ApplicationProtocol.HTTPS,
+      sslPolicy: cdk.aws_elasticloadbalancingv2.SslPolicy.RECOMMENDED_TLS, // This enforces TLS 1.2 and higher
       defaultAction:
         new cdk.aws_elasticloadbalancingv2_actions.AuthenticateCognitoAction({
           userPool: cup,
@@ -319,6 +362,16 @@ export class CognitoStack extends cdk.Stack {
           ]),
         }),
     });
+    NagSuppressions.addResourceSuppressions(
+      alb,
+      [
+        {
+          id: "AwsSolutions-EC23",
+          reason: "Testing needs an open Security Group",
+        },
+      ],
+      true
+    );
 
     new cdk.aws_route53.ARecord(this, "AliasRecord", {
       zone: hostedZoneRef,
