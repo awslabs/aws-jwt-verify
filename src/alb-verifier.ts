@@ -327,7 +327,7 @@ function getDefaultJwksUri(albArns: AlbArn[]): string {
   const uniqueRegions = Array.from(new Set(regions));
   if (uniqueRegions.length > 1) {
     throw new ParameterValidationError(
-      "Unable to generate default jwksUri because multiple regions in ALB ARNs parameters found"
+      "Using ALBs from different regions is not supported for the same issuer"
     );
   }
   return `https://public-keys.auth.elb.${uniqueRegions[0]}.amazonaws.com`;

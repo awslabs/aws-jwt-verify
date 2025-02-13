@@ -921,7 +921,7 @@ describe("unit tests alb verifier", () => {
           })
         ).toThrow(
           new ParameterValidationError(
-            "Unable to generate default jwksUri because multiple regions in ALB ARNs parameters found"
+            "Using ALBs from different regions is not supported for the same issuer"
           )
         );
       });
