@@ -8,7 +8,7 @@
 // At runtime, either the Node.js or Web implementation is actually loaded. This works because the
 // package.json specifies "#node-web-compat" as a subpath import, with conditions pointing to the right implementation (for Node.js or Web)
 
-import { SignatureJwk } from "./jwk.js";
+import { Jwk, SignatureJwk } from "./jwk.js";
 import {
   JwsVerificationFunctionAsync,
   JwsVerificationFunctionSync,
@@ -43,4 +43,5 @@ export interface NodeWebCompat {
     socketIdle?: number; // socket idle timeout (Only supported by Node.js runtime)
     response: number; // total round trip timeout
   };
+  transformPemToJwk: (pem: ArrayBuffer) => Jwk; // Only ES256 is supported
 }

@@ -91,7 +91,7 @@ export const nodeWebCompat: NodeWebCompat = {
           }
         : jwk.crv!; // Ed25519 or Ed448
     return crypto.subtle
-      .importKey("jwk", jwk, algIdentifier, false, ["verify"])
+      .importKey("jwk", jwk, algIdentifier, false, ["sign"])
       .then((key) => ({ key, jwk }));
   },
   verifySignatureSync: () => {
@@ -118,6 +118,11 @@ export const nodeWebCompat: NodeWebCompat = {
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
   setTimeoutUnref: setTimeout.bind(undefined),
+  transformPemToJwk: () => {
+    throw new NotSupportedError(
+      "PEM to JWK transformation is not supported in the browser"
+    );
+  },
 };
 
 const bufferFromBase64url = (function () {

@@ -1,7 +1,5 @@
-import { createPublicKey } from "crypto";
 import {
   AlbJwksNotExposedError,
-  JwkInvalidKtyError,
   JwksNotAvailableInCacheError,
   JwksValidationError,
   JwkValidationError,
@@ -10,8 +8,8 @@ import {
 import { JwkWithKid, Jwks, JwksCache } from "./jwk.js";
 import { Fetcher, SimpleFetcher } from "./https.js";
 import { SimpleLruCache } from "./cache.js";
-import { assertStringEquals } from "./assert.js";
 import { JwtHeader, JwtPayload } from "./jwt-model.js";
+import { nodeWebCompat } from "#node-web-compat";
 
 const UUID_REGEXP =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -86,21 +84,12 @@ export class AlbJwksCache implements JwksCache {
   }
 
   private pemToJwk(kid: string, pem: ArrayBuffer): JwkWithKid {
-    const jwk = createPublicKey({
-      key: Buffer.from(pem),
-      format: "pem",
-      type: "spki",
-    }).export({
-      format: "jwk",
-    });
-
-    assertStringEquals("JWK kty", jwk.kty, "EC", JwkInvalidKtyError);
-
+    const jwk = nodeWebCompat.transformPemToJwk(pem);
     return {
       ...jwk,
-      kid: kid,
       use: "sig",
       alg: "ES256",
+      kid: kid,
     } as JwkWithKid;
   }
 

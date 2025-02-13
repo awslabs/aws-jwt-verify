@@ -4,7 +4,7 @@
 // Node.js implementations for the node-web-compatibility layer
 
 import { createPublicKey, createVerify, KeyObject, verify } from "crypto";
-import { SignatureJwk } from "./jwk.js";
+import { Jwk, SignatureJwk } from "./jwk.js";
 import { fetch } from "./https-node.js";
 import { NodeWebCompat } from "./node-web-compat.js";
 
@@ -60,4 +60,12 @@ export const nodeWebCompat: NodeWebCompat = {
   },
   setTimeoutUnref: (...args: Parameters<typeof setTimeout>) =>
     setTimeout(...args).unref(),
+  transformPemToJwk: (pem: ArrayBuffer) => {
+    return createPublicKey({
+      key: Buffer.from(pem),
+      format: "pem",
+    }).export({
+      format: "jwk",
+    }) as Jwk;
+  },
 };
