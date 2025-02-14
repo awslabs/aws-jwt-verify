@@ -90,3 +90,22 @@ export interface CognitoJwt {
   header: JwtHeader;
   payload: CognitoAccessTokenPayload | CognitoIdTokenPayload;
 }
+export interface AlbJwtHeader extends JwtHeader {
+  alg: string;
+  kid: string;
+  signer: string;
+  iss: string;
+  client: string;
+  exp: number;
+}
+
+export type AlbJwtPayload = {
+  exp: number;
+  iss: string;
+} & JwtPayloadStandardFields &
+  JsonObject;
+
+export interface AlbJwt {
+  header: AlbJwtHeader;
+  payload: AlbJwtPayload;
+}
