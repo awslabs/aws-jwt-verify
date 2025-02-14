@@ -3,7 +3,7 @@
 //
 // Web implementations for the node-web-compatibility layer
 
-import { SignatureJwk } from "jwk.js";
+import { Jwk, SignatureJwk } from "jwk.js";
 import {
   FetchError,
   NotSupportedError,
@@ -91,7 +91,7 @@ export const nodeWebCompat: NodeWebCompat = {
           }
         : jwk.crv!; // Ed25519 or Ed448
     return crypto.subtle
-      .importKey("jwk", jwk, algIdentifier, false, ["sign"])
+      .importKey("jwk", jwk, algIdentifier, false, ["verify"])
       .then((key) => ({ key, jwk }));
   },
   verifySignatureSync: () => {
@@ -118,11 +118,63 @@ export const nodeWebCompat: NodeWebCompat = {
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
   setTimeoutUnref: setTimeout.bind(undefined),
-  transformPemToJwk: () => {
-    throw new NotSupportedError(
-      "PEM to JWK transformation is not supported in the browser"
+  transformPemToJwk: async (pem, jwtHeaderAlg): Promise<Jwk> => {
+    // Remove the PEM header and footer
+    const pemContents = pem.slice(27, pem.byteLength - 25);
+    // convert the ArrayBuffer to a string
+    const pemContentsString = new TextDecoder().decode(pemContents);
+    // base64 decode the string to get the binary data
+    const binaryDerString = atob(pemContentsString);
+    // convert from a binary string to an ArrayBuffer
+    const binaryDer = str2ab(binaryDerString);
+
+    let alg: RsaHashedImportParams | EcKeyImportParams;
+    switch (jwtHeaderAlg) {
+      case "RS256":
+      case "RS384":
+      case "RS512":
+        alg = {
+          name: "RSASSA-PKCS1-v1_5",
+          hash: `SHA-${jwtHeaderAlg.slice(2)}`,
+        };
+        break;
+      case "ES256":
+      case "ES384":
+      case "ES512":
+        alg = {
+          name: "ECDSA",
+          namedCurve:
+            NamedCurvesWebCrypto[
+              jwtHeaderAlg as keyof typeof NamedCurvesWebCrypto
+            ],
+        };
+        break;
+      default:
+        throw new JwtInvalidSignatureAlgorithmError(
+          "Unsupported signature algorithm",
+          jwtHeaderAlg
+        );
+    }
+    const cryptoKey = await crypto.subtle.importKey(
+      "spki",
+      binaryDer,
+      alg,
+      true,
+      ["verify"]
     );
+
+    return crypto.subtle.exportKey("jwk", cryptoKey) as Promise<Jwk>;
   },
+};
+
+const str2ab = (str: string): ArrayBuffer => {
+  const buf = new ArrayBuffer(str.length);
+  const bufView = new Uint8Array(buf);
+  for (let i = 0, strLen = str.length; i < strLen; i++) {
+    // eslint-disable-next-line security/detect-object-injection
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
 };
 
 const bufferFromBase64url = (function () {

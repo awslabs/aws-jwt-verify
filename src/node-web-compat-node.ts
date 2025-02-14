@@ -60,7 +60,7 @@ export const nodeWebCompat: NodeWebCompat = {
   },
   setTimeoutUnref: (...args: Parameters<typeof setTimeout>) =>
     setTimeout(...args).unref(),
-  transformPemToJwk: (pem: ArrayBuffer) => {
+  transformPemToJwk: async (pem: ArrayBuffer): Promise<Jwk> => {
     return createPublicKey({
       key: Buffer.from(pem),
       format: "pem",

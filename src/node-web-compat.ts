@@ -43,5 +43,8 @@ export interface NodeWebCompat {
     socketIdle?: number; // socket idle timeout (Only supported by Node.js runtime)
     response: number; // total round trip timeout
   };
-  transformPemToJwk: (pem: ArrayBuffer) => Jwk; // Only ES256 is supported
+  transformPemToJwk: (
+    pem: ArrayBuffer,
+    jwtHeaderAlg?: SupportedSignatureAlgorithm
+  ) => Promise<Jwk>;
 }

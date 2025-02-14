@@ -83,8 +83,8 @@ export class AlbJwksCache implements JwksCache {
     }
   }
 
-  private pemToJwk(kid: string, pem: ArrayBuffer): JwkWithKid {
-    const jwk = nodeWebCompat.transformPemToJwk(pem);
+  private async pemToJwk(kid: string, pem: ArrayBuffer): Promise<JwkWithKid> {
+    const jwk = await nodeWebCompat.transformPemToJwk(pem);
     return {
       ...jwk,
       use: "sig",
