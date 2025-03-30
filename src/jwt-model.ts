@@ -100,10 +100,15 @@ export interface AlbJwtHeader extends JwtHeader {
 }
 
 export type AlbJwtPayload = {
+  sub: string;
+  email: string;
+  name: string;
+  email_verified: boolean;
+  username: string;
   exp: number;
   iss: string;
-} & JwtPayloadStandardFields &
-  JsonObject;
+  identities?: string;
+} & JsonObject;
 
 export interface AlbJwt {
   header: AlbJwtHeader;
