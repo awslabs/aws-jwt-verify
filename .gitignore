@@ -12,6 +12,9 @@ junit.xml
 
 # Submodules generated when building dist
 assert.d.ts
+alb-cache.d.ts
+alb-verifier.d.ts
+cache.d.ts
 cognito-verifier.d.ts
 error.d.ts
 https-common.d.ts
