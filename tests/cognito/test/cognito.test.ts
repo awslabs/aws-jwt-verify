@@ -1,12 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as crypto from "node:crypto";
 import * as outputs from "../outputs.json";
-import { JwtVerifier, CognitoJwtVerifier } from "aws-jwt-verify";
-import { assertStringEquals } from "aws-jwt-verify/assert";
-import { decomposeUnverifiedJwt } from "aws-jwt-verify/jwt";
-import { Jwk } from "aws-jwt-verify/jwk";
+import { AlbJwtVerifier, CognitoJwtVerifier } from "aws-jwt-verify";
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
@@ -38,13 +34,10 @@ let albSigninJWTs: Awaited<
 const cognitoVerifier = CognitoJwtVerifier.create({
   userPoolId,
 });
-const albJwtVerifier = JwtVerifier.create({
+const albJwtVerifier = AlbJwtVerifier.create({
+  albArn,
   issuer: CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer,
-  audience: null,
-  customJwtCheck: ({ header }) => {
-    assertStringEquals("ALB arn", header.signer, albArn);
-    assertStringEquals("ALB client", header.client, clientIdAlb);
-  },
+  clientId: clientIdAlb,
 });
 const CLIENT = new CognitoIdentityProviderClient({ region });
 const SIGN_IN_AS_USER = new InitiateAuthCommand({
@@ -170,27 +163,6 @@ test("Verify Cognito Access token from ALB", async () => {
 });
 
 test("Verify Data token from ALB", async () => {
-  const {
-    header: { kid },
-  } = decomposeUnverifiedJwt(albSigninJWTs.albToken);
-
-  const albRegion = albArn.split(":")[3];
-  const pem = await fetch(
-    `https://public-keys.auth.elb.${albRegion}.amazonaws.com/${kid}`
-  ).then((res) => res.text());
-
-  const keyObject = crypto.createPublicKey({
-    key: pem,
-    format: "pem",
-    type: "spki",
-  });
-
-  const jwk = keyObject.export({
-    format: "jwk",
-  });
-
-  albJwtVerifier.cacheJwks({ keys: [{ ...jwk, kid, alg: "ES256" } as Jwk] });
-
   return expect(
     albJwtVerifier.verify(albSigninJWTs.albToken)
   ).resolves.toMatchObject({ email: username });
