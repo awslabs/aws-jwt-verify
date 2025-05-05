@@ -119,15 +119,6 @@ export const nodeWebCompat: NodeWebCompat = {
     new TextDecoder().decode(bufferFromBase64url(b64)),
   setTimeoutUnref: setTimeout.bind(undefined),
   transformPemToJwk: async (pem, jwtHeaderAlg): Promise<Jwk> => {
-    // Remove the PEM header and footer
-    const pemContents = pem.slice(27, pem.byteLength - 25);
-    // convert the ArrayBuffer to a string
-    const pemContentsString = new TextDecoder().decode(pemContents);
-    // base64 decode the string to get the binary data
-    const binaryDerString = atob(pemContentsString);
-    // convert from a binary string to an ArrayBuffer
-    const binaryDer = str2ab(binaryDerString);
-
     let alg: RsaHashedImportParams | EcKeyImportParams;
     switch (jwtHeaderAlg) {
       case "RS256":
@@ -157,7 +148,13 @@ export const nodeWebCompat: NodeWebCompat = {
     }
     const cryptoKey = await crypto.subtle.importKey(
       "spki",
-      binaryDer,
+      bufferFromBase64(
+        new TextDecoder()
+          .decode(pem)
+          .replace(/-----BEGIN PUBLIC KEY-----/, "")
+          .replace(/-----END PUBLIC KEY-----/, "")
+          .replace(/\s/g, "")
+      ),
       alg,
       true,
       ["verify"]
@@ -167,18 +164,8 @@ export const nodeWebCompat: NodeWebCompat = {
   },
 };
 
-const str2ab = (str: string): ArrayBuffer => {
-  const buf = new ArrayBuffer(str.length);
-  const bufView = new Uint8Array(buf);
-  for (let i = 0, strLen = str.length; i < strLen; i++) {
-    // eslint-disable-next-line security/detect-object-injection
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-};
-
-const bufferFromBase64url = (function () {
-  const map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+function _bufferFromBase64(alphabet: string) {
+  const map = alphabet
     .split("")
     .reduce(
       (acc, char, index) => Object.assign(acc, { [char.charCodeAt(0)]: index }),
@@ -201,4 +188,11 @@ const bufferFromBase64url = (function () {
       new Uint8Array((base64url.length * 3) / 4)
     );
   };
-})();
+}
+
+const bufferFromBase64url = _bufferFromBase64(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+);
+const bufferFromBase64 = _bufferFromBase64(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+);
