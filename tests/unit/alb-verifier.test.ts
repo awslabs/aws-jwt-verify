@@ -17,14 +17,14 @@ import {
   AlbJwtInvalidSignerError,
   AlbJwtInvalidClientIdError,
 } from "../../src/error";
-import { createPublicKey } from "crypto";
+import { createPublicKey, randomUUID } from "crypto";
 import { KeyPair } from "../util/util";
 
 describe("unit tests alb verifier", () => {
   let keypair: ReturnType<typeof generateKeyPair>;
   beforeAll(() => {
     keypair = generateKeyPair({
-      kid: "00000000-0000-0000-0000-000000000000",
+      kid: randomUUID(),
       kty: "EC",
       alg: "ES256",
     });

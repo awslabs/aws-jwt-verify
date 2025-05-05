@@ -275,13 +275,10 @@ export function validateAlbJwtFields(
   header: JwtHeader,
   options: {
     clientId?: string | string[] | null;
-    albArn?: string | string[];
+    albArn: string | string[];
   }
 ): void {
   // Check ALB ARN (signer)
-  if (options.albArn === undefined) {
-    throw new ParameterValidationError("albArn must be provided");
-  }
   assertStringArrayContainsString(
     "ALB ARN",
     header.signer,
