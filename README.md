@@ -102,8 +102,8 @@ import { AlbJwtVerifier } from "aws-jwt-verify";
 // Verifier that expects valid access tokens:
 const verifier = AlbJwtVerifier.create({
   albArn: "<alb_arn>",
-  issuer: "<issuer>"
-  clientId: "<client_id>",
+  issuer: "<issuer>", // set this to the expected "iss" claim on your JWTs
+  clientId: "<client_id>", // set this to the expected "client" claim on your JWTs
 });
 
 try {
@@ -495,7 +495,7 @@ try {
 
 ### Trusting multiple Application Load Balancers
 
-If you want to allow JWTs from multiple Application Load Balancers, provide an array with these Application Load Balancers configuration upon creating the verifier:
+If you want to allow JWTs from multiple Application Load Balancers with different issuers, provide an array of configuration objects upon creating the verifier (each distinct issuer must be represented in a separate configuration object):
 
 ```typescript
 import { AlbJwtVerifier } from "aws-jwt-verify";
@@ -524,7 +524,7 @@ try {
 }
 ```
 
-When multiple Application Load Balancers are configured with the same IDP (same cognito user pool or same IDP issuer), issuers will be the identical, in which case, the albArn parameter should be an array:
+If you're using multiple Application Load Balancers with the same IDP (same Amazon Cognito User Pool or same IDP issuer), pass an array of `albArn` (each distinct issuer must be represented in only one configuration object):
 
 ```typescript
 import { AlbJwtVerifier } from "aws-jwt-verify";
