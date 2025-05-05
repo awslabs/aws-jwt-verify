@@ -3,7 +3,7 @@
 //
 // Web implementations for the node-web-compatibility layer
 
-import { SignatureJwk } from "jwk.js";
+import { Jwk, SignatureJwk } from "jwk.js";
 import {
   FetchError,
   NotSupportedError,
@@ -118,10 +118,54 @@ export const nodeWebCompat: NodeWebCompat = {
   parseB64UrlString: (b64: string): string =>
     new TextDecoder().decode(bufferFromBase64url(b64)),
   setTimeoutUnref: setTimeout.bind(undefined),
+  transformPemToJwk: async (pem, jwtHeaderAlg): Promise<Jwk> => {
+    let alg: RsaHashedImportParams | EcKeyImportParams;
+    switch (jwtHeaderAlg) {
+      case "RS256":
+      case "RS384":
+      case "RS512":
+        alg = {
+          name: "RSASSA-PKCS1-v1_5",
+          hash: `SHA-${jwtHeaderAlg.slice(2)}`,
+        };
+        break;
+      case "ES256":
+      case "ES384":
+      case "ES512":
+        alg = {
+          name: "ECDSA",
+          namedCurve:
+            NamedCurvesWebCrypto[
+              jwtHeaderAlg as keyof typeof NamedCurvesWebCrypto
+            ],
+        };
+        break;
+      default:
+        throw new JwtInvalidSignatureAlgorithmError(
+          "Unsupported signature algorithm",
+          jwtHeaderAlg
+        );
+    }
+    const cryptoKey = await crypto.subtle.importKey(
+      "spki",
+      bufferFromBase64(
+        new TextDecoder()
+          .decode(pem)
+          .replace(/-----BEGIN PUBLIC KEY-----/, "")
+          .replace(/-----END PUBLIC KEY-----/, "")
+          .replace(/\s/g, "")
+      ),
+      alg,
+      true,
+      ["verify"]
+    );
+
+    return crypto.subtle.exportKey("jwk", cryptoKey) as Promise<Jwk>;
+  },
 };
 
-const bufferFromBase64url = (function () {
-  const map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+function _bufferFromBase64(alphabet: string) {
+  const map = alphabet
     .split("")
     .reduce(
       (acc, char, index) => Object.assign(acc, { [char.charCodeAt(0)]: index }),
@@ -144,4 +188,11 @@ const bufferFromBase64url = (function () {
       new Uint8Array((base64url.length * 3) / 4)
     );
   };
-})();
+}
+
+const bufferFromBase64url = _bufferFromBase64(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+);
+const bufferFromBase64 = _bufferFromBase64(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+);

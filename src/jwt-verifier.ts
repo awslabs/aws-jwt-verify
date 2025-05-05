@@ -627,7 +627,7 @@ export abstract class JwtVerifierBase<
   ): {
     decomposedJwt: DecomposedJwt;
     jwksUri: string;
-    verifyProperties: SpecificVerifyProperties;
+    verifyProperties: SpecificVerifyProperties & IssuerConfig;
   } {
     const decomposedJwt = decomposeUnverifiedJwt(jwt);
     const issuerConfig = this.getIssuerConfig(decomposedJwt.payload.iss);
@@ -637,7 +637,7 @@ export abstract class JwtVerifierBase<
       verifyProperties: {
         ...issuerConfig,
         ...verifyProperties,
-      } as unknown as SpecificVerifyProperties,
+      } as SpecificVerifyProperties & IssuerConfig,
     };
   }
 

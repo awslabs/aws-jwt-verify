@@ -1,6 +1,6 @@
 # AWS JWT Verify
 
-**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, and any **OIDC-compatible IDP**.
+**JavaScript** library for **verifying** JWTs signed by **Amazon Cognito**, **Application Load Balancer**, and any **OIDC-compatible IDP**.
 
 ## Installation
 
@@ -85,6 +85,39 @@ try {
 }
 ```
 
+### Application Load Balancer
+
+When the [Application Load Balancer authentication feature at listener level](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html) is enabled, 2 JWTs tokens are forwarded via the HTTP header:
+
+- `x-amzn-oidc-accesstoken`: access token signed by Cognito or another IDP
+- `x-amzn-oidc-data`: user claims JWT signed by the ALB
+
+The access token can be verified directly with `CognitoJwtVerifier` or `JwtVerifier` like in examples above, depending on the ALB authentication configuration.
+
+The user claims token can be verified by the `AlbJwtVerifier` like in the code example below:
+
+```typescript
+import { AlbJwtVerifier } from "aws-jwt-verify";
+
+// Verifier that expects valid access tokens:
+const verifier = AlbJwtVerifier.create({
+  albArn: "<alb_arn>",
+  issuer: "<issuer>", // set this to the expected "iss" claim on your JWTs
+  clientId: "<client_id>", // set this to the expected "client" claim on your JWTs
+});
+
+try {
+  const payload = await verifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // the user claims JWT as string, provided in the x-amzn-oidc-data HTTP header
+  );
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
+See all verify parameters for Amazon Application Load Balancer JWTs [here](#albjwtverifier-verify-parameters).
+
 ## Philosophy of this library
 
 - Do one thing and do it well. Focus solely on **verifying** JWTs.
@@ -132,6 +165,9 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Using the generic JWT verifier for Cognito JWTs](#using-the-generic-jwt-verifier-for-cognito-jwts)
 - [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
   - [Verify parameters](#JwtVerifier-verify-parameters)
+- [Verifying user claims JWTs from Application Load Balancers](#verifying-user-claims-jwts-from-application-load-balancers)
+  - [Verify parameters](#albjwtverifier-verify-parameters)
+  - [Trusting multiple User Pools](#trusting-multiple-application-load-balancers)
 - [How the algorithm (`alg`) is selected to verify the JWT signature with](#how-the-algorithm-alg-is-selected-to-verify-the-jwt-signature-with)
 - [Peeking inside unverified JWTs](#peeking-inside-unverified-jwts)
 - [Verification errors](#verification-errors)
@@ -419,6 +455,96 @@ Supported parameters are:
 - `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
 - `customJwtCheck` (optional): your custom function with additional JWT checks to execute (see [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)).
 - `includeRawJwtInErrors` (optional, default `false`): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+
+## Verifying user claims JWTs from Application Load Balancers
+
+The generic `JwtVerifier` can verify user claims JWTs provided by Application Load Balancers with [authentication feature enabled](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html). This token is present in the HTTP header `x-amzn-oidc-data` forwarded by the Application Load Balancer to the backend.
+
+### `AlbJwtVerifier` `verify` parameters
+
+Except `albArn` and `issuer`, parameters provided when creating the `AlbJwtVerifier` act as defaults, that can be overridden upon calling `verify` or `verifySync`.
+
+Supported parameters are:
+
+- `albArn` (mandatory): the Application Load Balancer ARN sending the user claims JWT to verify.
+- `issuer` (mandatory): set this to the expected `iss` claim on the JWTs. Provide a single string, or set to `null` to skip checking issuer (not recommended unless you know what you are doing). If the ALB listener authentication is configured with cognito as the IDP, this parameter should be `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`.
+- `jwksUri` (optional, default `https://public-keys.auth.elb.${region}.amazonaws.com`): the ALB public key FQDN. For the default value, the region is automatically extracted from the `albArn`. If the application is hosted on the AWS GovCloud (US), this parameter needs to be specified with one of these values: `https://s3-us-gov-west-1.amazonaws.com/aws-elb-public-keys-prod-us-gov-west-1` or `https://s3-us-gov-east-1.amazonaws.com/aws-elb-public-keys-prod-us-gov-east-1` depending on the region.
+- `clientId` (mandatory): verify that the JWT's `client_id` claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these client ids must match the JWT). Set to `null` to skip checking client id (not recommended unless you know what you are doing).
+- `graceSeconds` (optional, default `0`): to account for clock differences between systems, provide the number of seconds beyond JWT expiry (`exp` claim) or before "not before" (`nbf` claim) you will allow.
+- `customJwtCheck` (optional): your custom function with additional JWT (and JWK) checks to execute (see also below).
+- `includeRawJwtInErrors` (optional, default `false`): set to `true` if you want to peek inside the invalid JWT when verification fails. Refer to: [Peek inside invalid JWTs](#peek-inside-invalid-jwts).
+
+```typescript
+import { AlbJwtVerifier } from "aws-jwt-verify";
+
+const verifier = AlbJwtVerifier.create({
+  albArn: "<alb_arn>",
+  issuer: "<issuer>",
+  clientId: "<client_id>", // needs to be specified here or upon calling verify
+  graceSeconds: 0, // optional
+  customJwtCheck: (payload, header, jwk) => {}, // optional
+});
+
+try {
+  const payload = await verifier.verify("eyJraWQeyJhdF9oYXNoIjoidk...");
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
+### Trusting multiple Application Load Balancers
+
+If you want to allow JWTs from multiple Application Load Balancers with different issuers, provide an array of configuration objects upon creating the verifier (each distinct issuer must be represented in a separate configuration object):
+
+```typescript
+import { AlbJwtVerifier } from "aws-jwt-verify";
+
+// This verifier will trust both Application Load Balancers
+const idTokenVerifier = AlbJwtVerifier.create([
+  {
+    albArn: "<alb_arn_1>",
+    issuer: "<issuer_1>",
+    clientId: "<client_id_1>",
+  },
+  {
+    albArn: "<alb_arn_2>",
+    issuer: "<issuer_2>",
+    clientId: "<client_id_2>",
+  },
+]);
+
+try {
+  const idTokenPayload = await idTokenVerifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // token must be signed by either of the Application Load Balancer
+  );
+  console.log("Token is valid. Payload:", idTokenPayload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
+If you're using multiple Application Load Balancers with the same IDP (same Amazon Cognito User Pool or same IDP issuer), pass an array of `albArn` (each distinct issuer must be represented in only one configuration object):
+
+```typescript
+import { AlbJwtVerifier } from "aws-jwt-verify";
+
+// This verifier will trust both Application Load Balancers
+const idTokenVerifier = AlbJwtVerifier.create({
+  albArn: ["<alb_arn_1>", "<alb_arn_2>"],
+  issuer: "<issuer>",
+  clientId: "<client_id>",
+});
+
+try {
+  const idTokenPayload = await idTokenVerifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // token must be signed by either of the Application Load Balancer
+  );
+  console.log("Token is valid. Payload:", idTokenPayload);
+} catch {
+  console.log("Token not valid!");
+}
+```
 
 ## How the algorithm (`alg`) is selected to verify the JWT signature with
 

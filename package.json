@@ -12,7 +12,10 @@
   "types": "index.d.ts",
   "module": "dist/esm/index.js",
   "files": [
+    "alb-cache.d.ts",
+    "alb-verifier.d.ts",
     "assert.d.ts",
+    "cache.d.ts",
     "cognito-verifier.d.ts",
     "dist",
     "error.d.ts",
@@ -37,6 +40,21 @@
       "import": "./dist/esm/assert.js",
       "require": "./dist/cjs/assert.js",
       "types": "./assert.d.ts"
+    },
+    "./alb-cache": {
+      "import": "./dist/esm/alb-cache.js",
+      "require": "./dist/cjs/alb-cache.js",
+      "types": "./alb-cache.d.ts"
+    },
+    "./alb-verifier": {
+      "import": "./dist/esm/alb-verifier.js",
+      "require": "./dist/cjs/alb-verifier.js",
+      "types": "./alb-verifier.d.ts"
+    },
+    "./cache": {
+      "import": "./dist/esm/cache.js",
+      "require": "./dist/cjs/cache.js",
+      "types": "./cache.d.ts"
     },
     "./cognito-verifier": {
       "import": "./dist/esm/cognito-verifier.js",
