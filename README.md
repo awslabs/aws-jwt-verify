@@ -87,19 +87,17 @@ try {
 
 ### Application Load Balancer
 
-When the [Application Load Balancer authentication feature at listener level](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html) is enabled, 2 JWTs tokens are forwarded via the HTTP header:
+When the [Application Load Balancer authentication feature at listener level](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html) is enabled, 2 JWTs tokens are forwarded via HTTP headers (see [docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html#user-claims-encoding)):
 
-- `x-amzn-oidc-accesstoken`: access token signed by Cognito or another IDP
-- `x-amzn-oidc-data`: user claims JWT signed by the ALB
+- `x-amzn-oidc-accesstoken`: access token signed by Cognito or another IDP. This token can be verified with `CognitoJwtVerifier` (if signed by Cognito) or `JwtVerifier` (if signed by another IDP), see the examples above.
+- `x-amzn-oidc-data`: user claims JWT signed by the ALB.
 
-The access token can be verified directly with `CognitoJwtVerifier` or `JwtVerifier` like in examples above, depending on the ALB authentication configuration.
-
-The user claims token can be verified by the `AlbJwtVerifier` like in the code example below:
+The user claims token can be verified with the `AlbJwtVerifier`:
 
 ```typescript
 import { AlbJwtVerifier } from "aws-jwt-verify";
 
-// Verifier that expects valid access tokens:
+// Verifier that expects valid user claims tokens:
 const verifier = AlbJwtVerifier.create({
   albArn: "<alb_arn>",
   issuer: "<issuer>", // set this to the expected "iss" claim on your JWTs
