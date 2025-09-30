@@ -32,69 +32,69 @@
   ],
   "exports": {
     ".": {
+      "types": "./index.d.ts",
       "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./index.d.ts"
+      "require": "./dist/cjs/index.js"
     },
     "./assert": {
+      "types": "./assert.d.ts",
       "import": "./dist/esm/assert.js",
-      "require": "./dist/cjs/assert.js",
-      "types": "./assert.d.ts"
+      "require": "./dist/cjs/assert.js"
     },
     "./alb-cache": {
+      "types": "./alb-cache.d.ts",
       "import": "./dist/esm/alb-cache.js",
-      "require": "./dist/cjs/alb-cache.js",
-      "types": "./alb-cache.d.ts"
+      "require": "./dist/cjs/alb-cache.js"
     },
     "./alb-verifier": {
+      "types": "./alb-verifier.d.ts",
       "import": "./dist/esm/alb-verifier.js",
-      "require": "./dist/cjs/alb-verifier.js",
-      "types": "./alb-verifier.d.ts"
+      "require": "./dist/cjs/alb-verifier.js"
     },
     "./cache": {
+      "types": "./cache.d.ts",
       "import": "./dist/esm/cache.js",
-      "require": "./dist/cjs/cache.js",
-      "types": "./cache.d.ts"
+      "require": "./dist/cjs/cache.js"
     },
     "./cognito-verifier": {
+      "types": "./cognito-verifier.d.ts",
       "import": "./dist/esm/cognito-verifier.js",
-      "require": "./dist/cjs/cognito-verifier.js",
-      "types": "./cognito-verifier.d.ts"
+      "require": "./dist/cjs/cognito-verifier.js"
     },
     "./error": {
+      "types": "./error.d.ts",
       "import": "./dist/esm/error.js",
-      "require": "./dist/cjs/error.js",
-      "types": "./error.d.ts"
+      "require": "./dist/cjs/error.js"
     },
     "./https": {
+      "types": "./https.d.ts",
       "import": "./dist/esm/https.js",
-      "require": "./dist/cjs/https.js",
-      "types": "./https.d.ts"
+      "require": "./dist/cjs/https.js"
     },
     "./jwk": {
+      "types": "./jwk.d.ts",
       "import": "./dist/esm/jwk.js",
-      "require": "./dist/cjs/jwk.js",
-      "types": "./jwk.d.ts"
+      "require": "./dist/cjs/jwk.js"
     },
     "./jwt": {
+      "types": "./jwt.d.ts",
       "import": "./dist/esm/jwt.js",
-      "require": "./dist/cjs/jwt.js",
-      "types": "./jwt.d.ts"
+      "require": "./dist/cjs/jwt.js"
     },
     "./jwt-model": {
+      "types": "./jwt-model.d.ts",
       "import": "./dist/esm/jwt-model.js",
-      "require": "./dist/cjs/jwt-model.js",
-      "types": "./jwt-model.d.ts"
+      "require": "./dist/cjs/jwt-model.js"
     },
     "./jwt-verifier": {
+      "types": "./jwt-verifier.d.ts",
       "import": "./dist/esm/jwt-verifier.js",
-      "require": "./dist/cjs/jwt-verifier.js",
-      "types": "./jwt-verifier.d.ts"
+      "require": "./dist/cjs/jwt-verifier.js"
     },
     "./safe-json-parse": {
+      "types": "./safe-json-parse.d.ts",
       "import": "./dist/esm/safe-json-parse.js",
-      "require": "./dist/cjs/safe-json-parse.js",
-      "types": "./safe-json-parse.d.ts"
+      "require": "./dist/cjs/safe-json-parse.js"
     }
   },
   "devDependencies": {
