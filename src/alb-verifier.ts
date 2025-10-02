@@ -12,7 +12,7 @@ import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
 import { Properties } from "./typing-util.js";
 
 const ALB_ARN_REGEX =
-  /^arn:(?:aws|aws-cn):elasticloadbalancing:([a-z]{2}-(?:gov-)?[a-z]+-\d{1}):.+$/;
+  /^arn:(?:aws|aws-cn|aws-us-gov):elasticloadbalancing:([a-z]{2}-(?:gov-)?[a-z]+-\d{1}):.+$/;
 
 type AlbArn = {
   region: string;

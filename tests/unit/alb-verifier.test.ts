@@ -81,6 +81,52 @@ describe("unit tests alb verifier", () => {
           jwk: keypair.jwk,
         });
       });
+
+      test("happy flow - GovCloud ALB ARN", async () => {
+        const kid = keypair.jwk.kid;
+        const issuer = `https://cognito-idp.us-gov-west-1.amazonaws.com/us-gov-west-1_123456`;
+        const albArn =
+          "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+        const clientId = "my-client-id";
+        const exp = 4000000000; // Use of a long expiry date
+
+        const signedJwt = signJwt(
+          {
+            typ: "JWT",
+            kid,
+            alg: "ES256",
+            iss: issuer,
+            client: clientId,
+            signer: albArn,
+            exp,
+          },
+          {
+            hello: "world",
+            exp,
+            iss: issuer,
+          },
+          keypair.privateKey
+        );
+        const decomposedJwt = decomposeUnverifiedJwt(signedJwt);
+        const customJwtCheck = jest.fn();
+        const albVerifier = AlbJwtVerifier.create({
+          albArn,
+          issuer,
+          customJwtCheck,
+        });
+        albVerifier.cacheJwks(keypair.jwks);
+        expect.assertions(2);
+        expect(
+          await albVerifier.verify(signedJwt, {
+            clientId: null,
+          })
+        ).toMatchObject({ hello: "world" });
+        expect(customJwtCheck).toHaveBeenCalledWith({
+          header: decomposedJwt.header,
+          payload: decomposedJwt.payload,
+          jwk: keypair.jwk,
+        });
+      });
     });
     describe("validateAlbJwtParams", () => {
       test("invalid load balancer ARN - too short", async () => {
@@ -112,6 +158,49 @@ describe("unit tests alb verifier", () => {
         ).toThrow(
           new ParameterValidationError(
             `Invalid load balancer ARN: arn:aws:elasticloadbalancing:.:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188`
+          )
+        );
+      });
+
+      test("valid GovCloud ALB ARN - us-gov-west-1", async () => {
+        const issuer = `https://cognito-idp.us-gov-west-1.amazonaws.com/us-gov-west-1_123456`;
+        const albArn =
+          "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+
+        expect(() =>
+          AlbJwtVerifier.create({
+            albArn,
+            issuer,
+          })
+        ).not.toThrow();
+      });
+
+      test("valid GovCloud ALB ARN - us-gov-east-1", async () => {
+        const issuer = `https://cognito-idp.us-gov-east-1.amazonaws.com/us-gov-east-1_123456`;
+        const albArn =
+          "arn:aws-us-gov:elasticloadbalancing:us-gov-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+
+        expect(() =>
+          AlbJwtVerifier.create({
+            albArn,
+            issuer,
+          })
+        ).not.toThrow();
+      });
+
+      test("invalid partition - unsupported partition", async () => {
+        const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+        const albArn =
+          "arn:aws-unsupported:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+
+        expect(() =>
+          AlbJwtVerifier.create({
+            albArn,
+            issuer,
+          })
+        ).toThrow(
+          new ParameterValidationError(
+            `Invalid load balancer ARN: arn:aws-unsupported:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188`
           )
         );
       });
@@ -326,6 +415,43 @@ describe("unit tests alb verifier", () => {
         const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
         const albArn =
           "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+        const clientId = "my-client-id";
+        const exp = 4000000000; // Use of a long expiry date
+
+        const signedJwt = signJwt(
+          {
+            typ: "JWT",
+            kid,
+            alg: "ES256",
+            iss: issuer,
+            client: clientId,
+            signer: albArn,
+            exp,
+          },
+          {
+            hello: "world",
+            exp,
+            iss: issuer,
+          },
+          keypair.privateKey
+        );
+        const albVerifier = AlbJwtVerifier.create({
+          albArn,
+          issuer,
+        });
+        albVerifier.cacheJwks(keypair.jwks);
+        expect(
+          albVerifier.verifySync(signedJwt, {
+            clientId: null,
+          })
+        ).toMatchObject({ hello: "world" });
+      });
+
+      test("happy flow - GovCloud ALB ARN", () => {
+        const kid = keypair.jwk.kid;
+        const issuer = `https://cognito-idp.us-gov-west-1.amazonaws.com/us-gov-west-1_123456`;
+        const albArn =
+          "arn:aws-us-gov:elasticloadbalancing:us-gov-west-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
         const clientId = "my-client-id";
         const exp = 4000000000; // Use of a long expiry date
 
