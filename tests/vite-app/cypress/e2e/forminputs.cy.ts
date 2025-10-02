@@ -14,6 +14,7 @@ import {
   MS_JWKSURI,
   MS_INVALID_KID_TOKEN,
 } from "../fixtures/ms-token-data.json";
+
 describe("enable Verify RSA", () => {
   it('enables the "Verify RSA" button', () => {
     cy.visit("/");
@@ -30,10 +31,6 @@ describe("click Verify RSA", () => {
   const INVALID_ISSUER = "https://example.org";
   const INVALID_JWKSURI = "/notexample-JWKS.json";
   const INVALID_AUDIENCE = "notaudience";
-
-  beforeEach(() => {
-    cy.visit("/");
-  });
 
   const typeInputsAndClick = (
     jwt,
@@ -56,12 +53,16 @@ describe("click Verify RSA", () => {
   };
 
   it("valid token", () => {
+    cy.visit("/");
+
     typeInputsAndClick(VALID_TOKEN, ISSUER, AUDIENCE, JWKSURI);
 
     cy.get("#result").should("have.text", "Verified");
   });
 
   it("valid token for JWK without alg", () => {
+    cy.visit("/");
+
     typeInputsAndClick(
       VALID_TOKEN_FOR_JWK_WITHOUT_ALG,
       ISSUER,
@@ -73,30 +74,40 @@ describe("click Verify RSA", () => {
   });
 
   it("expired token", () => {
+    cy.visit("/");
+
     typeInputsAndClick(EXPIRED_TOKEN, ISSUER, AUDIENCE, JWKSURI);
 
     cy.get("#result").should("include.text", "Token expired at ");
   });
 
   it("not yet valid token", () => {
+    cy.visit("/");
+
     typeInputsAndClick(NOT_YET_VALID_TOKEN, ISSUER, AUDIENCE, JWKSURI);
 
     cy.get("#result").should("include.text", "Token can't be used before ");
   });
 
   it("invalid issuer", () => {
+    cy.visit("/");
+
     typeInputsAndClick(VALID_TOKEN, INVALID_ISSUER, "", JWKSURI);
 
     cy.get("#result").should("include.text", "Issuer not allowed");
   });
 
   it("invalid audience", () => {
+    cy.visit("/");
+
     typeInputsAndClick(VALID_TOKEN, ISSUER, INVALID_AUDIENCE, JWKSURI);
 
     cy.get("#result").should("include.text", "Audience not allowed");
   });
 
   it("invalid signature", () => {
+    cy.visit("/");
+
     typeInputsAndClick(
       VALID_TOKEN.substring(0, VALID_TOKEN.length - 2),
       ISSUER,
@@ -108,6 +119,8 @@ describe("click Verify RSA", () => {
   });
 
   it("invalid JWKS Uri", () => {
+    cy.visit("/");
+
     typeInputsAndClick(VALID_TOKEN, ISSUER, "", INVALID_JWKSURI);
 
     cy.get("#result").should(
@@ -117,6 +130,8 @@ describe("click Verify RSA", () => {
   });
 
   it("invalid JWK kid", () => {
+    cy.visit("/");
+
     // example token from https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens
     typeInputsAndClick(
       MS_INVALID_KID_TOKEN,
