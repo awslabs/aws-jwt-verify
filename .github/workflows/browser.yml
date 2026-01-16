@@ -1,4 +1,6 @@
 name: test-browser
+permissions:
+  contents: read
 on:
   push:
     branches: [main]
