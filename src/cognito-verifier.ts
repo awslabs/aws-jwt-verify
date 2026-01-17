@@ -223,33 +223,59 @@ export class CognitoJwtVerifier<
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
   private static USER_POOL_ID_REGEX =
     /^(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
+
+  // Regex for standard issuer format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
+  private static STANDARD_ISSUER_REGEX =
+    /^https:\/\/cognito-idp\.(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)\.amazonaws\.com\/(?<userPoolId>[a-z]{2}-(gov-)?[a-z]+-\d_[a-zA-Z0-9]+)$/;
+
+  // Regex for multi-region issuer format: https://issuer.cognito-idp.{region}.amazonaws.com/{userPoolId}
+  private static MULTI_REGION_ISSUER_REGEX =
+    /^https:\/\/issuer\.cognito-idp\.(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)\.amazonaws\.com\/(?<userPoolId>[a-z]{2}-(gov-)?[a-z]+-\d_[a-zA-Z0-9]+)$/;
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
     jwksCache?: JwksCache
   ) {
-    const issuerConfig = Array.isArray(props)
-      ? (props.map((p) => ({
-          ...p,
-          ...CognitoJwtVerifier.parseUserPoolId(p.userPoolId),
-          audience: null, // checked instead by validateCognitoJwtFields
-        })) as IssuerConfig[])
-      : ({
-          ...props,
-          ...CognitoJwtVerifier.parseUserPoolId(props.userPoolId),
-          audience: null, // checked instead by validateCognitoJwtFields
-        } as IssuerConfig);
-    super(issuerConfig, jwksCache);
+    // Normalize to array for uniform processing
+    const propsArray = Array.isArray(props) ? props : [props];
+    const issuerConfigs: IssuerConfig[] = [];
+
+    for (const p of propsArray) {
+      const parsed = CognitoJwtVerifier.parseUserPoolId(p.userPoolId);
+      const baseConfig = {
+        ...p,
+        userPoolId: p.userPoolId,
+        audience: null, // checked instead by validateCognitoJwtFields
+      };
+
+      // Register standard issuer config
+      issuerConfigs.push({
+        ...baseConfig,
+        issuer: parsed.issuer,
+        jwksUri: parsed.jwksUri,
+      } as IssuerConfig);
+
+      // Register multi-region issuer config
+      issuerConfigs.push({
+        ...baseConfig,
+        issuer: parsed.multiRegionIssuer,
+        jwksUri: parsed.multiRegionJwksUri,
+      } as IssuerConfig);
+    }
+
+    super(issuerConfigs, jwksCache);
   }
 
   /**
-   * Parse a User Pool ID, to extract the issuer and JWKS URI
+   * Parse a User Pool ID, to extract the issuer and JWKS URI for both standard and multi-region formats
    *
    * @param userPoolId The User Pool ID
-   * @returns The issuer and JWKS URI for the User Pool
+   * @returns The issuer and JWKS URI for both standard and multi-region formats
    */
   public static parseUserPoolId(userPoolId: string): {
     issuer: string;
     jwksUri: string;
+    multiRegionIssuer: string;
+    multiRegionJwksUri: string;
   } {
     const match = userPoolId.match(this.USER_POOL_ID_REGEX);
     if (!match) {
@@ -258,11 +284,59 @@ export class CognitoJwtVerifier<
       );
     }
     const region = match.groups!.region;
-    const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+    const standardIssuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+    const multiRegionIssuer = `https://issuer.cognito-idp.${region}.amazonaws.com/${userPoolId}`;
     return {
-      issuer,
-      jwksUri: `${issuer}/.well-known/jwks.json`,
+      issuer: standardIssuer,
+      jwksUri: `${standardIssuer}/.well-known/jwks.json`,
+      multiRegionIssuer,
+      multiRegionJwksUri: `${multiRegionIssuer}/.well-known/jwks.json`,
     };
+  }
+
+  /**
+   * Parse a Cognito issuer URL to extract the User Pool ID and determine the format.
+   * Supports both standard and multi-region issuer formats.
+   *
+   * @param issuer The issuer URL from a JWT's iss claim
+   * @returns An object containing the userPoolId, region, and format, or null if the issuer is invalid
+   */
+  public static parseIssuer(issuer: string): {
+    userPoolId: string;
+    region: string;
+    format: "standard" | "multiRegion";
+  } | null {
+    // Try standard format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
+    const standardMatch = issuer.match(this.STANDARD_ISSUER_REGEX);
+    if (standardMatch && standardMatch.groups) {
+      const region = standardMatch.groups.region;
+      const userPoolId = standardMatch.groups.userPoolId;
+      // Validate that the region in the issuer matches the region in the userPoolId
+      if (userPoolId.startsWith(`${region}_`)) {
+        return {
+          region,
+          userPoolId,
+          format: "standard",
+        };
+      }
+    }
+
+    // Try multi-region format: https://issuer.cognito-idp.{region}.amazonaws.com/{userPoolId}
+    const multiRegionMatch = issuer.match(this.MULTI_REGION_ISSUER_REGEX);
+    if (multiRegionMatch && multiRegionMatch.groups) {
+      const region = multiRegionMatch.groups.region;
+      const userPoolId = multiRegionMatch.groups.userPoolId;
+      // Validate that the region in the issuer matches the region in the userPoolId
+      if (userPoolId.startsWith(`${region}_`)) {
+        return {
+          region,
+          userPoolId,
+          format: "multiRegion",
+        };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -378,13 +452,36 @@ export class CognitoJwtVerifier<
       ? [jwks: Jwks, userPoolId?: string]
       : [jwks: Jwks, userPoolId: string]
   ): void {
-    let issuer: string | undefined;
-    if (userPoolId !== undefined) {
-      issuer = CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer;
-    } else if (Array.from(this.issuersConfig).length > 1) {
-      throw new ParameterValidationError("userPoolId must be provided");
+    // Get unique User Pool IDs from the issuer configs
+    const uniqueUserPoolIds = new Set<string>();
+    for (const config of this.issuersConfig.values()) {
+      if ((config as IssuerConfig & { userPoolId: string }).userPoolId) {
+        uniqueUserPoolIds.add(
+          (config as IssuerConfig & { userPoolId: string }).userPoolId
+        );
+      }
     }
-    const issuerConfig = this.getIssuerConfig(issuer);
-    super.cacheJwks(jwks, issuerConfig.issuer);
+
+    // Determine which User Pool to cache for
+    let targetUserPoolId: string;
+    if (userPoolId !== undefined) {
+      targetUserPoolId = userPoolId;
+    } else if (uniqueUserPoolIds.size > 1) {
+      throw new ParameterValidationError("userPoolId must be provided");
+    } else if (uniqueUserPoolIds.size === 1) {
+      targetUserPoolId = uniqueUserPoolIds.values().next().value!;
+    } else {
+      throw new ParameterValidationError("No User Pool configured");
+    }
+
+    // Parse the User Pool ID to get both issuer formats
+    const parsed = CognitoJwtVerifier.parseUserPoolId(targetUserPoolId);
+
+    // Cache JWKS for both standard and multi-region issuers
+    const standardConfig = this.getIssuerConfig(parsed.issuer);
+    const multiRegionConfig = this.getIssuerConfig(parsed.multiRegionIssuer);
+
+    super.cacheJwks(jwks, standardConfig.issuer);
+    super.cacheJwks(jwks, multiRegionConfig.issuer);
   }
 }
