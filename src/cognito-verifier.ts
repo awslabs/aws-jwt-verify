@@ -56,7 +56,7 @@ export interface CognitoVerifyProperties {
   graceSeconds?: number;
   /**
    * Your custom function with checks. It will be called, at the end of the verification,
-   * after standard verifcation checks have all passed.
+   * after standard verification checks have all passed.
    * Throw an error in this function if you want to reject the JWT for whatever reason you deem fit.
    * Your function will be called with a properties object that contains:
    * - the decoded JWT header
@@ -210,6 +210,10 @@ export function validateCognitoJwtFields(
   }
 }
 
+// Reusable regex pattern for AWS region format (e.g., us-east-1, eu-west-2, us-gov-west-1)
+const AWS_REGION_PATTERN = "[a-z]{2}-(gov-)?[a-z]+-\\d";
+const USER_POOL_ID_PATTERN = `${AWS_REGION_PATTERN}_[a-zA-Z0-9]+`;
+
 /**
  * Class representing a verifier for JWTs signed by Amazon Cognito
  */
@@ -221,16 +225,19 @@ export class CognitoJwtVerifier<
   },
   MultiIssuer extends boolean,
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
-  private static USER_POOL_ID_REGEX =
-    /^(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
+  private static USER_POOL_ID_REGEX = new RegExp(
+    `^(?<region>${AWS_REGION_PATTERN})_[a-zA-Z0-9]+$`
+  );
 
   // Regex for standard issuer format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
-  private static STANDARD_ISSUER_REGEX =
-    /^https:\/\/cognito-idp\.(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)\.amazonaws\.com\/(?<userPoolId>[a-z]{2}-(gov-)?[a-z]+-\d_[a-zA-Z0-9]+)$/;
+  private static STANDARD_ISSUER_REGEX = new RegExp(
+    `^https://cognito-idp\\.(?<region>${AWS_REGION_PATTERN})\\.amazonaws\\.com/(?<userPoolId>${USER_POOL_ID_PATTERN})$`
+  );
 
   // Regex for multi-region issuer format: https://issuer.cognito-idp.{region}.amazonaws.com/{userPoolId}
-  private static MULTI_REGION_ISSUER_REGEX =
-    /^https:\/\/issuer\.cognito-idp\.(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)\.amazonaws\.com\/(?<userPoolId>[a-z]{2}-(gov-)?[a-z]+-\d_[a-zA-Z0-9]+)$/;
+  private static MULTI_REGION_ISSUER_REGEX = new RegExp(
+    `^https://issuer\\.cognito-idp\\.(?<region>${AWS_REGION_PATTERN})\\.amazonaws\\.com/(?<userPoolId>${USER_POOL_ID_PATTERN})$`
+  );
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
     jwksCache?: JwksCache
@@ -306,33 +313,23 @@ export class CognitoJwtVerifier<
     region: string;
     format: "standard" | "multiRegion";
   } | null {
-    // Try standard format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
-    const standardMatch = issuer.match(this.STANDARD_ISSUER_REGEX);
-    if (standardMatch && standardMatch.groups) {
-      const region = standardMatch.groups.region;
-      const userPoolId = standardMatch.groups.userPoolId;
-      // Validate that the region in the issuer matches the region in the userPoolId
-      if (userPoolId.startsWith(`${region}_`)) {
-        return {
-          region,
-          userPoolId,
-          format: "standard",
-        };
-      }
-    }
+    // Try each issuer format pattern
+    const patterns: Array<{
+      regex: RegExp;
+      format: "standard" | "multiRegion";
+    }> = [
+      { regex: this.STANDARD_ISSUER_REGEX, format: "standard" },
+      { regex: this.MULTI_REGION_ISSUER_REGEX, format: "multiRegion" },
+    ];
 
-    // Try multi-region format: https://issuer.cognito-idp.{region}.amazonaws.com/{userPoolId}
-    const multiRegionMatch = issuer.match(this.MULTI_REGION_ISSUER_REGEX);
-    if (multiRegionMatch && multiRegionMatch.groups) {
-      const region = multiRegionMatch.groups.region;
-      const userPoolId = multiRegionMatch.groups.userPoolId;
-      // Validate that the region in the issuer matches the region in the userPoolId
-      if (userPoolId.startsWith(`${region}_`)) {
-        return {
-          region,
-          userPoolId,
-          format: "multiRegion",
-        };
+    for (const { regex, format } of patterns) {
+      const match = issuer.match(regex);
+      if (match?.groups) {
+        const { region, userPoolId } = match.groups;
+        // Validate that the region in the issuer matches the region in the userPoolId
+        if (userPoolId.startsWith(`${region}_`)) {
+          return { region, userPoolId, format };
+        }
       }
     }
 
@@ -375,6 +372,29 @@ export class CognitoJwtVerifier<
   }
 
   /**
+   * Validates Cognito JWT fields and handles error wrapping.
+   * Shared logic between verify and verifySync methods.
+   */
+  private validateAndWrapErrors(
+    decomposedJwt: { header: JwtHeader; payload: JwtPayload },
+    verifyProperties: Partial<CognitoVerifyProperties> & {
+      includeRawJwtInErrors?: boolean;
+    }
+  ): void {
+    try {
+      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
+    } catch (err) {
+      if (
+        verifyProperties.includeRawJwtInErrors &&
+        err instanceof JwtInvalidClaimError
+      ) {
+        throw err.withRawJwt(decomposedJwt);
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Verify (synchronously) a JWT that is signed by Amazon Cognito.
    *
    * @param jwt The JWT, as string
@@ -387,17 +407,7 @@ export class CognitoJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
-    try {
-      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
-    } catch (err) {
-      if (
-        verifyProperties.includeRawJwtInErrors &&
-        err instanceof JwtInvalidClaimError
-      ) {
-        throw err.withRawJwt(decomposedJwt);
-      }
-      throw err;
-    }
+    this.validateAndWrapErrors(decomposedJwt, verifyProperties);
     return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
       IssuerConfig,
       T
@@ -419,17 +429,7 @@ export class CognitoJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
-    try {
-      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
-    } catch (err) {
-      if (
-        verifyProperties.includeRawJwtInErrors &&
-        err instanceof JwtInvalidClaimError
-      ) {
-        throw err.withRawJwt(decomposedJwt);
-      }
-      throw err;
-    }
+    this.validateAndWrapErrors(decomposedJwt, verifyProperties);
     return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
       IssuerConfig,
       T
