@@ -56,7 +56,7 @@ export interface CognitoVerifyProperties {
   graceSeconds?: number;
   /**
    * Your custom function with checks. It will be called, at the end of the verification,
-   * after standard verifcation checks have all passed.
+   * after standard verification checks have all passed.
    * Throw an error in this function if you want to reject the JWT for whatever reason you deem fit.
    * Your function will be called with a properties object that contains:
    * - the decoded JWT header
@@ -223,21 +223,45 @@ export class CognitoJwtVerifier<
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
   private static USER_POOL_ID_REGEX =
     /^(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
+
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
     jwksCache?: JwksCache
   ) {
     const issuerConfig = Array.isArray(props)
-      ? (props.map((p) => ({
-          ...p,
-          ...CognitoJwtVerifier.parseUserPoolId(p.userPoolId),
-          audience: null, // checked instead by validateCognitoJwtFields
-        })) as IssuerConfig[])
-      : ({
-          ...props,
-          ...CognitoJwtVerifier.parseUserPoolId(props.userPoolId),
-          audience: null, // checked instead by validateCognitoJwtFields
-        } as IssuerConfig);
+      ? (props.flatMap((p) => {
+          // For each user pool, create configs for BOTH region and global issuer formats
+          // This allows seamless verification during the transition period
+          const regionFormat = CognitoJwtVerifier.parseUserPoolId(p.userPoolId);
+          const globalFormatIssuer = `https://issuer.cognito-idp.${p.userPoolId.split("_")[0]}.amazonaws.com/${p.userPoolId}`;
+          const globalFormat = CognitoJwtVerifier.parseUserPoolId(
+            p.userPoolId,
+            globalFormatIssuer
+          );
+
+          // audience checked by validateCognitoJwtFields
+          return [
+            { ...p, ...regionFormat, audience: null },
+            { ...p, ...globalFormat, audience: null },
+          ];
+        }) as IssuerConfig[])
+      : ([
+          // Single user pool - create configs for both formats
+          // audience checked by validateCognitoJwtFields
+          {
+            ...props,
+            ...CognitoJwtVerifier.parseUserPoolId(props.userPoolId),
+            audience: null,
+          },
+          {
+            ...props,
+            ...CognitoJwtVerifier.parseUserPoolId(
+              props.userPoolId,
+              `https://issuer.cognito-idp.${props.userPoolId.split("_")[0]}.amazonaws.com/${props.userPoolId}`
+            ),
+            audience: null,
+          },
+        ] as IssuerConfig[]);
     super(issuerConfig, jwksCache);
   }
 
@@ -245,9 +269,13 @@ export class CognitoJwtVerifier<
    * Parse a User Pool ID, to extract the issuer and JWKS URI
    *
    * @param userPoolId The User Pool ID
+   * @param jwtIssuer Optional issuer claim from the JWT being verified, used to determine the issuer format
    * @returns The issuer and JWKS URI for the User Pool
    */
-  public static parseUserPoolId(userPoolId: string): {
+  public static parseUserPoolId(
+    userPoolId: string,
+    jwtIssuer?: string
+  ): {
     issuer: string;
     jwksUri: string;
   } {
@@ -258,7 +286,23 @@ export class CognitoJwtVerifier<
       );
     }
     const region = match.groups!.region;
-    const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+
+    // Determine issuer format based on JWT's issuer claim if provided
+    // Global format: https://issuer.cognito-idp.<region>.amazonaws.com/<userPoolId>
+    // Region format: https://cognito-idp.<region>.amazonaws.com/<userPoolId>
+    let issuer: string;
+    if (jwtIssuer) {
+      // Use the format from the JWT's issuer claim
+      if (jwtIssuer.includes("issuer.cognito-idp")) {
+        issuer = `https://issuer.cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+      } else {
+        issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+      }
+    } else {
+      // Default to region format for backward compatibility when no JWT issuer is provided
+      issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+    }
+
     return {
       issuer,
       jwksUri: `${issuer}/.well-known/jwks.json`,
@@ -378,13 +422,30 @@ export class CognitoJwtVerifier<
       ? [jwks: Jwks, userPoolId?: string]
       : [jwks: Jwks, userPoolId: string]
   ): void {
-    let issuer: string | undefined;
-    if (userPoolId !== undefined) {
-      issuer = CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer;
-    } else if (Array.from(this.issuersConfig).length > 1) {
-      throw new ParameterValidationError("userPoolId must be provided");
+    let poolId: string | undefined = userPoolId;
+
+    if (!poolId) {
+      // Get unique user pool IDs from configs (since we store both region and global format)
+      const uniqueUserPoolIds = new Set(
+        Array.from(this.issuersConfig.values()).map(
+          (config) => config.userPoolId
+        )
+      );
+      if (uniqueUserPoolIds.size > 1) {
+        throw new ParameterValidationError("userPoolId must be provided");
+      }
+      poolId = Array.from(uniqueUserPoolIds)[0];
     }
-    const issuerConfig = this.getIssuerConfig(issuer);
-    super.cacheJwks(jwks, issuerConfig.issuer);
+
+    // Cache for both region and global issuer formats
+    const regionFormatIssuer =
+      CognitoJwtVerifier.parseUserPoolId(poolId).issuer;
+    const globalFormatIssuer = CognitoJwtVerifier.parseUserPoolId(
+      poolId,
+      `https://issuer.cognito-idp.${poolId.split("_")[0]}.amazonaws.com/${poolId}`
+    ).issuer;
+
+    super.cacheJwks(jwks, regionFormatIssuer);
+    super.cacheJwks(jwks, globalFormatIssuer);
   }
 }
