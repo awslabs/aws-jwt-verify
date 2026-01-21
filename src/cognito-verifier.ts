@@ -56,7 +56,7 @@ export interface CognitoVerifyProperties {
   graceSeconds?: number;
   /**
    * Your custom function with checks. It will be called, at the end of the verification,
-   * after standard verifcation checks have all passed.
+   * after standard verification checks have all passed.
    * Throw an error in this function if you want to reject the JWT for whatever reason you deem fit.
    * Your function will be called with a properties object that contains:
    * - the decoded JWT header
@@ -236,6 +236,7 @@ export class CognitoJwtVerifier<
           const globalFormatIssuer = `https://issuer.cognito-idp.${p.userPoolId.split('_')[0]}.amazonaws.com/${p.userPoolId}`;
           const globalFormat = CognitoJwtVerifier.parseUserPoolId(p.userPoolId, globalFormatIssuer);
           
+          // audience checked by validateCognitoJwtFields
           return [
             { ...p, ...regionFormat, audience: null },
             { ...p, ...globalFormat, audience: null }
@@ -243,6 +244,7 @@ export class CognitoJwtVerifier<
         }) as IssuerConfig[])
       : ([
           // Single user pool - create configs for both formats
+          // audience checked by validateCognitoJwtFields
           {
             ...props,
             ...CognitoJwtVerifier.parseUserPoolId(props.userPoolId),
