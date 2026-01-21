@@ -161,6 +161,7 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)
   - [Trusting multiple User Pools](#trusting-multiple-user-pools)
   - [Using the generic JWT verifier for Cognito JWTs](#using-the-generic-jwt-verifier-for-cognito-jwts)
+  - [Using JWTs from an identity pool](#using-jwts-from-an-identity-pool)
 - [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
   - [Verify parameters](#JwtVerifier-verify-parameters)
 - [Verifying user claims JWTs from Application Load Balancers](#verifying-user-claims-jwts-from-application-load-balancers)
@@ -395,6 +396,30 @@ const verifier = JwtVerifier.create([
     audience: "myaudience", // do specify audience for other IDPs
   },
 ]);
+```
+
+### Using JWTs from an identity pool
+
+Cognito's [identity pools](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html) have a mechanism to generate JWTs through the [GetOpenIdToken](https://docs.aws.amazon.com/cognitoidentity/latest/APIReference/API_GetOpenIdToken.html) or [GetOpenIdTokenForDeveloperIdentity](https://docs.aws.amazon.com/cognitoidentity/latest/APIReference/API_GetOpenIdTokenForDeveloperIdentity.html) API calls.
+
+You might use this to provide temporary credentials for a user authenticated through [a third-party identity provider](https://docs.aws.amazon.com/cognito/latest/developerguide/external-identity-providers.html) or when implementing your own [developer-authenticated identity](https://docs.aws.amazon.com/cognito/latest/developerguide/developer-authenticated-identities.html).
+
+Such a token can be validated with the generic `JwtVerifier`, specifying the identity pool's ID as the `audience` and Cognito itself as the `issuer`.
+
+```typescript
+import { JwtVerifier } from "aws-jwt-verify";
+
+const verifier = JwtVerifier.create({
+  issuer: "https://cognito-identity.amazonaws.com",
+  audience: "<identity_pool_id>"
+});
+
+try {
+  const payload = await verifier.verify("eyJraWQiOiJ1cy1lYXN0LTEtO...");
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
 ```
 
 ## Verifying JWTs from any OIDC-compatible IDP
