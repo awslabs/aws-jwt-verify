@@ -56,7 +56,7 @@ export interface CognitoVerifyProperties {
   graceSeconds?: number;
   /**
    * Your custom function with checks. It will be called, at the end of the verification,
-   * after standard verifcation checks have all passed.
+   * after standard verification checks have all passed.
    * Throw an error in this function if you want to reject the JWT for whatever reason you deem fit.
    * Your function will be called with a properties object that contains:
    * - the decoded JWT header
@@ -210,6 +210,10 @@ export function validateCognitoJwtFields(
   }
 }
 
+// Reusable regex pattern for AWS region format (e.g., us-east-1, eu-west-2, us-gov-west-1)
+const AWS_REGION_PATTERN = "[a-z]{2}-(gov-)?[a-z]+-\\d";
+const USER_POOL_ID_PATTERN = `${AWS_REGION_PATTERN}_[a-zA-Z0-9]+`;
+
 /**
  * Class representing a verifier for JWTs signed by Amazon Cognito
  */
@@ -221,35 +225,64 @@ export class CognitoJwtVerifier<
   },
   MultiIssuer extends boolean,
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
-  private static USER_POOL_ID_REGEX =
-    /^(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
+  private static USER_POOL_ID_REGEX = new RegExp(
+    `^(?<region>${AWS_REGION_PATTERN})_[a-zA-Z0-9]+$`
+  );
+
+  // Regex for standard issuer format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
+  private static STANDARD_ISSUER_REGEX = new RegExp(
+    `^https://cognito-idp\\.(?<region>${AWS_REGION_PATTERN})\\.amazonaws\\.com/(?<userPoolId>${USER_POOL_ID_PATTERN})$`
+  );
+
+  // Regex for multi-region issuer format: https://issuer.cognito-idp.{region}.amazonaws.com/{userPoolId}
+  private static MULTI_REGION_ISSUER_REGEX = new RegExp(
+    `^https://issuer\\.cognito-idp\\.(?<region>${AWS_REGION_PATTERN})\\.amazonaws\\.com/(?<userPoolId>${USER_POOL_ID_PATTERN})$`
+  );
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
     jwksCache?: JwksCache
   ) {
-    const issuerConfig = Array.isArray(props)
-      ? (props.map((p) => ({
-          ...p,
-          ...CognitoJwtVerifier.parseUserPoolId(p.userPoolId),
-          audience: null, // checked instead by validateCognitoJwtFields
-        })) as IssuerConfig[])
-      : ({
-          ...props,
-          ...CognitoJwtVerifier.parseUserPoolId(props.userPoolId),
-          audience: null, // checked instead by validateCognitoJwtFields
-        } as IssuerConfig);
-    super(issuerConfig, jwksCache);
+    // Normalize to array for uniform processing
+    const propsArray = Array.isArray(props) ? props : [props];
+    const issuerConfigs: IssuerConfig[] = [];
+
+    for (const p of propsArray) {
+      const parsed = CognitoJwtVerifier.parseUserPoolId(p.userPoolId);
+      const baseConfig = {
+        ...p,
+        userPoolId: p.userPoolId,
+        audience: null, // checked instead by validateCognitoJwtFields
+      };
+
+      // Register standard issuer config
+      issuerConfigs.push({
+        ...baseConfig,
+        issuer: parsed.issuer,
+        jwksUri: parsed.jwksUri,
+      } as IssuerConfig);
+
+      // Register multi-region issuer config
+      issuerConfigs.push({
+        ...baseConfig,
+        issuer: parsed.multiRegionIssuer,
+        jwksUri: parsed.multiRegionJwksUri,
+      } as IssuerConfig);
+    }
+
+    super(issuerConfigs, jwksCache);
   }
 
   /**
-   * Parse a User Pool ID, to extract the issuer and JWKS URI
+   * Parse a User Pool ID, to extract the issuer and JWKS URI for both standard and multi-region formats
    *
    * @param userPoolId The User Pool ID
-   * @returns The issuer and JWKS URI for the User Pool
+   * @returns The issuer and JWKS URI for both standard and multi-region formats
    */
   public static parseUserPoolId(userPoolId: string): {
     issuer: string;
     jwksUri: string;
+    multiRegionIssuer: string;
+    multiRegionJwksUri: string;
   } {
     const match = userPoolId.match(this.USER_POOL_ID_REGEX);
     if (!match) {
@@ -258,11 +291,49 @@ export class CognitoJwtVerifier<
       );
     }
     const region = match.groups!.region;
-    const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+    const standardIssuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+    const multiRegionIssuer = `https://issuer.cognito-idp.${region}.amazonaws.com/${userPoolId}`;
     return {
-      issuer,
-      jwksUri: `${issuer}/.well-known/jwks.json`,
+      issuer: standardIssuer,
+      jwksUri: `${standardIssuer}/.well-known/jwks.json`,
+      multiRegionIssuer,
+      multiRegionJwksUri: `${multiRegionIssuer}/.well-known/jwks.json`,
     };
+  }
+
+  /**
+   * Parse a Cognito issuer URL to extract the User Pool ID and determine the format.
+   * Supports both standard and multi-region issuer formats.
+   *
+   * @param issuer The issuer URL from a JWT's iss claim
+   * @returns An object containing the userPoolId, region, and format, or null if the issuer is invalid
+   */
+  public static parseIssuer(issuer: string): {
+    userPoolId: string;
+    region: string;
+    format: "standard" | "multiRegion";
+  } | null {
+    // Try each issuer format pattern
+    const patterns: Array<{
+      regex: RegExp;
+      format: "standard" | "multiRegion";
+    }> = [
+      { regex: this.STANDARD_ISSUER_REGEX, format: "standard" },
+      { regex: this.MULTI_REGION_ISSUER_REGEX, format: "multiRegion" },
+    ];
+
+    for (const { regex, format } of patterns) {
+      const match = issuer.match(regex);
+      if (match?.groups) {
+        const { region, userPoolId } = match.groups;
+        // Validate that the region in the issuer matches the region in the userPoolId
+        if (userPoolId.startsWith(`${region}_`)) {
+          return { region, userPoolId, format };
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -301,6 +372,29 @@ export class CognitoJwtVerifier<
   }
 
   /**
+   * Validates Cognito JWT fields and handles error wrapping.
+   * Shared logic between verify and verifySync methods.
+   */
+  private validateAndWrapErrors(
+    decomposedJwt: { header: JwtHeader; payload: JwtPayload },
+    verifyProperties: Partial<CognitoVerifyProperties> & {
+      includeRawJwtInErrors?: boolean;
+    }
+  ): void {
+    try {
+      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
+    } catch (err) {
+      if (
+        verifyProperties.includeRawJwtInErrors &&
+        err instanceof JwtInvalidClaimError
+      ) {
+        throw err.withRawJwt(decomposedJwt);
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Verify (synchronously) a JWT that is signed by Amazon Cognito.
    *
    * @param jwt The JWT, as string
@@ -313,17 +407,7 @@ export class CognitoJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
-    try {
-      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
-    } catch (err) {
-      if (
-        verifyProperties.includeRawJwtInErrors &&
-        err instanceof JwtInvalidClaimError
-      ) {
-        throw err.withRawJwt(decomposedJwt);
-      }
-      throw err;
-    }
+    this.validateAndWrapErrors(decomposedJwt, verifyProperties);
     return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
       IssuerConfig,
       T
@@ -345,17 +429,7 @@ export class CognitoJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
-    try {
-      validateCognitoJwtFields(decomposedJwt.payload, verifyProperties);
-    } catch (err) {
-      if (
-        verifyProperties.includeRawJwtInErrors &&
-        err instanceof JwtInvalidClaimError
-      ) {
-        throw err.withRawJwt(decomposedJwt);
-      }
-      throw err;
-    }
+    this.validateAndWrapErrors(decomposedJwt, verifyProperties);
     return decomposedJwt.payload as CognitoIdOrAccessTokenPayload<
       IssuerConfig,
       T
@@ -378,13 +452,36 @@ export class CognitoJwtVerifier<
       ? [jwks: Jwks, userPoolId?: string]
       : [jwks: Jwks, userPoolId: string]
   ): void {
-    let issuer: string | undefined;
-    if (userPoolId !== undefined) {
-      issuer = CognitoJwtVerifier.parseUserPoolId(userPoolId).issuer;
-    } else if (Array.from(this.issuersConfig).length > 1) {
-      throw new ParameterValidationError("userPoolId must be provided");
+    // Get unique User Pool IDs from the issuer configs
+    const uniqueUserPoolIds = new Set<string>();
+    for (const config of this.issuersConfig.values()) {
+      if ((config as IssuerConfig & { userPoolId: string }).userPoolId) {
+        uniqueUserPoolIds.add(
+          (config as IssuerConfig & { userPoolId: string }).userPoolId
+        );
+      }
     }
-    const issuerConfig = this.getIssuerConfig(issuer);
-    super.cacheJwks(jwks, issuerConfig.issuer);
+
+    // Determine which User Pool to cache for
+    let targetUserPoolId: string;
+    if (userPoolId !== undefined) {
+      targetUserPoolId = userPoolId;
+    } else if (uniqueUserPoolIds.size > 1) {
+      throw new ParameterValidationError("userPoolId must be provided");
+    } else if (uniqueUserPoolIds.size === 1) {
+      targetUserPoolId = uniqueUserPoolIds.values().next().value!;
+    } else {
+      throw new ParameterValidationError("No User Pool configured");
+    }
+
+    // Parse the User Pool ID to get both issuer formats
+    const parsed = CognitoJwtVerifier.parseUserPoolId(targetUserPoolId);
+
+    // Cache JWKS for both standard and multi-region issuers
+    const standardConfig = this.getIssuerConfig(parsed.issuer);
+    const multiRegionConfig = this.getIssuerConfig(parsed.multiRegionIssuer);
+
+    super.cacheJwks(jwks, standardConfig.issuer);
+    super.cacheJwks(jwks, multiRegionConfig.issuer);
   }
 }
