@@ -413,6 +413,109 @@ describe("unit tests cognito verifier", () => {
           CognitoJwtVerifier.parseUserPoolId("foo-central-bar_cfE3xfsaf")
         ).toThrow("Invalid Cognito User Pool ID");
       });
+
+      test("parseUserPoolId with region format (default)", () => {
+        const userPoolId = "us-east-1_123456";
+        const { issuer, jwksUri } =
+          CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        expect(issuer).toBe(
+          "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456"
+        );
+        expect(jwksUri).toBe(
+          "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456/.well-known/jwks.json"
+        );
+      });
+
+      test("parseUserPoolId with global format from JWT", () => {
+        const userPoolId = "us-east-1_123456";
+        const jwtIssuer =
+          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
+        const { issuer, jwksUri } = CognitoJwtVerifier.parseUserPoolId(
+          userPoolId,
+          jwtIssuer
+        );
+        expect(issuer).toBe(
+          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456"
+        );
+        expect(jwksUri).toBe(
+          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456/.well-known/jwks.json"
+        );
+      });
+
+      test("parseUserPoolId with region format from JWT", () => {
+        const userPoolId = "us-east-1_123456";
+        const jwtIssuer =
+          "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
+        const { issuer, jwksUri } = CognitoJwtVerifier.parseUserPoolId(
+          userPoolId,
+          jwtIssuer
+        );
+        expect(issuer).toBe(
+          "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456"
+        );
+        expect(jwksUri).toBe(
+          "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456/.well-known/jwks.json"
+        );
+      });
+
+      test("verify JWT with global issuer format", () => {
+        const userPoolId = "us-east-1_123456";
+        const globalIssuer =
+          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          {
+            hello: "world",
+            iss: globalIssuer,
+            token_use: "access",
+            client_id: "test-client",
+          },
+          keypair.privateKey
+        );
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+          tokenUse: "access",
+          clientId: "test-client",
+        });
+
+        // The JWKS cache is keyed by jwksUri, so we need to cache for the global format URL
+        // In practice, this would be fetched automatically on first verification
+        const globalFormatJwksUri = `${globalIssuer}/.well-known/jwks.json`;
+        cognitoVerifier["jwksCache"].addJwks(globalFormatJwksUri, keypair.jwks);
+
+        expect.assertions(1);
+        expect(cognitoVerifier.verifySync(signedJwt)).toMatchObject({
+          hello: "world",
+          iss: globalIssuer,
+        });
+      });
+
+      test("verify JWT with region issuer format", async () => {
+        const userPoolId = "us-east-1_123456";
+        const regionIssuer =
+          "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          {
+            hello: "world",
+            iss: regionIssuer,
+            token_use: "access",
+            client_id: "test-client",
+          },
+          keypair.privateKey
+        );
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+          tokenUse: "access",
+          clientId: "test-client",
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        expect.assertions(1);
+        expect(await cognitoVerifier.verify(signedJwt)).toMatchObject({
+          hello: "world",
+          iss: regionIssuer,
+        });
+      });
     });
   });
 
