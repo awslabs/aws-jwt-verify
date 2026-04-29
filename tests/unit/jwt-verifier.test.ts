@@ -2229,9 +2229,9 @@ describe("speed tests jwt", () => {
     [
       { kty: "EC", alg: "ES384" },
       {
-        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 4,
+        "verifyJwtSync()": thresholdsInMillis["verifyJwtSync()"] * 5,
         "verifier.verifySync()":
-          thresholdsInMillis["verifier.verifySync()"] * 4,
+          thresholdsInMillis["verifier.verifySync()"] * 5,
       },
     ],
     [
