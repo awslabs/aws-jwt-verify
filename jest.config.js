@@ -5,4 +5,14 @@ module.exports = {
   collectCoverageFrom: ["src/*.ts", "!src/node-web-compat-web.ts"],
   roots: ["src", "tests/unit"],
   resolver: "<rootDir>/tests/jest-ts-js-resolver.js",
+  transform: {
+    "^.+\\.ts$": [
+      "ts-jest",
+      {
+        diagnostics: {
+          ignoreCodes: [151002],
+        },
+      },
+    ],
+  },
 };

@@ -1,6 +1,14 @@
 import { fetch, SimpleFetcher } from "../../src/https";
 import { mockHttpsUri, throwOnUnusedMocks } from "./test-util";
 
+function toArrayBuffer(str: string): ArrayBuffer {
+  const buf = Buffer.from(str);
+  return buf.buffer.slice(
+    buf.byteOffset,
+    buf.byteOffset + buf.byteLength
+  ) as ArrayBuffer;
+}
+
 describe("unit tests https", () => {
   afterEach(() => {
     throwOnUnusedMocks();
@@ -12,7 +20,7 @@ describe("unit tests https", () => {
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
     expect.assertions(1);
     return expect(fetch(uri)).resolves.toEqual(
-      Buffer.from(JSON.stringify(payload))
+      toArrayBuffer(JSON.stringify(payload))
     );
   });
 
@@ -58,7 +66,7 @@ describe("unit tests https", () => {
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
     expect.assertions(1);
     return expect(new SimpleFetcher().fetch(uri)).resolves.toEqual(
-      Buffer.from(JSON.stringify(payload))
+      toArrayBuffer(JSON.stringify(payload))
     );
   });
 
@@ -70,7 +78,7 @@ describe("unit tests https", () => {
     mockHttpsUri(uri, new TcpError("Some TCP error occured"));
     mockHttpsUri(uri, { responsePayload: JSON.stringify(payload) });
     return expect(new SimpleFetcher().fetch(uri)).resolves.toEqual(
-      Buffer.from(JSON.stringify(payload))
+      toArrayBuffer(JSON.stringify(payload))
     );
   });
 
@@ -105,6 +113,6 @@ describe("unit tests https", () => {
       new SimpleFetcher({
         defaultRequestOptions: { timeout: 100, responseTimeout: 150 },
       }).fetch(uri)
-    ).resolves.toEqual(Buffer.from(JSON.stringify(payload)));
+    ).resolves.toEqual(toArrayBuffer(JSON.stringify(payload)));
   });
 });
