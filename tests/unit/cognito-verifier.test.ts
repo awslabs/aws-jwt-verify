@@ -429,16 +429,16 @@ describe("unit tests cognito verifier", () => {
       test("parseUserPoolId with global format from JWT", () => {
         const userPoolId = "us-east-1_123456";
         const jwtIssuer =
-          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
+          "https://issuer-cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
         const { issuer, jwksUri } = CognitoJwtVerifier.parseUserPoolId(
           userPoolId,
           jwtIssuer
         );
         expect(issuer).toBe(
-          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456"
+          "https://issuer-cognito-idp.us-east-1.amazonaws.com/us-east-1_123456"
         );
         expect(jwksUri).toBe(
-          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456/.well-known/jwks.json"
+          "https://issuer-cognito-idp.us-east-1.amazonaws.com/us-east-1_123456/.well-known/jwks.json"
         );
       });
 
@@ -461,7 +461,7 @@ describe("unit tests cognito verifier", () => {
       test("verify JWT with global issuer format", () => {
         const userPoolId = "us-east-1_123456";
         const globalIssuer =
-          "https://issuer.cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
+          "https://issuer-cognito-idp.us-east-1.amazonaws.com/us-east-1_123456";
         const signedJwt = signJwt(
           { kid: keypair.jwk.kid },
           {

@@ -233,7 +233,7 @@ export class CognitoJwtVerifier<
           // For each user pool, create configs for BOTH region and global issuer formats
           // This allows seamless verification during the transition period
           const regionFormat = CognitoJwtVerifier.parseUserPoolId(p.userPoolId);
-          const globalFormatIssuer = `https://issuer.cognito-idp.${p.userPoolId.split("_")[0]}.amazonaws.com/${p.userPoolId}`;
+          const globalFormatIssuer = `https://issuer-cognito-idp.${p.userPoolId.split("_")[0]}.amazonaws.com/${p.userPoolId}`;
           const globalFormat = CognitoJwtVerifier.parseUserPoolId(
             p.userPoolId,
             globalFormatIssuer
@@ -257,7 +257,7 @@ export class CognitoJwtVerifier<
             ...props,
             ...CognitoJwtVerifier.parseUserPoolId(
               props.userPoolId,
-              `https://issuer.cognito-idp.${props.userPoolId.split("_")[0]}.amazonaws.com/${props.userPoolId}`
+              `https://issuer-cognito-idp.${props.userPoolId.split("_")[0]}.amazonaws.com/${props.userPoolId}`
             ),
             audience: null,
           },
@@ -288,13 +288,13 @@ export class CognitoJwtVerifier<
     const region = match.groups!.region;
 
     // Determine issuer format based on JWT's issuer claim if provided
-    // Global format: https://issuer.cognito-idp.<region>.amazonaws.com/<userPoolId>
+    // Global format: https://issuer-cognito-idp.<region>.amazonaws.com/<userPoolId>
     // Region format: https://cognito-idp.<region>.amazonaws.com/<userPoolId>
     let issuer: string;
     if (jwtIssuer) {
       // Use the format from the JWT's issuer claim
-      if (jwtIssuer.includes("issuer.cognito-idp")) {
-        issuer = `https://issuer.cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+      if (jwtIssuer.includes("issuer-cognito-idp")) {
+        issuer = `https://issuer-cognito-idp.${region}.amazonaws.com/${userPoolId}`;
       } else {
         issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
       }
@@ -442,7 +442,7 @@ export class CognitoJwtVerifier<
       CognitoJwtVerifier.parseUserPoolId(poolId).issuer;
     const globalFormatIssuer = CognitoJwtVerifier.parseUserPoolId(
       poolId,
-      `https://issuer.cognito-idp.${poolId.split("_")[0]}.amazonaws.com/${poolId}`
+      `https://issuer-cognito-idp.${poolId.split("_")[0]}.amazonaws.com/${poolId}`
     ).issuer;
 
     super.cacheJwks(jwks, regionFormatIssuer);
