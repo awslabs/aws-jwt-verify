@@ -94,7 +94,15 @@ describe("unit tests jwk", () => {
 
   test("Simple JWKS cache returns JWK", () => {
     const jwksCache = new SimpleJwksCache({
-      fetcher: { fetch: async () => Buffer.from(JSON.stringify(keypair.jwks)) },
+      fetcher: {
+        fetch: async () => {
+          const buf = Buffer.from(JSON.stringify(keypair.jwks));
+          return buf.buffer.slice(
+            buf.byteOffset,
+            buf.byteOffset + buf.byteLength
+          ) as ArrayBuffer;
+        },
+      },
     });
     expect.assertions(1);
     return expect(
@@ -113,7 +121,13 @@ describe("unit tests jwk", () => {
   test("Simple JWKS cache error flow: invalid JSON", () => {
     const jwksCache = new SimpleJwksCache({
       fetcher: {
-        fetch: async () => Buffer.from(JSON.stringify(keypair.jwks) + "}"),
+        fetch: async () => {
+          const buf = Buffer.from(JSON.stringify(keypair.jwks) + "}");
+          return buf.buffer.slice(
+            buf.byteOffset,
+            buf.byteOffset + buf.byteLength
+          ) as ArrayBuffer;
+        },
       },
     });
     expect.assertions(1);
@@ -154,7 +168,13 @@ describe("unit tests jwk", () => {
      * be made to the JWKS URI.
      */
     const fetcher = {
-      fetch: jest.fn(async () => Buffer.from(JSON.stringify(keypair.jwks))),
+      fetch: jest.fn(async () => {
+        const buf = Buffer.from(JSON.stringify(keypair.jwks));
+        return buf.buffer.slice(
+          buf.byteOffset,
+          buf.byteOffset + buf.byteLength
+        ) as ArrayBuffer;
+      }),
     };
     const jwksCache = new SimpleJwksCache({
       fetcher,
@@ -176,7 +196,13 @@ describe("unit tests jwk", () => {
      * sucessfully return the JWK. After the wait time lapses, the JWKS URI may be fetched again.
      */
     const fetcher = {
-      fetch: jest.fn(async () => Buffer.from(JSON.stringify(keypair.jwks))),
+      fetch: jest.fn(async () => {
+        const buf = Buffer.from(JSON.stringify(keypair.jwks));
+        return buf.buffer.slice(
+          buf.byteOffset,
+          buf.byteOffset + buf.byteLength
+        ) as ArrayBuffer;
+      }),
     };
     const waitSeconds = 0.5;
     const penaltyBox = new SimplePenaltyBox({ waitSeconds });
@@ -295,7 +321,11 @@ describe("unit tests jwk", () => {
       }
       class CustomJsonFetcher implements Fetcher {
         public fetch = jest.fn(async (_uri: string) => {
-          return Buffer.from(JSON.stringify(keypair.jwks));
+          const buf = Buffer.from(JSON.stringify(keypair.jwks));
+          return buf.buffer.slice(
+            buf.byteOffset,
+            buf.byteOffset + buf.byteLength
+          ) as ArrayBuffer;
         });
       }
       const penaltyBox = new CustomPenaltyBox();
