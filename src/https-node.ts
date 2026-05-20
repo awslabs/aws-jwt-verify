@@ -56,9 +56,13 @@ export async function fetch(
             for await (const chunk of responseBody) {
               chunks.push(chunk);
             }
-            return Buffer.concat(chunks);
+            const buf = Buffer.concat(chunks);
+            return buf.buffer.slice(
+              buf.byteOffset,
+              buf.byteOffset + buf.byteLength
+            ) as ArrayBuffer;
           },
-          done
+          (err: Error | null, data?: ArrayBuffer) => done(err, data)
         );
       }
     );

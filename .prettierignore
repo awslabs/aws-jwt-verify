@@ -29,3 +29,4 @@ tests/cognito/cdk.out/*
 tests/import-tests/typescript.js
 tests/import-tests/should-not-compile.js
 tests/vite-app/util/generateExampleTokens.js
+tests/vite-app/src/style.css
