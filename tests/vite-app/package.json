@@ -20,7 +20,7 @@
     "@cypress/webpack-preprocessor": "^6.0.4",
     "@rollup/plugin-node-resolve": "^15.3.1",
     "@types/node": "^20.19.39",
-    "cypress": "^15.14.2",
+    "cypress": "^15.15.0",
     "ts-loader": "^9.5.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
