@@ -414,6 +414,82 @@ describe("unit tests cognito verifier", () => {
         ).toThrow("Invalid Cognito User Pool ID");
       });
 
+      test("parseUserPoolId with EU Sovereign Cloud region (eusc)", () => {
+        const userPoolId = "eusc-de-east-1_abc123";
+        const { issuer, jwksUri } =
+          CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        expect(issuer).toBe(
+          "https://cognito-idp.eusc-de-east-1.amazonaws.com/eusc-de-east-1_abc123"
+        );
+        expect(jwksUri).toBe(
+          "https://cognito-idp.eusc-de-east-1.amazonaws.com/eusc-de-east-1_abc123/.well-known/jwks.json"
+        );
+      });
+
+      test("parseUserPoolId with GovCloud region", () => {
+        const userPoolId = "us-gov-west-1_abc123";
+        const { issuer, jwksUri } =
+          CognitoJwtVerifier.parseUserPoolId(userPoolId);
+        expect(issuer).toBe(
+          "https://cognito-idp.us-gov-west-1.amazonaws.com/us-gov-west-1_abc123"
+        );
+        expect(jwksUri).toBe(
+          "https://cognito-idp.us-gov-west-1.amazonaws.com/us-gov-west-1_abc123/.well-known/jwks.json"
+        );
+      });
+
+      test("verify JWT with EU Sovereign Cloud user pool", () => {
+        const userPoolId = "eusc-de-east-1_abc123";
+        const issuer =
+          "https://cognito-idp.eusc-de-east-1.amazonaws.com/eusc-de-east-1_abc123";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          {
+            hello: "world",
+            iss: issuer,
+            token_use: "access",
+            client_id: "test-client",
+          },
+          keypair.privateKey
+        );
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+          tokenUse: "access",
+          clientId: "test-client",
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        expect(cognitoVerifier.verifySync(signedJwt)).toMatchObject({
+          hello: "world",
+          iss: issuer,
+        });
+      });
+
+      test("verify JWT with GovCloud user pool", () => {
+        const userPoolId = "us-gov-west-1_abc123";
+        const issuer =
+          "https://cognito-idp.us-gov-west-1.amazonaws.com/us-gov-west-1_abc123";
+        const signedJwt = signJwt(
+          { kid: keypair.jwk.kid },
+          {
+            hello: "world",
+            iss: issuer,
+            token_use: "access",
+            client_id: "test-client",
+          },
+          keypair.privateKey
+        );
+        const cognitoVerifier = CognitoJwtVerifier.create({
+          userPoolId,
+          tokenUse: "access",
+          clientId: "test-client",
+        });
+        cognitoVerifier.cacheJwks(keypair.jwks);
+        expect(cognitoVerifier.verifySync(signedJwt)).toMatchObject({
+          hello: "world",
+          iss: issuer,
+        });
+      });
+
       test("parseUserPoolId with region format (default)", () => {
         const userPoolId = "us-east-1_123456";
         const { issuer, jwksUri } =

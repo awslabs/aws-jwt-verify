@@ -222,7 +222,7 @@ export class CognitoJwtVerifier<
   MultiIssuer extends boolean,
 > extends JwtVerifierBase<SpecificVerifyProperties, IssuerConfig, MultiIssuer> {
   private static USER_POOL_ID_REGEX =
-    /^(?<region>[a-z]{2}-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
+    /^(?<region>(?:eusc-[a-z]{2}|[a-z]{2})-(gov-)?[a-z]+-\d)_[a-zA-Z0-9]+$/;
 
   private constructor(
     props: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
