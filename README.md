@@ -223,7 +223,7 @@ Except the User Pool ID, parameters provided when creating the `CognitoJwtVerifi
 
 Supported parameters are:
 
-- `userPoolId` (mandatory): the Cognito User Pool ID. The issuer (`iss`) and `jwksUri` will be determined from this.
+- `userPoolId` (mandatory): the Cognito User Pool ID. The issuer (`iss`) and `jwksUri` will be determined from this. There is seamless support to check both the original and updated [OIDC issuer](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html#user-pool-oidc-issuer) required for user pools with multi-Region replication.
 - `tokenUse` (mandatory): verify that the JWT's `token_use` claim matches your expectation. Set to either `id` or `access`. Set to `null` to skip checking `token_use`.
 - `clientId` (mandatory): verify that the JWT's `aud` (id token) or `client_id` (access token) claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these client ids must match the JWT). Set to `null` to skip checking client id (not recommended unless you know what you are doing).
 - `groups` (optional): verify that the JWT's `cognito:groups` claim matches your expectation. Provide a string, or an array of strings to allow multiple groups (i.e. one of these groups must match the JWT).
