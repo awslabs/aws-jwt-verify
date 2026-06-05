@@ -530,7 +530,12 @@ export abstract class JwtVerifierBase<
     const jwksFetches = Array.from(this.issuersConfig.values()).map(
       ({ jwksUri }) => this.jwksCache.getJwks(jwksUri)
     );
-    await Promise.all(jwksFetches);
+    const results = await Promise.allSettled(jwksFetches);
+    // Ensure at least one fetch succeeded; if all failed, throw the first error
+    const allFailed = results.every((r) => r.status === "rejected");
+    if (allFailed) {
+      throw (results[0] as PromiseRejectedResult).reason;
+    }
   }
 
   /**
