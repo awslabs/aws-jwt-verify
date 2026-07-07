@@ -78,6 +78,10 @@ export class CognitoStack extends cdk.Stack {
         id: "AwsSolutions-COG3",
         reason: "Testing does not use advanced security features.",
       },
+      {
+        id: "AwsSolutions-COG8",
+        reason: "Testing does not need plus tier / advanced security features.",
+      },
     ]);
 
     const oauthDomain = cup.addDomain("OAuthDomain", {
