@@ -109,8 +109,7 @@ enum JwtSignatureAlgorithmHashNames {
 }
 
 type JwtSignatureAlgorithm =
-  | keyof typeof JwtSignatureAlgorithmHashNames
-  | "EdDSA";
+  keyof typeof JwtSignatureAlgorithmHashNames | "EdDSA";
 
 /**
  * Create a signed JWT with the given header and payload.

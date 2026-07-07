@@ -337,8 +337,7 @@ export class CognitoJwtVerifier<
 
   static create(
     verifyProperties:
-      | CognitoJwtVerifierProperties
-      | CognitoJwtVerifierMultiProperties[],
+      CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties[],
     additionalProperties?: { jwksCache: JwksCache }
   ) {
     return new this(verifyProperties, additionalProperties?.jwksCache);
