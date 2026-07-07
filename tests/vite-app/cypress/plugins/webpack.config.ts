@@ -1,5 +1,5 @@
-module.exports = {
-  mode: "development",
+export default {
+  mode: "development" as const,
   module: {
     rules: [
       {
