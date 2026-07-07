@@ -204,8 +204,7 @@ export class AlbJwtVerifier<
 
   static create(
     verifyProperties:
-      | AlbJwtVerifierProperties
-      | AlbJwtVerifierMultiProperties[],
+      AlbJwtVerifierProperties | AlbJwtVerifierMultiProperties[],
     additionalProperties?: { jwksCache: JwksCache }
   ) {
     return new this(
