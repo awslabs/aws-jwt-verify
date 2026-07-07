@@ -3,6 +3,7 @@ import setupPlugins from "./cypress/plugins";
 
 export default defineConfig({
   e2e: {
+    allowCypressEnv: false,
     env: {
       CI: process.env.CI,
     },
