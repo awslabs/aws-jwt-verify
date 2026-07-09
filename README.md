@@ -160,6 +160,7 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Checking scope](#checking-scope)
   - [Custom JWT and JWK checks](#custom-jwt-and-jwk-checks)
   - [Trusting multiple User Pools](#trusting-multiple-user-pools)
+  - [Multi-Region Replication (MRR)](#multi-region-replication-mrr)
   - [Using the generic JWT verifier for Cognito JWTs](#using-the-generic-jwt-verifier-for-cognito-jwts)
   - [Verifying JWTs from a Cognito identity pool](#verifying-jwts-from-a-cognito-identity-pool)
 - [Verifying JWTs from any OIDC-compatible IDP](#verifying-jwts-from-any-oidc-compatible-idp)
@@ -223,7 +224,7 @@ Except the User Pool ID, parameters provided when creating the `CognitoJwtVerifi
 
 Supported parameters are:
 
-- `userPoolId` (mandatory): the Cognito User Pool ID. The issuer (`iss`) and `jwksUri` will be determined from this. There is seamless support to check both the original and updated [OIDC issuer](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html#user-pool-oidc-issuer) required for user pools with multi-Region replication.
+- `userPoolId` (mandatory): the Cognito User Pool ID. The issuer (`iss`) and `jwksUri` will be determined from this. There is seamless support to check both the [Original and Updated OIDC issuer](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html#user-pool-oidc-issuer) formats, including for user pools with multi-Region replication.
 - `tokenUse` (mandatory): verify that the JWT's `token_use` claim matches your expectation. Set to either `id` or `access`. Set to `null` to skip checking `token_use`.
 - `clientId` (mandatory): verify that the JWT's `aud` (id token) or `client_id` (access token) claim matches your expectation. Provide a string, or an array of strings to allow multiple client ids (i.e. one of these client ids must match the JWT). Set to `null` to skip checking client id (not recommended unless you know what you are doing).
 - `groups` (optional): verify that the JWT's `cognito:groups` claim matches your expectation. Provide a string, or an array of strings to allow multiple groups (i.e. one of these groups must match the JWT).
@@ -369,6 +370,48 @@ try {
 }
 ```
 
+### Multi-Region Replication (MRR)
+
+If you use [Amazon Cognito Multi-Region Replication](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-multi-region.html), your User Pool is replicated to additional AWS Regions. Cognito recommends your user pool uses the [Updated OIDC issuer](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html#user-pool-oidc-issuer).
+
+The Updated issuer format is `https://issuer-cognito-idp.<primary-region>.amazonaws.com/<userPoolId>`, where the Region is always the **primary** Region of your user pool, regardless of which Region issues the token. This library supports the Updated issuer format, so JWTs from any replica Region are verified without additional configuration:
+
+```typescript
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+
+// No special configuration needed for MRR.
+// JWTs issued from any replica region will have the same issuer claim
+// (using the primary region), so verification works automatically.
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: "us-east-1_abcd12345",
+  tokenUse: "access",
+  clientId: "<client_id>",
+});
+
+try {
+  const payload = await verifier.verify(
+    "eyJraWQeyJhdF9oYXNoIjoidk..." // JWT issued from any region (primary or replica)
+  );
+  console.log("Token is valid. Payload:", payload);
+} catch {
+  console.log("Token not valid!");
+}
+```
+
+If your multi-Region user pool uses the Original issuer and you are verifying a token issued from a replica region with the format `https://cognito-idp.<replica-region>.amazonaws.com/<userPoolId>`, you need to configure `additionalRegions` for `CognitoJwtVerifier`.
+
+```typescript
+// Special configuration needed for MRR using Original issuer
+// JWTs issued from any replica region may have a different issuer claim
+// (using the replica region), so verification requires additionalRegions.
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: "us-east-1_abcd12345",
+  tokenUse: "access",
+  clientId: "<client_id>",
+  additionalRegions: ["us-west-2"],
+});
+```
+
 ### Using the generic JWT verifier for Cognito JWTs
 
 The generic `JwtVerifier` (see [below](#verifying-jwts-from-any-oidc-compatible-idp)) can also be used for Cognito, which is useful if you want to define a verifier that trusts multiple IDPs, i.e. Cognito and another IDP.
@@ -394,6 +437,32 @@ const verifier = JwtVerifier.create([
   {
     issuer: "https://example.com/my/other/idp",
     audience: "myaudience", // do specify audience for other IDPs
+  },
+]);
+```
+
+The generic `JwtVerifier` can be used for Cognito multi-Region user pools using the Original issuer by supplying both Region's issuers.
+
+```typescript
+import { JwtVerifier } from "aws-jwt-verify";
+import type { JwtPayload } from "aws-jwt-verify/jwt-model";
+import { validateCognitoJwtFields } from "aws-jwt-verify/cognito-verifier";
+
+const customJwtCheck = ({ payload }: { payload: JwtPayload }): void =>
+  validateCognitoJwtFields(payload, {
+    tokenUse: "access", // set to "id" or "access" (or null if both are fine)
+    clientId: "5nh64ti09up669an6er0u11ep5", // provide the client id, or an array of client ids (or null if you do not want to check client id)
+  });
+const verifier = JwtVerifier.create([
+  {
+    issuer: "https://cognito-idp.us-east-1.amazonaws.com/<user_pool_id>",
+    audience: null, // audience (~clientId) is checked instead, by the Cognito specific checks below
+    customJwtCheck: customJwtCheck,
+  },
+  {
+    issuer: "https://cognito-idp.us-west-2.amazonaws.com/<user_pool_id>",
+    audience: null, // audience (~clientId) is checked instead, by the Cognito specific checks below
+    customJwtCheck: customJwtCheck,
   },
 ]);
 ```

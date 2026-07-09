@@ -712,4 +712,331 @@ describe("unit tests cognito verifier", () => {
       });
     });
   });
+
+  describe("CognitoJwtVerifier with Multi-Region Replication (MRR)", () => {
+    test("Updated issuer: verify JWT from any region without additionalRegions", () => {
+      // With Updated issuer, the iss claim always uses the primary region,
+      // so no additionalRegions is needed for MRR
+      const userPoolId = "us-east-1_abcd12345";
+      const updatedIssuer =
+        "https://issuer-cognito-idp.us-east-1.amazonaws.com/us-east-1_abcd12345";
+
+      // JWT issued from a replica region, but with Updated issuer format
+      // (the issuer URL uses the primary region regardless of which region issues it)
+      const signedJwt = signJwt(
+        { kid: keypair.jwk.kid },
+        {
+          hello: "world",
+          iss: updatedIssuer,
+          token_use: "access",
+          client_id: "test-client",
+        },
+        keypair.privateKey
+      );
+
+      // No additionalRegions needed!
+      const cognitoVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: "access",
+        clientId: "test-client",
+      });
+      cognitoVerifier.cacheJwks(keypair.jwks);
+
+      expect(cognitoVerifier.verifySync(signedJwt)).toMatchObject({
+        hello: "world",
+        iss: updatedIssuer,
+      });
+    });
+
+    test("verify JWT from replica region with additionalRegions", () => {
+      // Primary user pool in us-east-1, replicated to us-west-2
+      const userPoolId = "us-east-1_abcd12345";
+      const replicaIssuer =
+        "https://cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345";
+
+      const signedJwt = signJwt(
+        { kid: keypair.jwk.kid },
+        {
+          hello: "world",
+          iss: replicaIssuer,
+          token_use: "access",
+          client_id: "test-client",
+        },
+        keypair.privateKey
+      );
+
+      const cognitoVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: "access",
+        clientId: "test-client",
+        additionalRegions: ["us-west-2"],
+      });
+      cognitoVerifier.cacheJwks(keypair.jwks);
+
+      expect(cognitoVerifier.verifySync(signedJwt)).toMatchObject({
+        hello: "world",
+        iss: replicaIssuer,
+      });
+    });
+
+    test("verify JWT from primary region still works with additionalRegions", () => {
+      const userPoolId = "us-east-1_abcd12345";
+      const primaryIssuer =
+        "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_abcd12345";
+
+      const signedJwt = signJwt(
+        { kid: keypair.jwk.kid },
+        {
+          hello: "world",
+          iss: primaryIssuer,
+          token_use: "access",
+          client_id: "test-client",
+        },
+        keypair.privateKey
+      );
+
+      const cognitoVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: "access",
+        clientId: "test-client",
+        additionalRegions: ["us-west-2"],
+      });
+      cognitoVerifier.cacheJwks(keypair.jwks);
+
+      expect(cognitoVerifier.verifySync(signedJwt)).toMatchObject({
+        hello: "world",
+        iss: primaryIssuer,
+      });
+    });
+
+    test("reject JWT with Updated issuer format from non-primary region", () => {
+      const userPoolId = "us-east-1_abcd12345";
+      // The Updated issuer format always uses the primary region in the iss claim,
+      // regardless of which replica issued the token. A token claiming to be from
+      // a replica region in Updated format should be rejected.
+      const replicaUpdatedIssuer =
+        "https://issuer-cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345";
+
+      const signedJwt = signJwt(
+        { kid: keypair.jwk.kid },
+        {
+          hello: "world",
+          iss: replicaUpdatedIssuer,
+          token_use: "access",
+          client_id: "test-client",
+        },
+        keypair.privateKey
+      );
+
+      const cognitoVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: "access",
+        clientId: "test-client",
+        additionalRegions: ["us-west-2"],
+      });
+      cognitoVerifier.cacheJwks(keypair.jwks);
+
+      expect(() => cognitoVerifier.verifySync(signedJwt)).toThrow(
+        "issuer not configured"
+      );
+    });
+
+    test("reject JWT from non-configured region", () => {
+      const userPoolId = "us-east-1_abcd12345";
+      // JWT issued from eu-west-1 which is NOT in additionalRegions
+      const unconfiguredIssuer =
+        "https://cognito-idp.eu-west-1.amazonaws.com/us-east-1_abcd12345";
+
+      const signedJwt = signJwt(
+        { kid: keypair.jwk.kid },
+        {
+          hello: "world",
+          iss: unconfiguredIssuer,
+          token_use: "access",
+          client_id: "test-client",
+        },
+        keypair.privateKey
+      );
+
+      const cognitoVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: "access",
+        clientId: "test-client",
+        additionalRegions: ["us-west-2"],
+      });
+      cognitoVerifier.cacheJwks(keypair.jwks);
+
+      expect(() => cognitoVerifier.verifySync(signedJwt)).toThrow(
+        "issuer not configured"
+      );
+    });
+
+    test("multiple additionalRegions", () => {
+      const userPoolId = "us-east-1_abcd12345";
+
+      // Replicated to both us-west-2 and eu-west-1
+      const cognitoVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: "access",
+        clientId: "test-client",
+        additionalRegions: ["us-west-2", "eu-west-1"],
+      });
+      cognitoVerifier.cacheJwks(keypair.jwks);
+
+      // Verify from us-west-2
+      const signedJwtWest2 = signJwt(
+        { kid: keypair.jwk.kid },
+        {
+          hello: "from-west-2",
+          iss: "https://cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345",
+          token_use: "access",
+          client_id: "test-client",
+        },
+        keypair.privateKey
+      );
+      expect(cognitoVerifier.verifySync(signedJwtWest2)).toMatchObject({
+        hello: "from-west-2",
+      });
+
+      // Verify from eu-west-1
+      const signedJwtEuWest1 = signJwt(
+        { kid: keypair.jwk.kid },
+        {
+          hello: "from-eu-west-1",
+          iss: "https://cognito-idp.eu-west-1.amazonaws.com/us-east-1_abcd12345",
+          token_use: "access",
+          client_id: "test-client",
+        },
+        keypair.privateKey
+      );
+      expect(cognitoVerifier.verifySync(signedJwtEuWest1)).toMatchObject({
+        hello: "from-eu-west-1",
+      });
+    });
+
+    test("multi-pool verifier with additionalRegions", () => {
+      const identityProviders = [
+        {
+          config: {
+            userPoolId: "us-east-1_abc",
+            clientId: "client1",
+            tokenUse: "access" as const,
+            additionalRegions: ["us-west-2"],
+          },
+          keypair: generateKeyPair(),
+        },
+        {
+          config: {
+            userPoolId: "eu-west-1_def",
+            clientId: "client2",
+            tokenUse: "access" as const,
+            additionalRegions: ["eu-central-1"],
+          },
+          keypair: generateKeyPair(),
+        },
+      ];
+
+      const verifier = CognitoJwtVerifier.create(
+        identityProviders.map((idp) => idp.config)
+      );
+
+      // Cache JWKS for both pools
+      for (const idp of identityProviders) {
+        verifier.cacheJwks(idp.keypair.jwks, idp.config.userPoolId);
+      }
+
+      // Verify JWT from us-east-1_abc in replica region us-west-2
+      const signedJwt1 = signJwt(
+        { kid: identityProviders[0].keypair.jwk.kid },
+        {
+          hello: "pool1-replica",
+          iss: "https://cognito-idp.us-west-2.amazonaws.com/us-east-1_abc",
+          token_use: "access",
+          client_id: "client1",
+        },
+        identityProviders[0].keypair.privateKey
+      );
+      expect(verifier.verifySync(signedJwt1)).toMatchObject({
+        hello: "pool1-replica",
+      });
+
+      // Verify JWT from eu-west-1_def in replica region eu-central-1
+      const signedJwt2 = signJwt(
+        { kid: identityProviders[1].keypair.jwk.kid },
+        {
+          hello: "pool2-replica",
+          iss: "https://cognito-idp.eu-central-1.amazonaws.com/eu-west-1_def",
+          token_use: "access",
+          client_id: "client2",
+        },
+        identityProviders[1].keypair.privateKey
+      );
+      expect(verifier.verifySync(signedJwt2)).toMatchObject({
+        hello: "pool2-replica",
+      });
+    });
+
+    test("parseUserPoolId with regionOverride", () => {
+      const userPoolId = "us-east-1_abcd12345";
+      const { issuer, jwksUri } = CognitoJwtVerifier.parseUserPoolId(
+        userPoolId,
+        undefined,
+        "us-west-2"
+      );
+      expect(issuer).toBe(
+        "https://cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345"
+      );
+      expect(jwksUri).toBe(
+        "https://cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345/.well-known/jwks.json"
+      );
+    });
+
+    test("parseUserPoolId with regionOverride and Updated issuer format", () => {
+      const userPoolId = "us-east-1_abcd12345";
+      const jwtIssuer =
+        "https://issuer-cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345";
+      const { issuer, jwksUri } = CognitoJwtVerifier.parseUserPoolId(
+        userPoolId,
+        jwtIssuer,
+        "us-west-2"
+      );
+      expect(issuer).toBe(
+        "https://issuer-cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345"
+      );
+      expect(jwksUri).toBe(
+        "https://issuer-cognito-idp.us-west-2.amazonaws.com/us-east-1_abcd12345/.well-known/jwks.json"
+      );
+    });
+
+    test("extractRegion", () => {
+      expect(CognitoJwtVerifier.extractRegion("us-east-1_abc123")).toBe(
+        "us-east-1"
+      );
+      expect(CognitoJwtVerifier.extractRegion("eu-west-1_xyz789")).toBe(
+        "eu-west-1"
+      );
+      expect(CognitoJwtVerifier.extractRegion("us-gov-west-1_abc123")).toBe(
+        "us-gov-west-1"
+      );
+      expect(CognitoJwtVerifier.extractRegion("eusc-de-east-1_abc123")).toBe(
+        "eusc-de-east-1"
+      );
+      expect(() => CognitoJwtVerifier.extractRegion("invalid-pool-id")).toThrow(
+        "Invalid Cognito User Pool ID"
+      );
+    });
+
+    test("duplicate region in additionalRegions is handled gracefully", () => {
+      const userPoolId = "us-east-1_abcd12345";
+      // Including us-east-1 (the primary) in additionalRegions shouldn't cause issues
+      expect(() =>
+        CognitoJwtVerifier.create({
+          userPoolId,
+          tokenUse: "access",
+          clientId: "test-client",
+          additionalRegions: ["us-east-1", "us-west-2"],
+        })
+      ).not.toThrow();
+    });
+  });
 });

@@ -75,6 +75,14 @@ export interface CognitoVerifyProperties {
    * The `rawJwt` will only be included in the Error object, if the JWT's signature can at least be verified.
    */
   includeRawJwtInErrors?: boolean;
+  /**
+   * Additional AWS regions where this User Pool is replicated via Multi-Region Replication (MRR).
+   * Only needed when using the Original issuer format, where the `iss` claim in the JWT
+   * contains the region of the endpoint that issued the token.
+   * With the Updated issuer format, the `iss` claim always uses the primary region,
+   * so additionalRegions is not needed.
+   */
+  additionalRegions?: string[];
 }
 
 /** Type for Cognito JWT verifier properties, for a single User Pool */
@@ -229,40 +237,67 @@ export class CognitoJwtVerifier<
     jwksCache?: JwksCache
   ) {
     const issuerConfig = Array.isArray(props)
-      ? (props.flatMap((p) => {
-          // For each user pool, create configs for BOTH region and global issuer formats
-          // This allows seamless verification during the transition period
-          const regionFormat = CognitoJwtVerifier.parseUserPoolId(p.userPoolId);
-          const globalFormatIssuer = `https://issuer-cognito-idp.${p.userPoolId.split("_")[0]}.amazonaws.com/${p.userPoolId}`;
-          const globalFormat = CognitoJwtVerifier.parseUserPoolId(
-            p.userPoolId,
-            globalFormatIssuer
-          );
-
-          // audience checked by validateCognitoJwtFields
-          return [
-            { ...p, ...regionFormat, audience: null },
-            { ...p, ...globalFormat, audience: null },
-          ];
-        }) as IssuerConfig[])
-      : ([
-          // Single user pool - create configs for both formats
-          // audience checked by validateCognitoJwtFields
-          {
-            ...props,
-            ...CognitoJwtVerifier.parseUserPoolId(props.userPoolId),
-            audience: null,
-          },
-          {
-            ...props,
-            ...CognitoJwtVerifier.parseUserPoolId(
-              props.userPoolId,
-              `https://issuer-cognito-idp.${props.userPoolId.split("_")[0]}.amazonaws.com/${props.userPoolId}`
-            ),
-            audience: null,
-          },
-        ] as IssuerConfig[]);
+      ? (props.flatMap((p) =>
+          CognitoJwtVerifier.buildIssuerConfigs(p)
+        ) as IssuerConfig[])
+      : (CognitoJwtVerifier.buildIssuerConfigs(props) as IssuerConfig[]);
     super(issuerConfig, jwksCache);
+  }
+
+  /**
+   * Build all issuer configurations for a single user pool, accounting for
+   * both issuer formats and additional regions (MRR).
+   *
+   * - Updated format: only 1 issuer config (primary region), because the `iss`
+   *   claim always uses the primary region regardless of which replica issued the token.
+   * - Original format: 1 issuer config per region (primary + additionalRegions),
+   *   because the `iss` claim contains the region of the endpoint that issued the token.
+   */
+  private static buildIssuerConfigs(
+    p: CognitoJwtVerifierProperties | CognitoJwtVerifierMultiProperties
+  ) {
+    const primaryRegion = CognitoJwtVerifier.extractRegion(p.userPoolId);
+    const configs: (typeof p & {
+      issuer: string;
+      jwksUri: string;
+      audience: null;
+    })[] = [];
+
+    // Updated format — always just the primary region (one entry)
+    const updated = CognitoJwtVerifier.parseUserPoolId(
+      p.userPoolId,
+      `https://issuer-cognito-idp.${primaryRegion}.amazonaws.com/${p.userPoolId}`
+    );
+    configs.push({ ...p, ...updated, audience: null });
+
+    // Original format — one per region (primary + additionalRegions)
+    const allRegions = new Set([primaryRegion, ...(p.additionalRegions ?? [])]);
+    for (const region of allRegions) {
+      const original = CognitoJwtVerifier.parseUserPoolId(
+        p.userPoolId,
+        undefined,
+        region
+      );
+      configs.push({ ...p, ...original, audience: null });
+    }
+
+    return configs;
+  }
+
+  /**
+   * Extract the AWS region from a User Pool ID.
+   *
+   * @param userPoolId The User Pool ID (e.g. "us-east-1_abc123")
+   * @returns The region portion of the User Pool ID (e.g. "us-east-1")
+   */
+  public static extractRegion(userPoolId: string): string {
+    const match = userPoolId.match(this.USER_POOL_ID_REGEX);
+    if (!match) {
+      throw new ParameterValidationError(
+        `Invalid Cognito User Pool ID: ${userPoolId}`
+      );
+    }
+    return match.groups!.region;
   }
 
   /**
@@ -270,11 +305,13 @@ export class CognitoJwtVerifier<
    *
    * @param userPoolId The User Pool ID
    * @param jwtIssuer Optional issuer claim from the JWT being verified, used to determine the issuer format
+   * @param regionOverride Optional region to use instead of the region from the User Pool ID (for MRR replicas)
    * @returns The issuer and JWKS URI for the User Pool
    */
   public static parseUserPoolId(
     userPoolId: string,
-    jwtIssuer?: string
+    jwtIssuer?: string,
+    regionOverride?: string
   ): {
     issuer: string;
     jwksUri: string;
@@ -285,11 +322,11 @@ export class CognitoJwtVerifier<
         `Invalid Cognito User Pool ID: ${userPoolId}`
       );
     }
-    const region = match.groups!.region;
+    const region = regionOverride ?? match.groups!.region;
 
     // Determine issuer format based on JWT's issuer claim if provided
-    // Global format: https://issuer-cognito-idp.<region>.amazonaws.com/<userPoolId>
-    // Region format: https://cognito-idp.<region>.amazonaws.com/<userPoolId>
+    // Updated issuer format: https://issuer-cognito-idp.<region>.amazonaws.com/<userPoolId>
+    // Original issuer format: https://cognito-idp.<region>.amazonaws.com/<userPoolId>
     let issuer: string;
     if (jwtIssuer) {
       // Use the format from the JWT's issuer claim
@@ -299,7 +336,7 @@ export class CognitoJwtVerifier<
         issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
       }
     } else {
-      // Default to region format for backward compatibility when no JWT issuer is provided
+      // Default to Original issuer format for backward compatibility when no JWT issuer is provided
       issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
     }
 
@@ -424,7 +461,7 @@ export class CognitoJwtVerifier<
     let poolId: string | undefined = userPoolId;
 
     if (!poolId) {
-      // Get unique user pool IDs from configs (since we store both region and global format)
+      // Get unique user pool IDs from configs (since we store both Original and Updated format)
       const uniqueUserPoolIds = new Set(
         Array.from(this.issuersConfig.values()).map(
           (config) => config.userPoolId
@@ -436,15 +473,11 @@ export class CognitoJwtVerifier<
       poolId = Array.from(uniqueUserPoolIds)[0];
     }
 
-    // Cache for both region and global issuer formats
-    const regionFormatIssuer =
-      CognitoJwtVerifier.parseUserPoolId(poolId).issuer;
-    const globalFormatIssuer = CognitoJwtVerifier.parseUserPoolId(
-      poolId,
-      `https://issuer-cognito-idp.${poolId.split("_")[0]}.amazonaws.com/${poolId}`
-    ).issuer;
-
-    super.cacheJwks(jwks, regionFormatIssuer);
-    super.cacheJwks(jwks, globalFormatIssuer);
+    // Cache for all configured issuers that match this user pool ID
+    for (const config of this.issuersConfig.values()) {
+      if (config.userPoolId === poolId) {
+        super.cacheJwks(jwks, config.issuer);
+      }
+    }
   }
 }
