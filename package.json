@@ -1,6 +1,6 @@
 {
   "name": "aws-jwt-verify",
-  "version": "5.2.1",
+  "version": "5.2.2",
   "description": "Verify JSON Web Tokens (JWT) from Amazon Cognito and other IDPs",
   "license": "Apache-2.0",
   "author": {
