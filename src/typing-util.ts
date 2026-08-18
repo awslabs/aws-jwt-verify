@@ -21,10 +21,12 @@ type StillToProvideVerifyKeys<Base, Provided> = keyof Omit<
  * @param Provided The object whose fields should be omitted from base
  */
 type StillToProvideProperties<Base, Provided> = {
-  [key in StillToProvideVerifyKeys<
-    WithoutOptionalFields<Base>,
-    WithoutOptionalFields<Provided>
-  >]: Base[key];
+  [
+    key in StillToProvideVerifyKeys<
+      WithoutOptionalFields<Base>,
+      WithoutOptionalFields<Provided>
+    >
+  ]: Base[key];
 };
 
 /**
