@@ -24,7 +24,7 @@
     "ts-loader": "^9.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vite": "^6.4.3"
+    "vite": "^8.2.1"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
