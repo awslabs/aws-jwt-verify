@@ -20,7 +20,7 @@
     "@cypress/webpack-preprocessor": "^6.0.4",
     "@rollup/plugin-node-resolve": "^15.3.1",
     "@types/node": "^20.19.43",
-    "cypress": "^15.19.0",
+    "cypress": "15.20.1",
     "ts-loader": "^9.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
@@ -29,6 +29,6 @@
   "allowScripts": {
     "esbuild@0.25.12": true,
     "fsevents@2.3.3": true,
-    "cypress@15.19.0": true
+    "cypress@15.20.1": true
   }
 }
