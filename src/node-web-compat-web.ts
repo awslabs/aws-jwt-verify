@@ -89,7 +89,9 @@ export const nodeWebCompat: NodeWebCompat = {
             namedCurve:
               NamedCurvesWebCrypto[alg as keyof typeof NamedCurvesWebCrypto],
           }
-        : jwk.crv!; // Ed25519 or Ed448
+        : jwk.kty === "AKP"
+          ? { name: alg }
+          : jwk.crv!; // Ed25519 or Ed448
     return crypto.subtle
       .importKey("jwk", jwk, algIdentifier, false, ["verify"])
       .then((key) => ({ key, jwk }));
@@ -110,7 +112,9 @@ export const nodeWebCompat: NodeWebCompat = {
               name: "ECDSA",
               hash: `SHA-${alg.slice(2)}`,
             }
-          : { name: (keyObject as CryptoKeyWithJwk).jwk.crv! },
+          : alg.startsWith("ML-DSA-")
+            ? ({ name: alg, context: new Uint8Array() } as Algorithm)
+            : { name: (keyObject as CryptoKeyWithJwk).jwk.crv! },
       (keyObject as CryptoKeyWithJwk).key,
       bufferFromBase64url(signature),
       new TextEncoder().encode(jwsSigningInput)

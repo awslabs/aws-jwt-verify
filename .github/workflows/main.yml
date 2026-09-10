@@ -31,3 +31,15 @@ jobs:
           npm run test:speed
         env:
           CI: "true"
+
+  test-ml-dsa:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: install
+        run: npm ci
+      - name: test ML-DSA
+        run: npx jest --runInBand tests/unit/ml-dsa.test.ts
