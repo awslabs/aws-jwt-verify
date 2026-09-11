@@ -135,6 +135,15 @@ Currently, the following signature algorithms are supported:
 - **`ES512` (ECDSA)**
 - **`Ed25519` (EdDSA)**
 - **`Ed448` (EdDSA)**
+- **`ML-DSA-44` ([RFC 9964](https://www.rfc-editor.org/rfc/rfc9964.html))**
+- **`ML-DSA-65` ([RFC 9964](https://www.rfc-editor.org/rfc/rfc9964.html))**
+- **`ML-DSA-87` ([RFC 9964](https://www.rfc-editor.org/rfc/rfc9964.html))**
+
+ML-DSA verification requires native runtime support. In Node.js, use Node.js
+24.6 or newer built with OpenSSL 3.5 or newer. In Web browsers, the runtime must
+implement the ML-DSA algorithms from the
+[Modern Algorithms in the Web Cryptography API](https://wicg.github.io/webcrypto-modern-algos/)
+proposal. Other algorithms remain supported on Node.js 18 and newer.
 
 Please leave us a GitHub issue if you need another algorithm.
 
