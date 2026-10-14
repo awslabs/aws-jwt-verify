@@ -3,11 +3,20 @@ import { assertStringArrayContainsString } from "./assert.js";
 import {
   AlbJwtInvalidClientIdError,
   AlbJwtInvalidSignerError,
+  JwtExpiredError,
   JwtInvalidClaimError,
+  JwtInvalidIssuerError,
+  JwtParseError,
   ParameterValidationError,
 } from "./error.js";
 import { Jwk, JwksCache } from "./jwk.js";
-import { AlbJwtHeader, AlbJwtPayload, JwtHeader } from "./jwt-model.js";
+import { DecomposedJwt, decomposeUnverifiedJwt } from "./jwt.js";
+import {
+  AlbJwtHeader,
+  AlbJwtPayload,
+  JwtHeader,
+  JwtPayload,
+} from "./jwt-model.js";
 import { JwtVerifierBase, JwtVerifierProperties } from "./jwt-verifier.js";
 import { Properties } from "./typing-util.js";
 
@@ -27,7 +36,7 @@ export interface AlbVerifyProperties {
    */
   clientId: string | string[] | null;
   /**
-   * The number of seconds after expiration (exp claim) or before not-before (nbf claim) that you will allow
+   * The number of seconds after expiration (exp claim, in the JWT header) or before not-before (nbf claim) that you will allow
    * (use this to account for clock differences between systems)
    */
   graceSeconds?: number;
@@ -64,7 +73,7 @@ export type AlbJwtVerifierProperties = {
   jwksUri?: string;
   /**
    * The issuer of the JWTs you want to verify.
-   * Set this to the expected value of the `iss` claim in the JWT.
+   * Set this to the expected value of the `iss` claim in the JWT (JWT header).
    */
   issuer: string | null;
   /**
@@ -89,7 +98,7 @@ export type AlbJwtVerifierMultiProperties = {
   jwksUri?: string;
   /**
    * The issuer of the JWTs you want to verify.
-   * Set this to the expected value of the `iss` claim in the JWT.
+   * Set this to the expected value of the `iss` claim in the JWT (JWT header).
    */
   issuer: string | null;
   /**
@@ -214,6 +223,38 @@ export class AlbJwtVerifier<
   }
 
   /**
+   * Get the verification parameters to use. Unlike other JWTs, ALB JWTs carry the
+   * issuer in the JWT header, so the issuer config is selected by the header iss claim
+   * (falling back to the payload iss claim).
+   *
+   * @param jwt: the JWT that is going to be verified
+   * @param verifyProperties: the overriding properties, that override the issuer configuration
+   * @returns The merged verification parameters
+   */
+  protected getVerifyParameters(
+    jwt: string,
+    verifyProperties?: Partial<SpecificVerifyProperties>
+  ): {
+    decomposedJwt: DecomposedJwt;
+    jwksUri: string;
+    verifyProperties: SpecificVerifyProperties & IssuerConfig;
+  } {
+    const decomposedJwt = decomposeUnverifiedJwt(jwt);
+    const { header, payload } = decomposedJwt;
+    const issuerConfig = this.getIssuerConfig(
+      typeof header.iss === "string" ? header.iss : payload.iss
+    );
+    return {
+      decomposedJwt,
+      jwksUri: issuerConfig.jwksUri,
+      verifyProperties: {
+        ...issuerConfig,
+        ...verifyProperties,
+      } as SpecificVerifyProperties & IssuerConfig,
+    };
+  }
+
+  /**
    * Verify (synchronously) a JWT that is signed by AWS Application Load Balancer.
    *
    * @param jwt The JWT, as string
@@ -226,8 +267,17 @@ export class AlbJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     try {
-      this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, verifyProperties);
+      // The issuer is checked on the JWT header (and payload) below, by validateAlbJwtIssuer
+      this.verifyDecomposedJwtSync(decomposedJwt, jwksUri, {
+        ...verifyProperties,
+        issuer: null,
+      });
       validateAlbJwtFields(decomposedJwt.header, verifyProperties);
+      validateAlbJwtIssuer(
+        decomposedJwt.header,
+        decomposedJwt.payload,
+        verifyProperties
+      );
     } catch (err) {
       if (
         verifyProperties.includeRawJwtInErrors &&
@@ -255,8 +305,17 @@ export class AlbJwtVerifier<
     const { decomposedJwt, jwksUri, verifyProperties } =
       this.getVerifyParameters(jwt, properties);
     try {
-      await this.verifyDecomposedJwt(decomposedJwt, jwksUri, verifyProperties);
+      // The issuer is checked on the JWT header (and payload) below, by validateAlbJwtIssuer
+      await this.verifyDecomposedJwt(decomposedJwt, jwksUri, {
+        ...verifyProperties,
+        issuer: null,
+      });
       validateAlbJwtFields(decomposedJwt.header, verifyProperties);
+      validateAlbJwtIssuer(
+        decomposedJwt.header,
+        decomposedJwt.payload,
+        verifyProperties
+      );
     } catch (err) {
       if (
         verifyProperties.includeRawJwtInErrors &&
@@ -275,8 +334,19 @@ export function validateAlbJwtFields(
   options: {
     clientId?: string | string[] | null;
     albArn: string | string[];
+    graceSeconds?: number;
   }
 ): void {
+  // Check expiry (ALB puts the exp claim in the JWT header)
+  if (typeof header.exp !== "number" || !Number.isFinite(header.exp)) {
+    throw new JwtParseError("JWT header exp claim is missing or not a number");
+  }
+  if (header.exp + (options.graceSeconds ?? 0) < Date.now() / 1000) {
+    throw new JwtExpiredError(
+      `Token expired at ${new Date(header.exp * 1000).toISOString()}`,
+      header.exp
+    );
+  }
   // Check ALB ARN (signer)
   assertStringArrayContainsString(
     "ALB ARN",
@@ -296,6 +366,44 @@ export function validateAlbJwtFields(
       header.client,
       options.clientId,
       AlbJwtInvalidClientIdError
+    );
+  }
+}
+
+/**
+ * Validate the issuer of an ALB JWT. ALB puts the iss claim in the JWT header.
+ * If the JWT payload also has an iss claim, it must match the header iss claim.
+ *
+ * @param header The (JSON parsed) JWT header
+ * @param payload The (JSON parsed) JWT payload
+ * @param options The options to use during validation
+ * @returns void
+ */
+export function validateAlbJwtIssuer(
+  header: JwtHeader,
+  payload: JwtPayload,
+  options: {
+    issuer?: string | string[] | null;
+  }
+): void {
+  if (options.issuer !== null) {
+    if (options.issuer === undefined) {
+      throw new ParameterValidationError(
+        "issuer must be provided or set to null explicitly"
+      );
+    }
+    assertStringArrayContainsString(
+      "Issuer",
+      header.iss,
+      options.issuer,
+      JwtInvalidIssuerError
+    );
+  }
+  if (payload.iss !== undefined && payload.iss !== header.iss) {
+    throw new JwtInvalidIssuerError(
+      `Issuer mismatch between JWT header and payload: ${payload.iss}`,
+      payload.iss,
+      typeof header.iss === "string" ? header.iss : undefined
     );
   }
 }

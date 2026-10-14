@@ -14,6 +14,8 @@ import {
   ParameterValidationError,
   JwtInvalidClaimError,
   JwtInvalidIssuerError,
+  JwtExpiredError,
+  JwtParseError,
   AlbJwtInvalidSignerError,
   AlbJwtInvalidClientIdError,
 } from "../../src/error";
@@ -1051,6 +1053,125 @@ describe("unit tests alb verifier", () => {
           )
         );
       });
+    });
+  });
+  describe("AlbJwtVerifier exp and iss in JWT header", () => {
+    const issuer = `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456`;
+    const otherIssuer = `https://idp.example.com`;
+    const albArn =
+      "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188";
+    const clientId = "my-client-id";
+    const now = () => Math.floor(Date.now() / 1000);
+    const sign = (
+      header: Record<string, unknown>,
+      payload: Record<string, unknown>
+    ) =>
+      signJwt(
+        {
+          typ: "JWT",
+          kid: keypair.jwk.kid,
+          alg: "ES256",
+          iss: issuer,
+          client: clientId,
+          signer: albArn,
+          exp: now() + 120,
+          ...header,
+        },
+        // signJwt adds a payload exp by default; exp: undefined removes it
+        {
+          sub: "user-1",
+          email: "user@example.com",
+          exp: undefined,
+          ...payload,
+        },
+        keypair.privateKey
+      );
+    const createVerifier = (props?: { graceSeconds?: number }) => {
+      const verifier = AlbJwtVerifier.create({
+        albArn,
+        issuer,
+        clientId,
+        ...props,
+      });
+      verifier.cacheJwks(keypair.jwks);
+      return verifier;
+    };
+
+    test("exp and iss only in header", async () => {
+      const verifier = createVerifier();
+      const jwt = sign({}, {});
+      expect(verifier.verifySync(jwt)).toMatchObject({ sub: "user-1" });
+      expect(await verifier.verify(jwt)).toMatchObject({ sub: "user-1" });
+    });
+
+    test("expired header exp, no payload exp", async () => {
+      const verifier = createVerifier();
+      const jwt = sign({ exp: now() - 86400 * 30 }, {});
+      expect(() => verifier.verifySync(jwt)).toThrow(JwtExpiredError);
+      await expect(verifier.verify(jwt)).rejects.toThrow(JwtExpiredError);
+    });
+
+    test("expired header exp, future payload exp", () => {
+      const verifier = createVerifier();
+      const jwt = sign(
+        { exp: now() - 86400 * 30 },
+        { exp: now() + 3600, iss: issuer }
+      );
+      expect(() => verifier.verifySync(jwt)).toThrow(JwtExpiredError);
+    });
+
+    test("graceSeconds applies to header exp", () => {
+      const jwt = sign({ exp: now() - 10 }, {});
+      expect(() => createVerifier().verifySync(jwt)).toThrow(JwtExpiredError);
+      expect(
+        createVerifier({ graceSeconds: 60 }).verifySync(jwt)
+      ).toMatchObject({ sub: "user-1" });
+    });
+
+    test("missing header exp", () => {
+      const verifier = createVerifier();
+      const jwt = sign({ exp: undefined }, { exp: now() + 3600 });
+      expect(() => verifier.verifySync(jwt)).toThrow(
+        new JwtParseError("JWT header exp claim is missing or not a number")
+      );
+    });
+
+    test("header iss differs from configured issuer, payload iss matches", () => {
+      const verifier = createVerifier();
+      const jwt = sign({ iss: otherIssuer }, { iss: issuer });
+      expect(() => verifier.verifySync(jwt)).toThrow(JwtInvalidIssuerError);
+    });
+
+    test("header iss differs from payload iss, with issuer null", () => {
+      const verifier = AlbJwtVerifier.create({
+        albArn,
+        issuer: null,
+        clientId,
+      });
+      verifier.cacheJwks(keypair.jwks);
+      const jwt = sign({ iss: otherIssuer }, { iss: issuer });
+      expect(() => verifier.verifySync(jwt)).toThrow(
+        new JwtInvalidIssuerError(
+          `Issuer mismatch between JWT header and payload: ${issuer}`,
+          issuer,
+          otherIssuer
+        )
+      );
+    });
+
+    test("multiple issuers, issuer config selected by header iss", () => {
+      const verifier = AlbJwtVerifier.create([
+        { albArn, issuer, clientId },
+        { albArn, issuer: otherIssuer, clientId },
+      ]);
+      verifier.cacheJwks(keypair.jwks, issuer);
+      verifier.cacheJwks(keypair.jwks, otherIssuer);
+      expect(verifier.verifySync(sign({}, {}))).toMatchObject({
+        sub: "user-1",
+      });
+      expect(verifier.verifySync(sign({ iss: otherIssuer }, {}))).toMatchObject(
+        { sub: "user-1" }
+      );
     });
   });
 });
