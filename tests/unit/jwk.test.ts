@@ -5,6 +5,7 @@ import {
   assertIsJwks,
   SimplePenaltyBox,
   assertIsJwk,
+  assertIsSignatureJwk,
   isJwks,
   PenaltyBox,
 } from "../../src/jwk";
@@ -273,6 +274,95 @@ describe("unit tests jwk", () => {
         const statement = () => assertIsJwk(jwk);
         expect(statement).toThrow("JWK alg should be a string");
         expect(statement).toThrow(JwkValidationError);
+      });
+
+      describe("AKP", () => {
+        const algorithms = [
+          ["ML-DSA-44", 1312],
+          ["ML-DSA-65", 1952],
+          ["ML-DSA-87", 2592],
+        ] as const;
+
+        test.each(algorithms)("valid %s public key", (alg, length) => {
+          expect(() =>
+            assertIsSignatureJwk({
+              kty: "AKP",
+              use: "sig",
+              alg,
+              pub: Buffer.alloc(length).toString("base64url"),
+            })
+          ).not.toThrow();
+        });
+
+        test("requires alg", () => {
+          expect(() =>
+            assertIsSignatureJwk({
+              kty: "AKP",
+              pub: Buffer.alloc(1312).toString("base64url"),
+            })
+          ).toThrow("Missing algorithm (alg)");
+        });
+
+        test("rejects unsupported alg", () => {
+          expect(() =>
+            assertIsSignatureJwk({
+              kty: "AKP",
+              alg: "HashML-DSA-44",
+              pub: Buffer.alloc(1312).toString("base64url"),
+            })
+          ).toThrow("Unsupported AKP algorithm (alg): HashML-DSA-44");
+        });
+
+        test("requires pub", () => {
+          expect(() =>
+            assertIsSignatureJwk({ kty: "AKP", alg: "ML-DSA-44" })
+          ).toThrow("Missing public key (pub)");
+        });
+
+        test("rejects wrong public key length", () => {
+          expect(() =>
+            assertIsSignatureJwk({
+              kty: "AKP",
+              alg: "ML-DSA-44",
+              pub: Buffer.alloc(1311).toString("base64url"),
+            })
+          ).toThrow(
+            "Invalid ML-DSA-44 public key length: expected 1312 bytes, got 1311"
+          );
+        });
+
+        test("rejects malformed base64url", () => {
+          const pub = Buffer.alloc(1312).toString("base64url");
+          expect(() =>
+            assertIsSignatureJwk({
+              kty: "AKP",
+              alg: "ML-DSA-44",
+              pub: `${pub.slice(0, -1)}!`,
+            })
+          ).toThrow("JWK pub is not valid base64url");
+        });
+
+        test("rejects noncanonical base64url", () => {
+          const pub = Buffer.alloc(1312).toString("base64url");
+          expect(() =>
+            assertIsSignatureJwk({
+              kty: "AKP",
+              alg: "ML-DSA-44",
+              pub: `${pub.slice(0, -1)}B`,
+            })
+          ).toThrow("JWK pub is not canonical base64url");
+        });
+
+        test("rejects private key material", () => {
+          expect(() =>
+            assertIsSignatureJwk({
+              kty: "AKP",
+              alg: "ML-DSA-44",
+              pub: Buffer.alloc(1312).toString("base64url"),
+              priv: Buffer.alloc(32).toString("base64url"),
+            })
+          ).toThrow("Private key material (priv) must not be present");
+        });
       });
     });
     describe("JWKS", () => {

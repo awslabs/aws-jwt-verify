@@ -39,6 +39,8 @@ const optionalJwkFieldNames = [
   "x", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.2
   "y", // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.3
   "crv", //https:// datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.1
+  "pub", // https://www.rfc-editor.org/rfc/rfc9964.html#section-3
+  "priv", // https://www.rfc-editor.org/rfc/rfc9964.html#section-3
 ] as const;
 const mandatoryJwkFieldNames = [
   "kty", // https://datatracker.ietf.org/doc/html/rfc7517#section-4.1
@@ -54,6 +56,9 @@ type MandatoryJwkFields = {
 };
 
 export type Jwk = OptionalJwkFields & MandatoryJwkFields & JsonObject;
+
+export const mlDsaAlgorithms = ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"] as const;
+export type MlDsaAlgorithm = (typeof mlDsaAlgorithms)[number];
 
 type RsaSignatureJwk = Jwk & {
   use?: "sig";
@@ -83,7 +88,19 @@ type OkpSignatureJwk = Jwk & {
   x: string;
 };
 
-export type SignatureJwk = RsaSignatureJwk | EcSignatureJwk | OkpSignatureJwk;
+type AkpSignatureJwk = Jwk & {
+  use?: "sig";
+  /**
+   * Algorithm Key Pair: https://www.rfc-editor.org/rfc/rfc9964.html#section-3
+   */
+  kty: "AKP";
+  alg: MlDsaAlgorithm;
+  pub: string;
+  priv?: never;
+};
+
+export type SignatureJwk =
+  RsaSignatureJwk | EcSignatureJwk | OkpSignatureJwk | AkpSignatureJwk;
 
 export type JwkWithKid = Jwk & {
   kid: string;
@@ -179,7 +196,7 @@ export function assertIsSignatureJwk(jwk: Jwk): asserts jwk is SignatureJwk {
   assertStringArrayContainsString(
     "JWK kty",
     jwk.kty,
-    ["EC", "RSA", "OKP"],
+    ["EC", "RSA", "OKP", "AKP"],
     JwkInvalidKtyError
   );
   if (jwk.kty === "EC") {
@@ -188,7 +205,66 @@ export function assertIsSignatureJwk(jwk: Jwk): asserts jwk is SignatureJwk {
     assertIsRsaSignatureJwk(jwk);
   } else if (jwk.kty === "OKP") {
     assertIsEdDSASignatureJwk(jwk);
+  } else if (jwk.kty === "AKP") {
+    assertIsMlDsaSignatureJwk(jwk);
   }
+}
+
+const mlDsaPublicKeyLengths: Record<MlDsaAlgorithm, number> = {
+  "ML-DSA-44": 1312,
+  "ML-DSA-65": 1952,
+  "ML-DSA-87": 2592,
+};
+
+function assertIsMlDsaSignatureJwk(jwk: Jwk): asserts jwk is AkpSignatureJwk {
+  if (jwk.use) {
+    assertStringEquals("JWK use", jwk.use, "sig", JwkInvalidUseError);
+  }
+  assertStringEquals("JWK kty", jwk.kty, "AKP", JwkInvalidKtyError);
+
+  if (!jwk.alg) {
+    throw new JwkValidationError("Missing algorithm (alg)");
+  }
+  if (!mlDsaAlgorithms.includes(jwk.alg as MlDsaAlgorithm)) {
+    throw new JwkValidationError(`Unsupported AKP algorithm (alg): ${jwk.alg}`);
+  }
+  if (!jwk.pub) {
+    throw new JwkValidationError("Missing public key (pub)");
+  }
+  if (jwk.priv !== undefined) {
+    throw new JwkValidationError(
+      "Private key material (priv) must not be present in a verification key"
+    );
+  }
+
+  const publicKeyLength = base64UrlEncodedByteLength(jwk.pub);
+  const expectedPublicKeyLength =
+    mlDsaPublicKeyLengths[jwk.alg as MlDsaAlgorithm];
+  if (publicKeyLength !== expectedPublicKeyLength) {
+    throw new JwkValidationError(
+      `Invalid ${jwk.alg} public key length: expected ${expectedPublicKeyLength} bytes, got ${publicKeyLength}`
+    );
+  }
+}
+
+function base64UrlEncodedByteLength(value: string): number {
+  if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) {
+    throw new JwkValidationError("JWK pub is not valid base64url");
+  }
+
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const remainder = value.length % 4;
+  const finalValue = alphabet.indexOf(value[value.length - 1]);
+  if (
+    finalValue < 0 ||
+    (remainder === 2 && (finalValue & 0b1111) !== 0) ||
+    (remainder === 3 && (finalValue & 0b11) !== 0)
+  ) {
+    throw new JwkValidationError("JWK pub is not canonical base64url");
+  }
+
+  return Math.floor((value.length * 6) / 8);
 }
 
 function assertIsEdDSASignatureJwk(jwk: Jwk): asserts jwk is OkpSignatureJwk {

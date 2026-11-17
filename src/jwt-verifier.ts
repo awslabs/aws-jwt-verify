@@ -13,6 +13,7 @@ import {
   fetchJwk,
   assertIsSignatureJwk,
   findJwkInJwks,
+  mlDsaAlgorithms,
 } from "./jwk.js";
 import {
   assertIsNotPromise,
@@ -45,6 +46,7 @@ export const supportedSignatureAlgorithms = [
   "ES384",
   "ES512",
   "EdDSA",
+  ...mlDsaAlgorithms,
 ] as const;
 export type SupportedSignatureAlgorithm =
   (typeof supportedSignatureAlgorithms)[number];

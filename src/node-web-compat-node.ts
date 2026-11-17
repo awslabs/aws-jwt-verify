@@ -35,9 +35,12 @@ export const nodeWebCompat: NodeWebCompat = {
   parseB64UrlString: (b64: string): string =>
     Buffer.from(b64, "base64").toString("utf8"),
   verifySignatureSync: ({ alg, keyObject, jwsSigningInput, signature }) =>
-    alg !== "EdDSA"
-      ? // eslint-disable-next-line security/detect-object-injection
-        createVerify(JwtSignatureAlgorithmHashNames[alg])
+    alg !== "EdDSA" && !alg.startsWith("ML-DSA-")
+      ? createVerify(
+          JwtSignatureAlgorithmHashNames[
+            alg as keyof typeof JwtSignatureAlgorithmHashNames
+          ]
+        )
           .update(jwsSigningInput)
           .verify(
             {
