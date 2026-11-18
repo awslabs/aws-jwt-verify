@@ -183,6 +183,7 @@ If you need to bundle this library manually yourself, be aware that this library
   - [Using a different `penaltyBox` with `SimpleJwksCache`](#using-a-different-penaltybox-with-simplejwkscache)
 - [Usage examples](#Usage-examples)
   - [CloudFront Lambda@Edge](#cloudfront-lambdaedge)
+  - [CloudFront Functions](#cloudfront-functions)
   - [API Gateway Lambda Authorizer - REST](#api-gateway-lambda-authorizer---rest)
   - [HTTP API Authorizer](#http-api-lambda-authorizer)
   - [AppSync Lambda Authorizer](#appsync-lambda-authorizer)
@@ -1088,6 +1089,32 @@ exports.handler = async (event) => {
   return request; // allow request to proceed
 };
 ```
+
+### CloudFront Functions
+
+[CloudFront Functions](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-functions.html) cannot import npm packages, and the code of a function is limited to 10 KB, so this library cannot run there. Instead, [cloudfront-functions/jwt-verifier.js](cloudfront-functions/jwt-verifier.js) is a single-file viewer request function (runtime `cloudfront-js-2.0`). It verifies JWTs with the same checks, in the same order, as `CognitoJwtVerifier` and `JwtVerifier`:
+
+- It decomposes the JWT and checks the issuer (`iss`), then looks up the JWK by `kid`.
+- It checks the JWK (`kty`, `use`, `alg`) and verifies the signature (RS256, RS384, RS512, ES256, ES384, ES512).
+- It then checks `exp` and `nbf` (with `graceSeconds`).
+- For Cognito it checks `token_use` and the client id (`client_id` for access tokens, `aud` for ID tokens). For other IDPs it checks `aud`. It can also check `scope` and Cognito groups.
+
+The JWKS cache is a [CloudFront KeyValueStore](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/kvs-with-functions.html) associated with the function. Each key is `jwk:<kid>` and holds that JWK as JSON. One key per JWK, because a KeyValueStore value is at most 1 KB. Reading the KeyValueStore is not a network call. If the `kid` is not in the KeyValueStore, the function fetches the JWKS once with a CloudFront Functions network call (`cf.fetch`) to the issuer. The issuer must be added as an origin on the same distribution (for Cognito: `cognito-idp.<region>.amazonaws.com`), and it needs no cache behavior. A function cannot write to its KeyValueStore. Put the JWKS in it at deploy time and whenever the IDP rotates keys, as [e2e.sh](cloudfront-functions/test-stack/e2e.sh) does with `aws cloudfront-keyvaluestore put-key`. Until then, the network call fills the gap.
+
+The function fails closed:
+
+- An invalid JWT gets a `401` with `www-authenticate: Bearer error="invalid_token"`, and with an `x-jwt-error` header named after this library's error class (`JwtExpiredError`, `CognitoJwtInvalidClientIdError`, `KidNotFoundInJwksError`, ...).
+- If the JWKS cannot be fetched (the issuer does not resolve, the call times out after 1 second, a non-2xx response or a JWKS that is not valid JSON), the response is a `503` with `x-jwt-error: FetchError: ...`.
+- A valid JWT goes on to the origin with `x-jwt-sub`, `x-jwt-client-id` and `x-jwt-jwks` (`kvs` or `fetch`). The function drops these headers when the viewer sends them. Add them to the origin request policy to forward them.
+
+Generate a configured copy of the function, without comments, with:
+
+```shell
+npx ts-node cloudfront-functions/generate.ts --user-pool-id <user_pool_id> \
+  --client-id <client_id> --token-use access --origin-id <issuer_origin_id> > function.js
+```
+
+For other IDPs, pass `--issuer <issuer> --jwks-path /.well-known/jwks.json --audience <audience>` instead of the user pool ID, client ID and token use. The generator also exports `generateCloudFrontFunction()` for use in CDK, and it refuses output over 10 KB or with syntax that `cloudfront-js-2.0` rejects at run time. [cloudfront-functions/test-stack](cloudfront-functions/test-stack/) is a CDK stack and an end-to-end test of the function.
 
 ### API Gateway Lambda Authorizer - REST
 
