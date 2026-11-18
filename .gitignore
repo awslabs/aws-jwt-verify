@@ -29,3 +29,8 @@ node-web-compat*.d.ts
 safe-json-parse.d.ts
 test-util.d.ts
 typing-util.d.ts
+
+# CloudFront Functions JWT verifier (plain JavaScript source) and its test stack
+!cloudfront-functions/jwt-verifier.js
+cloudfront-functions/test-stack/cdk.out
+cloudfront-functions/test-stack/outputs.json
